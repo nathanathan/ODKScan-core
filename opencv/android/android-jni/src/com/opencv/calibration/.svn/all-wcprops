@@ -1,0 +1,23 @@
+K 25
+svn:wc:ra_dav:version-url
+V 85
+/svn/opencv/!svn/ver/4090/trunk/opencv/android/android-jni/src/com/opencv/calibration
+END
+ChessBoardChooser.java
+K 25
+svn:wc:ra_dav:version-url
+V 108
+/svn/opencv/!svn/ver/4090/trunk/opencv/android/android-jni/src/com/opencv/calibration/ChessBoardChooser.java
+END
+Calibrator.java
+K 25
+svn:wc:ra_dav:version-url
+V 101
+/svn/opencv/!svn/ver/3667/trunk/opencv/android/android-jni/src/com/opencv/calibration/Calibrator.java
+END
+CalibrationViewer.java
+K 25
+svn:wc:ra_dav:version-url
+V 108
+/svn/opencv/!svn/ver/4071/trunk/opencv/android/android-jni/src/com/opencv/calibration/CalibrationViewer.java
+END

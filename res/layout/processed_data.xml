@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    >
+
+<TextView android:id="@+id/text" android:layout_width="fill_parent" android:layout_height="wrap_content" android:gravity="center" android:padding="10dp" android:text="Captured Data"/>
+<Button android:layout_height="wrap_content" android:id="@+id/button" android:gravity="center" android:padding="20dp" android:text="Back to Menu" android:layout_width="fill_parent"></Button>
+
+</LinearLayout>

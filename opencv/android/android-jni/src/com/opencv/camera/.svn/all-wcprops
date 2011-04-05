@@ -1,0 +1,23 @@
+K 25
+svn:wc:ra_dav:version-url
+V 80
+/svn/opencv/!svn/ver/4090/trunk/opencv/android/android-jni/src/com/opencv/camera
+END
+NativePreviewer.java
+K 25
+svn:wc:ra_dav:version-url
+V 101
+/svn/opencv/!svn/ver/4071/trunk/opencv/android/android-jni/src/com/opencv/camera/NativePreviewer.java
+END
+NativeProcessor.java
+K 25
+svn:wc:ra_dav:version-url
+V 101
+/svn/opencv/!svn/ver/4071/trunk/opencv/android/android-jni/src/com/opencv/camera/NativeProcessor.java
+END
+CameraConfig.java
+K 25
+svn:wc:ra_dav:version-url
+V 98
+/svn/opencv/!svn/ver/4090/trunk/opencv/android/android-jni/src/com/opencv/camera/CameraConfig.java
+END
