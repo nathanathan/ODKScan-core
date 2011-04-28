@@ -3,7 +3,7 @@
  * on top of the form.
  * 
  * run as:
- * ./json_form image_filename json_filename
+ * ./segment_form image_filename
  *
  * Steve Geluso
  */
@@ -17,9 +17,9 @@ using namespace cv;
 // Tests for arguments. Exits program
 bool args_ok(char* argv[])
 {
-    if (argv[1] == NULL || argv[2] == NULL) {
-        printf("Missing arguments. Should be: \n");
-        printf("%s image_file json_file\n", argv[0]);
+    if (argv[1] == NULL) {
+        printf("Missing image argument. Should be: \n");
+        printf("%s image_file\n", argv[0]);
         return false;
     }
     return true;
@@ -64,12 +64,23 @@ int main(int argc, char* argv[])
 
     // Define segments for this form, in px.
     int x = 216;
-    int y; // In this case, y changes.
+    int y;
     int width = 1346;
     int height = 160;
 
     // Draw a rectangle around the entire form.
     rectangle(form, Point2f(0, 0), Point2f(form_width, form_height), color, 1, 8, 0);
+
+/*
+    Cropping example.
+	// Crop the image to focus on the area where the bubbles are.
+	// This significantly speeds up processing time since there are
+	// usually a lot of noise on other parts of the image.
+	Size cropSize(c_rightMargin - c_leftMargin, img.rows);
+	Point cropCenter(c_leftMargin + (c_rightMargin - c_leftMargin) / 2,
+			img.rows / 2);
+	getRectSubPix(img, cropSize, cropCenter, imgCropped);
+*/
 
     // Draw a rectangle around each segment.
     y = 140;
@@ -86,7 +97,7 @@ int main(int argc, char* argv[])
     // Show image within the window.
     imshow(name, form);
 
-    // Save the entire segmented image.
+    // Save the image of the segmented form.
     imwrite("segmented_form.jpg", form);
 
     // Run the application until the user presses ESC.

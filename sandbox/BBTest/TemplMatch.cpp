@@ -4,13 +4,14 @@ Maybe an eigenfaces like approach will work for distinguishing checked from unch
 */
 #include <math.h>
 #include "cv.h"
-#include "cxtypes.h"
+// #include "cxtypes.h"
 #include "highgui.h"
 
 using namespace std;
 using namespace cv;
 
 string file_names[] = {"warped.jpg", "warped2.jpg", "VRform.jpg"};
+string arg_file;
 
 int p0_switch_value = 0;
 int p1_switch_value = 0;
@@ -25,6 +26,11 @@ int param3 = 0;
 int param4 = 0;
 
 void switch_callback_p0 ( int position ){
+  // Hack to allow for file input as command line argument.
+  if (position == 4) {
+    param0 = arg_file;
+    return;
+  }
   param0 = file_names[position];
 }
 void switch_callback_p1 ( int position ){
@@ -46,7 +52,8 @@ int next_odd(int n){
 
 int main(int argc, char* argv[])
 {
-
+    // save the file passed as an argument as an option.
+    arg_file = argv[1];
 	const char* name = "Feature Detection Window";
 
   Mat img_i, img_gray, img_mt, img_th, templ, out;
@@ -57,13 +64,13 @@ int main(int argc, char* argv[])
 
 	// Create trackbars
 	//image
-	cvCreateTrackbar( "Param 0", name, &p0_switch_value, 2, switch_callback_p0 );
+	cvCreateTrackbar( "Select Image", name, &p0_switch_value, 3, switch_callback_p0 );
 	//template size
-	cvCreateTrackbar( "Param 1", name, &p1_switch_value, 100, switch_callback_p1 );
+	cvCreateTrackbar( "Size", name, &p1_switch_value, 100, switch_callback_p1 );
 	//0 for solid filled circles, anything above for empty cirlces with variable border size
 	cvCreateTrackbar( "Param 2", name, &p2_switch_value, 100, switch_callback_p2 );
 	//Threshold
-	cvCreateTrackbar( "Param 3", name, &p3_switch_value, 100, switch_callback_p3 );
+	cvCreateTrackbar( "Threshold", name, &p3_switch_value, 100, switch_callback_p3 );
 	//cvCreateTrackbar( "Param 4", name, &p4_switch_value, 100, switch_callback_p4 );
 	
 	string param0_pv;
