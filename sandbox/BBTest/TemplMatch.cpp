@@ -1,5 +1,6 @@
 /*
 Template matching.
+param0 = arg_file;
 Maybe an eigenfaces like approach will work for distinguishing checked from unchecked??
 */
 #include <math.h>
@@ -30,8 +31,9 @@ void switch_callback_p0 ( int position ){
   if (position == 4) {
     param0 = arg_file;
     return;
+  } else {
+    param0 = file_names[position];
   }
-  param0 = file_names[position];
 }
 void switch_callback_p1 ( int position ){
   param1 = position;
@@ -52,8 +54,10 @@ int next_odd(int n){
 
 int main(int argc, char* argv[])
 {
-    // save the file passed as an argument as an option.
-    arg_file = argv[1];
+    // Save the file argument.
+    if (argv[1] != NULL) {
+        arg_file = argv[1];
+    }
 	const char* name = "Feature Detection Window";
 
   Mat img_i, img_gray, img_mt, img_th, templ, out;
@@ -64,7 +68,9 @@ int main(int argc, char* argv[])
 
 	// Create trackbars
 	//image
-	cvCreateTrackbar( "Select Image", name, &p0_switch_value, 3, switch_callback_p0 );
+	cvCreateTrackbar( "Select Image", name, &p0_switch_value,
+        // Include another option if a file is specified
+        2 + (argv[1] == NULL ? 0 : 1), switch_callback_p0 );
 	//template size
 	cvCreateTrackbar( "Size", name, &p1_switch_value, 100, switch_callback_p1 );
 	//0 for solid filled circles, anything above for empty cirlces with variable border size
