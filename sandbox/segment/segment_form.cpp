@@ -41,9 +41,11 @@ int main(int argc, char* argv[])
     
     // Read the input image
 	form = imread(image);
+    int form_width = form.cols;
+    int form_height = form.rows;
 
     // Report the dimensions of the image.
-    printf("width: %d, height: %d\n", form.cols, form.rows);
+    printf("width: %d, height: %d\n", form_width, form_height);
 
 	if (form.data == NULL) {
         printf("No image data. Exiting.\n");
@@ -59,10 +61,33 @@ int main(int argc, char* argv[])
     Point2f top_left = Point2f(0, 0);
     Point2f bottom_right = Point2f(2047, 1535);
     Scalar color = Scalar(0, 255, 0); // Green!
-    rectangle(form, top_left, bottom_right, color, 1, 8, 0);
+
+    // Define segments for this form, in px.
+    int x = 216;
+    int y; // In this case, y changes.
+    int width = 1346;
+    int height = 160;
+
+    // Draw a rectangle around the entire form.
+    rectangle(form, Point2f(0, 0), Point2f(form_width, form_height), color, 1, 8, 0);
+
+    // Draw a rectangle around each segment.
+    y = 140;
+    rectangle(form, Point2f(x, y), Point2f(x + width, y + height), color, 1, 8, 0);
+    y = 345;
+    rectangle(form, Point2f(x, y), Point2f(x + width, y + height), color, 1, 8, 0);
+    y = 534;
+    rectangle(form, Point2f(x, y), Point2f(x + width, y + height), color, 1, 8, 0);
+    y = 735;
+    rectangle(form, Point2f(x, y), Point2f(x + width, y + height), color, 1, 8, 0);
+    y = 935;
+    rectangle(form, Point2f(x, y), Point2f(x + width, y + height), color, 1, 8, 0);
     
     // Show image within the window.
     imshow(name, form);
+
+    // Save the entire segmented image.
+    imwrite("segmented_form.jpg", form);
 
     // Run the application until the user presses ESC.
     while(true) {
