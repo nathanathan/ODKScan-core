@@ -14,6 +14,9 @@
 using namespace std;
 using namespace cv;
 
+// Initialize matrices that will contain images.
+Mat form, out;
+
 // Tests for arguments. Exits program
 bool args_ok(char* argv[])
 {
@@ -25,6 +28,23 @@ bool args_ok(char* argv[])
     return true;
 }
 
+// Accepts a description of a form segment, crops the image to the segment
+// and saves the cropped segment to a new file.
+void crop_and_draw_rect(int x, int y, int width, int height, string segment_name) {
+    // Crop the different segments of the form.
+    Mat cropped_image;
+	Size size(width, height);
+	Point center((x + (x + width)) / 2, (y + (y + height)) / 2);
+	getRectSubPix(form, size, center, cropped_image);
+
+    // Save the new crop to a file with the given name.
+    imwrite(segment_name + ".jpg", cropped_image);
+    
+    // Draw a rectangle around the segment in the original image.
+    Scalar color = Scalar(0, 255, 0); // Green!
+    rectangle(form, Point2f(x, y), Point2f(x + width, y + height), color, 1, 8, 0);
+}
+
 int main(int argc, char* argv[])
 {
     // Ensure the proper arguments have been passed to the program.
@@ -34,10 +54,8 @@ int main(int argc, char* argv[])
 
     // Yoink the image filename passed as argument.
     char* image = argv[1];
-    char* json = argv[2];
+    char* description = argv[2];
 
-    // Initialize matrices that will contain images.
-    Mat form, out;
     
     // Read the input image
 	form = imread(image);
@@ -53,14 +71,8 @@ int main(int argc, char* argv[])
 	}
 
 	// Make window with given name.
-    const char* name = "JSON Form Segmentation";
+    const char* name = "Form Segmentation";
 	namedWindow(name, CV_WINDOW_KEEPRATIO);
-
-    // Draw rectangles on image.
-    //           img, CvPoint, CvPoint, CvScalar color, int thickness, int type, int shift
-    Point2f top_left = Point2f(0, 0);
-    Point2f bottom_right = Point2f(2047, 1535);
-    Scalar color = Scalar(0, 255, 0); // Green!
 
     // Define segments for this form, in px.
     int x = 216;
@@ -68,31 +80,12 @@ int main(int argc, char* argv[])
     int width = 1346;
     int height = 160;
 
-    // Draw a rectangle around the entire form.
-    rectangle(form, Point2f(0, 0), Point2f(form_width, form_height), color, 1, 8, 0);
-
-/*
-    Cropping example.
-	// Crop the image to focus on the area where the bubbles are.
-	// This significantly speeds up processing time since there are
-	// usually a lot of noise on other parts of the image.
-	Size cropSize(c_rightMargin - c_leftMargin, img.rows);
-	Point cropCenter(c_leftMargin + (c_rightMargin - c_leftMargin) / 2,
-			img.rows / 2);
-	getRectSubPix(img, cropSize, cropCenter, imgCropped);
-*/
-
     // Draw a rectangle around each segment.
-    y = 140;
-    rectangle(form, Point2f(x, y), Point2f(x + width, y + height), color, 1, 8, 0);
-    y = 345;
-    rectangle(form, Point2f(x, y), Point2f(x + width, y + height), color, 1, 8, 0);
-    y = 534;
-    rectangle(form, Point2f(x, y), Point2f(x + width, y + height), color, 1, 8, 0);
-    y = 735;
-    rectangle(form, Point2f(x, y), Point2f(x + width, y + height), color, 1, 8, 0);
-    y = 935;
-    rectangle(form, Point2f(x, y), Point2f(x + width, y + height), color, 1, 8, 0);
+    crop_and_draw_rect(x, 140, width, height, "bcg");
+    crop_and_draw_rect(x, 345, width, height, "polio");
+    crop_and_draw_rect(x, 534, width, height, "measles");
+    crop_and_draw_rect(x, 735, width, height, "hepatitis_b_1");
+    crop_and_draw_rect(x, 935, width, height, "hepatitis_b_2");
     
     // Show image within the window.
     imshow(name, form);
@@ -111,4 +104,5 @@ int main(int argc, char* argv[])
 	cvDestroyWindow(name);
 	return 0;
 }
+
 
