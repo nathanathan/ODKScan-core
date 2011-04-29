@@ -3,9 +3,7 @@ A program for demonstrating various for Bubble Bot related algorithms.
 */
 
 #include "cv.h"
-//#include "ml.h"
-//#include "cxcore.h"
-//#include "cxtypes.h"
+#include "cxtypes.h"
 #include "highgui.h"
 
 using namespace std;
@@ -23,7 +21,19 @@ int distParam = 0;
 int ap_switch_value = 0;
 int block_size = 5;
 int thresh_ap = 5;
+int save_switch_value = 0;
+int save = 0;
 
+string file_names[] = {"VR_ns0.jpg", "VR_ns1.jpg", "VR_ns2.jpg"};
+int p0_switch_value = 0;
+string param0 = file_names[0];
+void switch_callback_p0 ( int position ){
+  param0 = file_names[position];
+}
+
+void switch_callback_save( int position ){
+  save = 1;
+}
 
 void switch_callback_step( int position ){
 	step = position;
@@ -130,41 +140,50 @@ int main(int argc, char* argv[])
   vector < Point2f > corners;
   Mat img, imgGrey, imgGrey_dialated, tmask , out, warped;
   
-  // Read the input image
-	//img = imread("test1.jpg");
-	img = imread("1.png");
-	if (img.data == NULL) {
-        printf("No image data. Exiting.\n");
-		return false;
-	}
-	Point2f orig_corners[] = {Point(0,0),Point(img.cols,0),Point(0,img.rows),Point(img.cols,img.rows)};
+	Point2f orig_corners[4];
 	Point2f corners_a[4];
-
-	// Convert the image to greyscale
-	cvtColor(img, imgGrey, CV_RGB2GRAY);
 	
-	// Create a mask that limits corner detection to the corners of the image.
-	tmask= Mat::zeros(imgGrey.rows, imgGrey.cols, CV_8U);
-	circle(tmask, Point(0,0), (tmask.cols+tmask.rows)/8, Scalar(255,255,255), -1);
-	circle(tmask, Point(0,tmask.rows), (tmask.cols+tmask.rows)/8, Scalar(255,255,255), -1);
-	circle(tmask, Point(tmask.cols,0), (tmask.cols+tmask.rows)/8, Scalar(255,255,255), -1);
-	circle(tmask, Point(tmask.cols,tmask.rows), (tmask.cols+tmask.rows)/8, Scalar(255,255,255), -1);
-
 	// Make window
 	namedWindow( name, CV_WINDOW_NORMAL);
 
 	// Create trackbars
+	cvCreateTrackbar( "Image", name, &p0_switch_value, 2, switch_callback_p0 );
 	cvCreateTrackbar( "Step", name, &step_switch_value, 4, switch_callback_step );
-	cvCreateTrackbar( "Block/Aperture Size", name, &ap_switch_value, 4, switch_callback_a );
+	//cvCreateTrackbar( "Block/Aperture Size", name, &ap_switch_value, 4, switch_callback_a );
 	cvCreateTrackbar( "Dilation", name, &dilation_switch_value, 10, switch_callback_di );
 	cvCreateTrackbar( "Dist", name, &d_switch_value, 200, switch_callback_d );
+	//cvCreateTrackbar( "Save", name, &save_switch_value, 1, switch_callback_save );
 	
+	string param0_pv;
 	// Loop for dynamicly altering parameters in window
 	while( 1 ) {
 	  // Allows exit via Esc
 		if( cvWaitKey( 15 ) == 27 ) 
 			break;
-    
+			
+		if (param0 != param0_pv){
+	    // Read the input image
+    	img = imread(param0);
+	    if (img.data == NULL) {
+		    return false;
+	    }
+	    cvtColor(img, imgGrey, CV_RGB2GRAY);
+	
+			// Create a mask that limits corner detection to the corners of the image.
+			tmask= Mat::zeros(imgGrey.rows, imgGrey.cols, CV_8U);
+			circle(tmask, Point(0,0), (tmask.cols+tmask.rows)/8, Scalar(255,255,255), -1);
+			circle(tmask, Point(0,tmask.rows), (tmask.cols+tmask.rows)/8, Scalar(255,255,255), -1);
+			circle(tmask, Point(tmask.cols,0), (tmask.cols+tmask.rows)/8, Scalar(255,255,255), -1);
+			circle(tmask, Point(tmask.cols,tmask.rows), (tmask.cols+tmask.rows)/8, Scalar(255,255,255), -1);
+
+	    //orig_corners = {Point(0,0),Point(img.cols,0),Point(0,img.rows),Point(img.cols,img.rows)};
+	    orig_corners[0] = Point(0,0);
+	    orig_corners[1] = Point(img.cols,0);
+	    orig_corners[2] = Point(0,img.rows);
+	    orig_corners[3] = Point(img.cols,img.rows);
+	    param0_pv = param0;
+    }
+			
     // Dilating reduces noise, thin lines and small marks.
     dilate(imgGrey, imgGrey_dialated, Mat(), Point(-1, -1), init_dilation);
     
@@ -190,7 +209,7 @@ int main(int argc, char* argv[])
       //draw corner markers
       imgGrey.copyTo(out);
       for(int i = 0; i < corners.size(); i++ ){
-        circle( out, corners[i], 16, Scalar(0,255,0), -1, 8);
+        circle( out, corners[i], 16, Scalar(255,255,255), 2, 8);
       }
       imshow(name, out);
       continue;
@@ -206,6 +225,10 @@ int main(int argc, char* argv[])
     
     if (step == 2){
       imshow(name, warped);
+      if(save==1){
+        imwrite("w_"+param0, warped);
+        save = 0;
+      }
       continue;
     }
     
