@@ -1,0 +1,46 @@
+The JSON describes forms in terms of segments. Segments may contain multiple segments. The
+entire form comprises one segment that represents the root of the form. 
+
+Here is a truncated version of the JSON form:
+
+// This defines the entire form as a segment, which contains other segments.
+// The form has dimensions 2550x330.
+{"name":"village_reach_form", "width":2550, "height":3300, "dataType":"segment", "segments":[
+    // One segment of the form encapsulating all data to do with the disease "BCG"
+    // This segment is surrounded in a rectangle, defined by the given width and height in pixels.
+    // The top left corner of the form is relative to the entire form.
+    {"name":"BCG", "x":230, "y":750, "width":1900, "height":200, "dataType":"segment", "segments":[
+        // This is a segment that contains bubbles. 
+        // The top left corner of this segment is relative to the entire form.
+        {"name":"zero_to_eleven_years", "x":415, "y":750, "width":850, "height":200, "dataType":"segment", "segments":[
+            // This is a list of bubble positions within the segment given above.
+            // The position of each bubble is relative to the top left corner of the
+            // surrounding segment.
+            { "name":"bubbles","dataType":"bubble_block",
+                "bubbles": [20, 40, 60, 40, 100, 40]
+            }
+        ]},
+        // Another segment within the BCG segment.
+        {"name":"twelve_to_twenty_three_years", "x":1410, "y":750, "width":290, "height":200, "dataType":"segment", "segments":[
+            // Bubbles within this segment.
+            // Note that the position of bubbles within the segment are the same positions 
+            // listed in the last bubble block. Remember: bubble positions are relative
+            // to their parent segment so these bubbles represent different bubbles in the form
+            // than the last bubble block.
+            { "name":"bubbles","dataType":"bubble_block",
+                "bubbles": [20, 40, 60, 40, 100, 40]
+            }
+        ]}
+    ]}]
+}
+
+The outermost object represents the whole form. It is a segment named
+"village_reach_segment." It has a width and height of 2550 and 3300, respectively.
+The width and height represent the dimensions of the entire form. The form consists
+of a list of segments. In this example the entire form has 
+
+The second segment, "BCG," is within the form to define a human-sensible area of the form.
+This segment of the form defines an area of the form image that contextualizes data within
+the segment. Segments like this should include enough of the form to identify the segment
+within the rest of the form. This segment contains a width and a height and x and y coordinates.
+The x and y coordinates 
