@@ -4,7 +4,7 @@
 using namespace std;
 
 int main(int argc, char *argv[]) {
-//  string image("test1.jpg");
-//  ProcessImage(image);
-  HelloWorld();
+  train_PCA_classifier();
+  string image("test1.jpg");
+  ProcessImage(image);
 }

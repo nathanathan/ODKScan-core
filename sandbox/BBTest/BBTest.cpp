@@ -36,7 +36,7 @@ void switch_callback_save( int position ){
 }
 
 void switch_callback_step( int position ){
-	step = position;
+  step = position;
 }
 /*
 Depending on the step some switches will controll parameters of different functions
@@ -44,35 +44,35 @@ Depending on the step some switches will controll parameters of different functi
 void switch_callback_di( int position ){
   if( step < 3 ){
     init_dilation = position * 4;
-	}
-	else{
-	  bf_dilation = position;
+  }
+  else{
+    bf_dilation = position;
   }
 }
 void switch_callback_d( int position ){
-	distParam = position * 6;
+  distParam = position * 6;
 }
 void switch_callback_a( int position ){
   int t;
   switch( position ){
     case 0:
-			t = 5;
-			break;
-		case 1:
-			t = 7;
-			break;
-		case 2:
-			t = 9;
-			break;
-	  case 3:
-			t = 11;
-			break;
-	  case 4:
-			t = 13;
-			break;
-	}
-	if( step < 3 ){
-	  block_size = t;
+      t = 5;
+      break;
+    case 1:
+      t = 7;
+      break;
+    case 2:
+      t = 9;
+      break;
+    case 3:
+      t = 11;
+      break;
+    case 4:
+      t = 13;
+      break;
+  }
+  if( step < 3 ){
+    block_size = t;
   }
   else{
     thresh_ap = t;
@@ -84,11 +84,11 @@ Expects greyscale image
 Returns bubble locations and radius
 */
 vector< Vec3f > findBubbles(Mat& origImage) {
-	vector < Vec3f > circles;
-	Mat pImage;
-	
-	GaussianBlur(origImage, pImage, Size(3, 3), 2, 2);
-	dilate(pImage, pImage, Mat(), Point(-1, -1), bf_dilation);
+  vector < Vec3f > circles;
+  Mat pImage;
+  
+  GaussianBlur(origImage, pImage, Size(3, 3), 2, 2);
+  dilate(pImage, pImage, Mat(), Point(-1, -1), bf_dilation);
   adaptiveThreshold(pImage, pImage, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY_INV, thresh_ap, -1.5);
   
   /*
@@ -100,9 +100,9 @@ vector< Vec3f > findBubbles(Mat& origImage) {
   Accumulator thresh
   Min circle radius, Max circle radius
   */
-	HoughCircles(pImage, circles, CV_HOUGH_GRADIENT, 5, 50, 1000, 80, 15, 22);
+  HoughCircles(pImage, circles, CV_HOUGH_GRADIENT, 5, 50, 1000, 80, 15, 22);
   
-	return circles;
+  return circles;
 }
 
 /*
@@ -136,54 +136,54 @@ void configCornerArray(vector<Point2f>& corners, Point2f* corners_a){
 int main(int argc, char* argv[])
 {
 
-	const char* name = "Feature Detection Window";
+  const char* name = "Feature Detection Window";
   vector < Point2f > corners;
   Mat img, imgGrey, imgGrey_dialated, tmask , out, warped;
   
-	Point2f orig_corners[4];
-	Point2f corners_a[4];
-	
-	// Make window
-	namedWindow( name, CV_WINDOW_NORMAL);
+  Point2f orig_corners[4];
+  Point2f corners_a[4];
+  
+  // Make window
+  namedWindow( name, CV_WINDOW_NORMAL);
 
-	// Create trackbars
-	cvCreateTrackbar( "Image", name, &p0_switch_value, 2, switch_callback_p0 );
-	cvCreateTrackbar( "Step", name, &step_switch_value, 4, switch_callback_step );
-	//cvCreateTrackbar( "Block/Aperture Size", name, &ap_switch_value, 4, switch_callback_a );
-	cvCreateTrackbar( "Dilation", name, &dilation_switch_value, 10, switch_callback_di );
-	cvCreateTrackbar( "Dist", name, &d_switch_value, 200, switch_callback_d );
-	//cvCreateTrackbar( "Save", name, &save_switch_value, 1, switch_callback_save );
-	
-	string param0_pv;
-	// Loop for dynamicly altering parameters in window
-	while( 1 ) {
-	  // Allows exit via Esc
-		if( cvWaitKey( 15 ) == 27 ) 
-			break;
-			
-		if (param0 != param0_pv){
-	    // Read the input image
-    	img = imread(param0);
-	    if (img.data == NULL) {
-		    return false;
-	    }
-	    cvtColor(img, imgGrey, CV_RGB2GRAY);
-	
-			// Create a mask that limits corner detection to the corners of the image.
-			tmask= Mat::zeros(imgGrey.rows, imgGrey.cols, CV_8U);
-			circle(tmask, Point(0,0), (tmask.cols+tmask.rows)/8, Scalar(255,255,255), -1);
-			circle(tmask, Point(0,tmask.rows), (tmask.cols+tmask.rows)/8, Scalar(255,255,255), -1);
-			circle(tmask, Point(tmask.cols,0), (tmask.cols+tmask.rows)/8, Scalar(255,255,255), -1);
-			circle(tmask, Point(tmask.cols,tmask.rows), (tmask.cols+tmask.rows)/8, Scalar(255,255,255), -1);
+  // Create trackbars
+  cvCreateTrackbar( "Image", name, &p0_switch_value, 2, switch_callback_p0 );
+  cvCreateTrackbar( "Step", name, &step_switch_value, 4, switch_callback_step );
+  //cvCreateTrackbar( "Block/Aperture Size", name, &ap_switch_value, 4, switch_callback_a );
+  cvCreateTrackbar( "Dilation", name, &dilation_switch_value, 10, switch_callback_di );
+  cvCreateTrackbar( "Dist", name, &d_switch_value, 200, switch_callback_d );
+  //cvCreateTrackbar( "Save", name, &save_switch_value, 1, switch_callback_save );
+  
+  string param0_pv;
+  // Loop for dynamicly altering parameters in window
+  while( 1 ) {
+    // Allows exit via Esc
+    if( cvWaitKey( 15 ) == 27 ) 
+      break;
+      
+    if (param0 != param0_pv){
+      // Read the input image
+      img = imread(param0);
+      if (img.data == NULL) {
+        return false;
+      }
+      cvtColor(img, imgGrey, CV_RGB2GRAY);
+  
+      // Create a mask that limits corner detection to the corners of the image.
+      tmask= Mat::zeros(imgGrey.rows, imgGrey.cols, CV_8U);
+      circle(tmask, Point(0,0), (tmask.cols+tmask.rows)/8, Scalar(255,255,255), -1);
+      circle(tmask, Point(0,tmask.rows), (tmask.cols+tmask.rows)/8, Scalar(255,255,255), -1);
+      circle(tmask, Point(tmask.cols,0), (tmask.cols+tmask.rows)/8, Scalar(255,255,255), -1);
+      circle(tmask, Point(tmask.cols,tmask.rows), (tmask.cols+tmask.rows)/8, Scalar(255,255,255), -1);
 
-	    //orig_corners = {Point(0,0),Point(img.cols,0),Point(0,img.rows),Point(img.cols,img.rows)};
-	    orig_corners[0] = Point(0,0);
-	    orig_corners[1] = Point(img.cols,0);
-	    orig_corners[2] = Point(0,img.rows);
-	    orig_corners[3] = Point(img.cols,img.rows);
-	    param0_pv = param0;
+      //orig_corners = {Point(0,0),Point(img.cols,0),Point(0,img.rows),Point(img.cols,img.rows)};
+      orig_corners[0] = Point(0,0);
+      orig_corners[1] = Point(img.cols,0);
+      orig_corners[2] = Point(0,img.rows);
+      orig_corners[3] = Point(img.cols,img.rows);
+      param0_pv = param0;
     }
-			
+      
     // Dilating reduces noise, thin lines and small marks.
     dilate(imgGrey, imgGrey_dialated, Mat(), Point(-1, -1), init_dilation);
     
@@ -247,9 +247,9 @@ int main(int argc, char* argv[])
     } 
     
     imshow(name, warped);
-	}
+  }
 
-	cvDestroyWindow( name );
+  cvDestroyWindow( name );
 
-	return 0;
+  return 0;
 }

@@ -1,23 +1,26 @@
 #include "cv.h"
-#include "cxtypes.h"
+#include "cxcore.h"
 #include "highgui.h"
 #include <string>
+#include <iostream>
 
 using namespace std;
 using namespace cv;
 
-#define DILATION 1
+#define DILATION 4
 #define BLOCK_SIZE 3
 #define DIST_PARAM 500
 
 void configCornerArray(vector<Point2f>& corners, Point2f* corners_a);
+void straightenImage(const Mat& input_image, Mat& output_image, Size dsize);
+bubble_val checkBubble(Mat& det_img_gray, Point2f& bubble_location, PCA& my_PCA, Mat& comparison_vectors);
 
 int ProcessImage(string &filename) {
   vector < Point2f > corners;
   Mat img, imgGrey, out, warped;
 
   // Read the input image
-	img = imread(filename);
+  img = imread(filename);
   if (img.data == NULL) {
     return false;
   }
@@ -35,15 +38,16 @@ int ProcessImage(string &filename) {
 void straightenImage(const Mat& input_image, Mat& output_image, Size dsize) {
   Point2f orig_corners[4];
   Point2f corners_a[4];
+  vector < Point2f > corners;
 
   Mat tmask, input_image_dilated;
 
-	// Create a mask that limits corner detection to the corners of the image.
-	tmask= Mat::zeros(input_image.rows, input_image.cols, CV_8U);
-	circle(tmask, Point(0,0), (tmask.cols+tmask.rows)/8, Scalar(255,255,255), -1);
-	circle(tmask, Point(0,tmask.rows), (tmask.cols+tmask.rows)/8, Scalar(255,255,255), -1);
-	circle(tmask, Point(tmask.cols,0), (tmask.cols+tmask.rows)/8, Scalar(255,255,255), -1);
-	circle(tmask, Point(tmask.cols,tmask.rows), (tmask.cols+tmask.rows)/8, Scalar(255,255,255), -1);
+  // Create a mask that limits corner detection to the corners of the image.
+  tmask= Mat::zeros(input_image.rows, input_image.cols, CV_8U);
+  circle(tmask, Point(0,0), (tmask.cols+tmask.rows)/8, Scalar(255,255,255), -1);
+  circle(tmask, Point(0,tmask.rows), (tmask.cols+tmask.rows)/8, Scalar(255,255,255), -1);
+  circle(tmask, Point(tmask.cols,0), (tmask.cols+tmask.rows)/8, Scalar(255,255,255), -1);
+  circle(tmask, Point(tmask.cols,tmask.rows), (tmask.cols+tmask.rows)/8, Scalar(255,255,255), -1);
 
   //orig_corners = {Point(0,0),Point(img.cols,0),Point(0,img.rows),Point(img.cols,img.rows)};
   orig_corners[0] = Point(0,0);
@@ -86,7 +90,7 @@ void configCornerArray(vector<Point2f>& corners, Point2f* corners_a){
   
   //Make sure the form corners map to the correct image corner
   //by snaping the nearest form corner to each image corner.
-  for(int i = 0; i < 4; i++ ){
+  for(int i = 0; i < 4; i++) {
     min_dist = FLT_MAX;
     for(int j = 0; j < corners.size(); j++ ){
       dist = norm(corners[j]-corners_a[i]);
@@ -100,5 +104,48 @@ void configCornerArray(vector<Point2f>& corners, Point2f* corners_a){
     //1. Small efficiency gain
     //2. If 2 corners share a closest point this resolves the conflict.
     corners.erase(corners.begin()+min_idx);
+  }
+}
+
+//Assuming there is a bubble at the specified location,
+//this function will tell you if it is filled, empty, or probably not a bubble.
+bubble_val checkBubble(Mat& det_img_gray, Point2f& bubble_location, PCA& my_PCA, Mat& comparison_vectors) {
+    Mat query_pixels;
+    getRectSubPix(det_img_gray, Point(14,18), bubble_location, query_pixels);
+    query_pixels.convertTo(query_pixels, CV_32F);
+    //normalize(query_pixels, query_pixels);
+    transpose(my_PCA.project(query_pixels.reshape(0,1)), query_pixels);
+    query_pixels = comparison_vectors*query_pixels;
+    Point max_location;
+    minMaxLoc(query_pixels, NULL,NULL,NULL, &max_location);
+    return bubble_values[max_location.y];
+}
+
+void train_PCA_classifier() {
+  //Goes though all the selected bubble locations and puts their pixels into rows of
+  //a giant matrix called so we can perform PCA on them (we need at least 3 locations to do this)
+  vector<Point2f> training_bubble_locations;
+  Mat train_img, train_img_gray, train_img_marked;
+  Mat det_img, det_img_gray, det_img_marked, comparison_vectors;
+
+  train_img = imread("training-image.jpg");
+  if (train_img.data == NULL) {
+    return false;
+  }
+  cvtColor(train_img, train_img_gray, CV_RGB2GRAY);
+
+  Mat PCA_set = Mat::zeros(bubble_locations.size(), 18*14, CV_32F);
+  for(size_t i = 0; i < bubble_locations.size(); i+=1) {
+    Mat PCA_set_row;
+    getRectSubPix(train_img_gray, Point(14,18), bubble_locations[i], PCA_set_row);
+    PCA_set_row.convertTo(PCA_set_row, CV_32F);
+    normalize(PCA_set_row, PCA_set_row); //lighting invariance?
+    PCA_set.row(i) += PCA_set_row.reshape(0,1);
+  }
+    
+  my_PCA = PCA(PCA_set, Mat(), CV_PCA_DATA_AS_ROW, 3);
+  comparison_vectors = my_PCA.project(PCA_set);
+  for(size_t i = 0; i < comparison_vectors.rows; i+=1){
+    comparison_vectors.row(i) /= norm(comparison_vectors.row(i));
   }
 }
