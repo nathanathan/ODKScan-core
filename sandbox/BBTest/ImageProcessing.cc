@@ -1,6 +1,7 @@
 #include "cv.h"
 #include "cxcore.h"
 #include "highgui.h"
+#include "ImageProcessing.h"
 #include <string>
 #include <iostream>
 #include <fstream>
@@ -12,22 +13,23 @@ using namespace cv;
 #define BLOCK_SIZE 3
 #define DIST_PARAM 500
 
-enum bubble_val { FILLED_BUBBLE, EMPTY_BUBBLE, FALSE_POSITIVE };
 Mat comparison_vectors;
 PCA my_PCA;
-vector <bubble_val> bubble_values;
-vector <Point2f> bubble_locations;
+vector <bubble_val> training_bubble_values;
+vector <Point2f> training_bubbles_locations;
 
 void configCornerArray(vector<Point2f>& corners, Point2f* corners_a);
 void straightenImage(const Mat& input_image, Mat& output_image, Size dsize);
 bubble_val checkBubble(Mat& det_img_gray, Point2f& bubble_location);
 
-int ProcessImage(string &imagefilename, string &jsonfilename) {
+vector<bubble_val> ProcessImage(string &imagefilename, string &jsonfilename) {
   vector < Point2f > corners, bubbles;
-  vector <bubble_val> bubble_vals;
+  vector<bubble_val> bubble_vals;
+  vector<int> real_bubbles;
   Mat img, imgGrey, out, warped;
   string line;
   float segx, segy, bubx, buby;
+  int bubble;
 
   // read the json file for bubble locations
   ifstream jsonfile(jsonfilename.c_str());
@@ -48,10 +50,21 @@ int ProcessImage(string &imagefilename, string &jsonfilename) {
     }
   }
 
+  // read the file containing the actual bubble values
+  ifstream bubblevalfile("bubble-val");
+  if (bubblevalfile.is_open()) {
+    while (getline(bubblevalfile, line)) {
+      stringstream ss(line);
+      while (ss >> bubble) {
+        real_bubbles.push_back(bubble);
+      }
+    }
+  }
+
   // Read the input image
   img = imread(imagefilename);
   if (img.data == NULL) {
-    return false;
+    return vector<bubble_val>();
   }
 
   cout << "converting to grayscale" << endl;
@@ -62,7 +75,7 @@ int ProcessImage(string &imagefilename, string &jsonfilename) {
   
   cout << "writing to output image" << endl;
   imwrite("w_" + imagefilename, img);
-
+  
   cout << "checking bubbles" << endl;
   vector<Point2f>::iterator it;
   for (it = bubbles.begin(); it != bubbles.end(); it++) {
@@ -70,6 +83,8 @@ int ProcessImage(string &imagefilename, string &jsonfilename) {
     bubble_vals.push_back(checkBubble(img, *it));
     cout << "bubble was " << bubble_vals.back() << endl;
   }
+
+  return bubble_vals;
 }
 
 void straightenImage(const Mat& input_image, Mat& output_image, Size dsize) {
@@ -147,7 +162,6 @@ void configCornerArray(vector<Point2f>& corners, Point2f* corners_a){
 //Assuming there is a bubble at the specified location,
 //this function will tell you if it is filled, empty, or probably not a bubble.
 bubble_val checkBubble(Mat& det_img_gray, Point2f& bubble_location) {
-  cout << "in checkBubble for " << bubble_location << endl;
   Mat query_pixels;
   getRectSubPix(det_img_gray, Point(14,18), bubble_location, query_pixels);
   query_pixels.convertTo(query_pixels, CV_32F);
@@ -156,14 +170,14 @@ bubble_val checkBubble(Mat& det_img_gray, Point2f& bubble_location) {
   query_pixels = comparison_vectors*query_pixels;
   Point max_location;
   minMaxLoc(query_pixels, NULL, NULL, NULL, &max_location);
-  return bubble_values[max_location.y];
+  return training_bubble_values[max_location.y];
 }
 
 void train_PCA_classifier() {
   cout << "training PCA classifier" << endl;
   //Goes though all the selected bubble locations and puts their pixels into rows of
   //a giant matrix called so we can perform PCA on them (we need at least 3 locations to do this)
-  vector<Point2f> training_bubble_locations;
+  vector<Point2f> training_training_bubbles_locations;
   Mat train_img, train_img_gray;
 
   train_img = imread("training-image.jpg");
@@ -173,29 +187,29 @@ void train_PCA_classifier() {
 
   cvtColor(train_img, train_img_gray, CV_RGB2GRAY);
 
-  bubble_values.push_back(EMPTY_BUBBLE);
-  bubble_locations.push_back(Point2f(35, 28));
-  bubble_values.push_back(EMPTY_BUBBLE);
-  bubble_locations.push_back(Point2f(99, 35));
-  bubble_values.push_back(FILLED_BUBBLE);
-  bubble_locations.push_back(Point2f(113, 58));
-  bubble_values.push_back(EMPTY_BUBBLE);
-  bubble_locations.push_back(Point2f(187, 11));
-  bubble_values.push_back(FILLED_BUBBLE);
-  bubble_locations.push_back(Point2f(200, 61));
-  bubble_values.push_back(EMPTY_BUBBLE);
-  bubble_locations.push_back(Point2f(302, 58));
-  bubble_values.push_back(FILLED_BUBBLE);
-  bubble_locations.push_back(Point2f(276, 12));
-  bubble_values.push_back(EMPTY_BUBBLE);
-  bubble_locations.push_back(Point2f(385, 36));
-  bubble_values.push_back(FILLED_BUBBLE);
-  bubble_locations.push_back(Point2f(372, 107));
-  Mat PCA_set = Mat::zeros(bubble_locations.size(), 18*14, CV_32F);
+  training_bubble_values.push_back(EMPTY_BUBBLE);
+  training_bubbles_locations.push_back(Point2f(35, 28));
+  training_bubble_values.push_back(EMPTY_BUBBLE);
+  training_bubbles_locations.push_back(Point2f(99, 35));
+  training_bubble_values.push_back(FILLED_BUBBLE);
+  training_bubbles_locations.push_back(Point2f(113, 58));
+  training_bubble_values.push_back(EMPTY_BUBBLE);
+  training_bubbles_locations.push_back(Point2f(187, 11));
+  training_bubble_values.push_back(FILLED_BUBBLE);
+  training_bubbles_locations.push_back(Point2f(200, 61));
+  training_bubble_values.push_back(EMPTY_BUBBLE);
+  training_bubbles_locations.push_back(Point2f(302, 58));
+  training_bubble_values.push_back(FILLED_BUBBLE);
+  training_bubbles_locations.push_back(Point2f(276, 12));
+  training_bubble_values.push_back(EMPTY_BUBBLE);
+  training_bubbles_locations.push_back(Point2f(385, 36));
+  training_bubble_values.push_back(FILLED_BUBBLE);
+  training_bubbles_locations.push_back(Point2f(372, 107));
+  Mat PCA_set = Mat::zeros(training_bubbles_locations.size(), 18*14, CV_32F);
 
-  for(size_t i = 0; i < bubble_locations.size(); i+=1) {
+  for(size_t i = 0; i < training_bubbles_locations.size(); i+=1) {
     Mat PCA_set_row;
-    getRectSubPix(train_img_gray, Point(14,18), bubble_locations[i], PCA_set_row);
+    getRectSubPix(train_img_gray, Point(14,18), training_bubbles_locations[i], PCA_set_row);
     PCA_set_row.convertTo(PCA_set_row, CV_32F);
     normalize(PCA_set_row, PCA_set_row); //lighting invariance?
     PCA_set.row(i) += PCA_set_row.reshape(0,1);

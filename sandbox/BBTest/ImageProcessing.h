@@ -9,8 +9,10 @@
 #include "highgui.h"
 #include <string>
 
+enum bubble_val { EMPTY_BUBBLE, FILLED_BUBBLE, FALSE_POSITIVE };
+
 // takes a filename and processes the entire image for bubbles
-int ProcessImage(std::string &imagefilename, std::string &jsonfilename);
+vector<bubble_val> ProcessImage(std::string &imagefilename, std::string &jsonfilename);
 
 // trains the program what bubbles look like
 void train_PCA_classifier();
