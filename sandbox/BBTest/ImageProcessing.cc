@@ -3,6 +3,7 @@
 #include "highgui.h"
 #include <string>
 #include <iostream>
+#include <fstream>
 
 using namespace std;
 using namespace cv;
@@ -11,16 +12,44 @@ using namespace cv;
 #define BLOCK_SIZE 3
 #define DIST_PARAM 500
 
+enum bubble_val { FILLED_BUBBLE, EMPTY_BUBBLE, FALSE_POSITIVE };
+Mat comparison_vector;
+PCA my_PCA;
+vector <bubble_val> bubble_values;
+vector <Point2f> bubble_locations;
+
 void configCornerArray(vector<Point2f>& corners, Point2f* corners_a);
 void straightenImage(const Mat& input_image, Mat& output_image, Size dsize);
 bubble_val checkBubble(Mat& det_img_gray, Point2f& bubble_location, PCA& my_PCA, Mat& comparison_vectors);
 
-int ProcessImage(string &filename) {
-  vector < Point2f > corners;
+int ProcessImage(string &imagefilename, string &jsonfilename) {
+  vector < Point2f > corners, bubbles;
+  vector <bubble_val> bubble_vals;
   Mat img, imgGrey, out, warped;
+  string line;
+  float segx, segy, bubx, buby;
+
+  // read the json file for bubble locations
+  ifstream jsonfile(jsonfilename.c_str());
+  if (jsonfile.is_open()) {
+    while (getline(jsonfile, line)) {
+      if (line.at(0) == '-') {
+        line.erase(0, 1);
+        stringstream ss(line);
+        ss >> segx;
+        ss >> segy;
+      } else {
+        stringstream ss(line);
+        ss >> bubx;
+        ss >> buby;
+        Point2f bubble(segx+bubx, segy+buby);
+        bubbles.push_back(bubble);
+      }
+    }
+  }
 
   // Read the input image
-  img = imread(filename);
+  img = imread(imagefilename);
   if (img.data == NULL) {
     return false;
   }
@@ -32,7 +61,15 @@ int ProcessImage(string &filename) {
   straightenImage(imgGrey, img, img.size());
   
   cout << "writing to output image" << endl;
-  imwrite("w_" + filename, img);
+  imwrite("w_" + imagefilename, img);
+
+  cout << "checking bubbles" << endl;
+  vector<Point2f>::iterator it;
+  for (it = bubbles.begin(); it != bubbles.end(); it++) {
+    cout << "checking bubble " << *it << endl;
+    bubble_vals.push_back(checkBubble(img, *it, my_PCA, comparison_vector));
+    cout << "bubble was " << bubble_vals.back() << endl;
+  }
 }
 
 void straightenImage(const Mat& input_image, Mat& output_image, Size dsize) {
@@ -130,10 +167,19 @@ void train_PCA_classifier() {
 
   train_img = imread("training-image.jpg");
   if (train_img.data == NULL) {
-    return false;
+    return;
   }
   cvtColor(train_img, train_img_gray, CV_RGB2GRAY);
 
+  bubble_locations.push_back(Point2f(35.f, 28.f));
+  bubble_locations.push_back(Point2f(99.f, 35.f));
+  bubble_locations.push_back(Point2f(113.f, 58.f));
+  bubble_locations.push_back(Point2f(187.f, 11.f));
+  bubble_locations.push_back(Point2f(200.f, 61.f));
+  bubble_locations.push_back(Point2f(302.f, 58.f));
+  bubble_locations.push_back(Point2f(276.f, 12.f));
+  bubble_locations.push_back(Point2f(385.f, 36.f));
+  bubble_locations.push_back(Point2f(372.f, 107.f));
   Mat PCA_set = Mat::zeros(bubble_locations.size(), 18*14, CV_32F);
   for(size_t i = 0; i < bubble_locations.size(); i+=1) {
     Mat PCA_set_row;
