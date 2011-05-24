@@ -14,3 +14,5 @@ TemplMatch-c: TemplMatch.cpp
 	g++ -o TemplMatch TemplMatch.cpp `pkg-config opencv --cflags --libs`
 TemplMatch2-c: TemplMatch2.cpp
 	g++ -o TemplMatch2 TemplMatch2.cpp `pkg-config opencv --cflags --libs`
+test_process: test_ImageProcessing.cc ImageProcessing.cc
+	g++ -g -o test_process test_ImageProcessing.cc ImageProcessing.cc `pkg-config opencv --cflags --libs`

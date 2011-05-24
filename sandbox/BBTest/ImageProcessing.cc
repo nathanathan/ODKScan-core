@@ -13,14 +13,14 @@ using namespace cv;
 #define DIST_PARAM 500
 
 enum bubble_val { FILLED_BUBBLE, EMPTY_BUBBLE, FALSE_POSITIVE };
-Mat comparison_vector;
+Mat comparison_vectors;
 PCA my_PCA;
 vector <bubble_val> bubble_values;
 vector <Point2f> bubble_locations;
 
 void configCornerArray(vector<Point2f>& corners, Point2f* corners_a);
 void straightenImage(const Mat& input_image, Mat& output_image, Size dsize);
-bubble_val checkBubble(Mat& det_img_gray, Point2f& bubble_location, PCA& my_PCA, Mat& comparison_vectors);
+bubble_val checkBubble(Mat& det_img_gray, Point2f& bubble_location);
 
 int ProcessImage(string &imagefilename, string &jsonfilename) {
   vector < Point2f > corners, bubbles;
@@ -67,7 +67,7 @@ int ProcessImage(string &imagefilename, string &jsonfilename) {
   vector<Point2f>::iterator it;
   for (it = bubbles.begin(); it != bubbles.end(); it++) {
     cout << "checking bubble " << *it << endl;
-    bubble_vals.push_back(checkBubble(img, *it, my_PCA, comparison_vector));
+    bubble_vals.push_back(checkBubble(img, *it));
     cout << "bubble was " << bubble_vals.back() << endl;
   }
 }
@@ -146,41 +146,53 @@ void configCornerArray(vector<Point2f>& corners, Point2f* corners_a){
 
 //Assuming there is a bubble at the specified location,
 //this function will tell you if it is filled, empty, or probably not a bubble.
-bubble_val checkBubble(Mat& det_img_gray, Point2f& bubble_location, PCA& my_PCA, Mat& comparison_vectors) {
-    Mat query_pixels;
-    getRectSubPix(det_img_gray, Point(14,18), bubble_location, query_pixels);
-    query_pixels.convertTo(query_pixels, CV_32F);
-    //normalize(query_pixels, query_pixels);
-    transpose(my_PCA.project(query_pixels.reshape(0,1)), query_pixels);
-    query_pixels = comparison_vectors*query_pixels;
-    Point max_location;
-    minMaxLoc(query_pixels, NULL,NULL,NULL, &max_location);
-    return bubble_values[max_location.y];
+bubble_val checkBubble(Mat& det_img_gray, Point2f& bubble_location) {
+  cout << "in checkBubble for " << bubble_location << endl;
+  Mat query_pixels;
+  getRectSubPix(det_img_gray, Point(14,18), bubble_location, query_pixels);
+  query_pixels.convertTo(query_pixels, CV_32F);
+  //normalize(query_pixels, query_pixels);
+  transpose(my_PCA.project(query_pixels.reshape(0,1)), query_pixels);
+  query_pixels = comparison_vectors*query_pixels;
+  Point max_location;
+  minMaxLoc(query_pixels, NULL, NULL, NULL, &max_location);
+  return bubble_values[max_location.y];
 }
 
 void train_PCA_classifier() {
+  cout << "training PCA classifier" << endl;
   //Goes though all the selected bubble locations and puts their pixels into rows of
   //a giant matrix called so we can perform PCA on them (we need at least 3 locations to do this)
   vector<Point2f> training_bubble_locations;
-  Mat train_img, train_img_gray, train_img_marked;
-  Mat det_img, det_img_gray, det_img_marked, comparison_vectors;
+  Mat train_img, train_img_gray;
 
   train_img = imread("training-image.jpg");
   if (train_img.data == NULL) {
     return;
   }
+
   cvtColor(train_img, train_img_gray, CV_RGB2GRAY);
 
-  bubble_locations.push_back(Point2f(35.f, 28.f));
-  bubble_locations.push_back(Point2f(99.f, 35.f));
-  bubble_locations.push_back(Point2f(113.f, 58.f));
-  bubble_locations.push_back(Point2f(187.f, 11.f));
-  bubble_locations.push_back(Point2f(200.f, 61.f));
-  bubble_locations.push_back(Point2f(302.f, 58.f));
-  bubble_locations.push_back(Point2f(276.f, 12.f));
-  bubble_locations.push_back(Point2f(385.f, 36.f));
-  bubble_locations.push_back(Point2f(372.f, 107.f));
+  bubble_values.push_back(EMPTY_BUBBLE);
+  bubble_locations.push_back(Point2f(35, 28));
+  bubble_values.push_back(EMPTY_BUBBLE);
+  bubble_locations.push_back(Point2f(99, 35));
+  bubble_values.push_back(FILLED_BUBBLE);
+  bubble_locations.push_back(Point2f(113, 58));
+  bubble_values.push_back(EMPTY_BUBBLE);
+  bubble_locations.push_back(Point2f(187, 11));
+  bubble_values.push_back(FILLED_BUBBLE);
+  bubble_locations.push_back(Point2f(200, 61));
+  bubble_values.push_back(EMPTY_BUBBLE);
+  bubble_locations.push_back(Point2f(302, 58));
+  bubble_values.push_back(FILLED_BUBBLE);
+  bubble_locations.push_back(Point2f(276, 12));
+  bubble_values.push_back(EMPTY_BUBBLE);
+  bubble_locations.push_back(Point2f(385, 36));
+  bubble_values.push_back(FILLED_BUBBLE);
+  bubble_locations.push_back(Point2f(372, 107));
   Mat PCA_set = Mat::zeros(bubble_locations.size(), 18*14, CV_32F);
+
   for(size_t i = 0; i < bubble_locations.size(); i+=1) {
     Mat PCA_set_row;
     getRectSubPix(train_img_gray, Point(14,18), bubble_locations[i], PCA_set_row);
@@ -188,7 +200,7 @@ void train_PCA_classifier() {
     normalize(PCA_set_row, PCA_set_row); //lighting invariance?
     PCA_set.row(i) += PCA_set_row.reshape(0,1);
   }
-    
+
   my_PCA = PCA(PCA_set, Mat(), CV_PCA_DATA_AS_ROW, 3);
   comparison_vectors = my_PCA.project(PCA_set);
   for(size_t i = 0; i < comparison_vectors.rows; i+=1){
