@@ -6,6 +6,8 @@
 #include <iostream>
 #include <fstream>
 
+#include "./ImageProcessing.h"
+
 using namespace std;
 using namespace cv;
 
@@ -79,9 +81,7 @@ vector<bubble_val> ProcessImage(string &imagefilename, string &jsonfilename) {
   cout << "checking bubbles" << endl;
   vector<Point2f>::iterator it;
   for (it = bubbles.begin(); it != bubbles.end(); it++) {
-    cout << "checking bubble " << *it << endl;
     bubble_vals.push_back(checkBubble(img, *it));
-    cout << "bubble was " << bubble_vals.back() << endl;
   }
 
   return bubble_vals;
