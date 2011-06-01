@@ -19,12 +19,14 @@ Mat comparison_vectors;
 PCA my_PCA;
 vector <bubble_val> training_bubble_values;
 vector <Point2f> training_bubbles_locations;
+float weight_param;
 
 void configCornerArray(vector<Point2f>& corners, Point2f* corners_a);
 void straightenImage(const Mat& input_image, Mat& output_image, Size dsize);
 bubble_val checkBubble(Mat& det_img_gray, Point2f& bubble_location);
 
-vector<bubble_val> ProcessImage(string &imagefilename, string &jsonfilename) {
+vector<bubble_val> ProcessImage(string &imagefilename, string &jsonfilename, float &weight) {
+  weight_param = weight;
   vector < Point2f > corners, bubbles;
   vector<bubble_val> bubble_vals;
   vector<int> real_bubbles;
@@ -69,16 +71,16 @@ vector<bubble_val> ProcessImage(string &imagefilename, string &jsonfilename) {
     return vector<bubble_val>();
   }
 
-  cout << "converting to grayscale" << endl;
+  //cout << "converting to grayscale" << endl;
   cvtColor(img, imgGrey, CV_RGB2GRAY);
 
-  cout << "straightening image" << endl;
+  //cout << "straightening image" << endl;
   straightenImage(imgGrey, img, img.size());
   
-  cout << "writing to output image" << endl;
+  //cout << "writing to output image" << endl;
   imwrite("w_" + imagefilename, img);
   
-  cout << "checking bubbles" << endl;
+  //cout << "checking bubbles" << endl;
   vector<Point2f>::iterator it;
   for (it = bubbles.begin(); it != bubbles.end(); it++) {
     bubble_vals.push_back(checkBubble(img, *it));
@@ -167,7 +169,8 @@ bubble_val checkBubble(Mat& det_img_gray, Point2f& bubble_location) {
   query_pixels.convertTo(query_pixels, CV_32F);
   //normalize(query_pixels, query_pixels);
   transpose(my_PCA.project(query_pixels.reshape(0,1)), query_pixels);
-  query_pixels = comparison_vectors*query_pixels;
+  Mat M = (Mat_<float>(3,1) << weight_param, 1.0 - weight_param, 1.0);
+  query_pixels = comparison_vectors*query_pixels.mul(M);
   Point max_location;
   minMaxLoc(query_pixels, NULL, NULL, NULL, &max_location);
   return training_bubble_values[max_location.y];

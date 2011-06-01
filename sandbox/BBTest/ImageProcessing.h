@@ -12,7 +12,7 @@
 enum bubble_val { EMPTY_BUBBLE, FILLED_BUBBLE, FALSE_POSITIVE };
 
 // takes a filename and processes the entire image for bubbles
-vector<bubble_val> ProcessImage(std::string &imagefilename, std::string &jsonfilename);
+vector<bubble_val> ProcessImage(std::string &imagefilename, std::string &jsonfilename, float &weight);
 
 // trains the program what bubbles look like
 void train_PCA_classifier();
