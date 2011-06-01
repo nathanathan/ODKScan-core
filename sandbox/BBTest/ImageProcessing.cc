@@ -5,6 +5,8 @@
 #include <iostream>
 #include <fstream>
 
+#include "./ImageProcessing.h"
+
 using namespace std;
 using namespace cv;
 
@@ -12,7 +14,6 @@ using namespace cv;
 #define BLOCK_SIZE 3
 #define DIST_PARAM 500
 
-enum bubble_val { FILLED_BUBBLE, EMPTY_BUBBLE, FALSE_POSITIVE };
 Mat comparison_vectors;
 PCA my_PCA;
 vector <bubble_val> bubble_values;
@@ -22,7 +23,7 @@ void configCornerArray(vector<Point2f>& corners, Point2f* corners_a);
 void straightenImage(const Mat& input_image, Mat& output_image, Size dsize);
 bubble_val checkBubble(Mat& det_img_gray, Point2f& bubble_location);
 
-int ProcessImage(string &imagefilename, string &jsonfilename) {
+vector<bubble_val> ProcessImage(string &imagefilename, string &jsonfilename) {
   vector < Point2f > corners, bubbles;
   vector <bubble_val> bubble_vals;
   Mat img, imgGrey, out, warped;
@@ -66,10 +67,10 @@ int ProcessImage(string &imagefilename, string &jsonfilename) {
   cout << "checking bubbles" << endl;
   vector<Point2f>::iterator it;
   for (it = bubbles.begin(); it != bubbles.end(); it++) {
-    cout << "checking bubble " << *it << endl;
     bubble_vals.push_back(checkBubble(img, *it));
-    cout << "bubble was " << bubble_vals.back() << endl;
   }
+
+  return bubble_vals;
 }
 
 void straightenImage(const Mat& input_image, Mat& output_image, Size dsize) {

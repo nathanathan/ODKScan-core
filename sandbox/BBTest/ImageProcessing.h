@@ -9,6 +9,8 @@
 #include "highgui.h"
 #include <string>
 
+enum bubble_val { FILLED_BUBBLE, EMPTY_BUBBLE, FALSE_POSITIVE };
+
 // takes a filename and processes the entire image for bubbles
 int ProcessImage(std::string &imagefilename, std::string &jsonfilename);
 
