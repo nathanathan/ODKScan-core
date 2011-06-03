@@ -18,6 +18,8 @@ int main(int argc, char *argv[]) {
 
     int tpos = 0, tneg = 0, fpos = 0, fneg = 0;
     check_values(vr1_vals, &tpos, &tneg, &fpos, &fneg);
+    std::cout << "parameter_name, parameter_value, true_positives, ";
+    std::cout << "false_positives, true_negatives, false_negatives" << std::endl;
     std::cout << "\"weight parameter\", " << i << ", ";
     std::cout << tpos << ", " << fpos << ", ";
     std::cout << tneg << ", " << fneg << std::endl;
