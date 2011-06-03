@@ -13,7 +13,7 @@ int main(int argc, char *argv[]) {
   string json("bubble-locations");
   float i;
 
-  for (i = 0.0; i <= 1.0; i += 0.01) {
+  for (i = 0.0; i <= 0.01; i += 0.01) {
     vector<bubble_val> vr1_vals = ProcessImage(image, json, i);
 
     int tpos = 0, tneg = 0, fpos = 0, fneg = 0;

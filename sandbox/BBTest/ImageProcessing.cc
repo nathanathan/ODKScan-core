@@ -22,7 +22,7 @@ vector <Point2f> training_bubbles_locations;
 float weight_param;
 
 void configCornerArray(vector<Point2f>& corners, Point2f* corners_a);
-void straightenImage(const Mat& input_image, Mat& output_image, Size dsize);
+void straightenImage(const Mat& input_image, Mat& output_image);
 bubble_val checkBubble(Mat& det_img_gray, Point2f& bubble_location);
 
 vector<bubble_val> ProcessImage(string &imagefilename, string &jsonfilename, float &weight) {
@@ -74,22 +74,33 @@ vector<bubble_val> ProcessImage(string &imagefilename, string &jsonfilename, flo
   //cout << "converting to grayscale" << endl;
   cvtColor(img, imgGrey, CV_RGB2GRAY);
 
+  Mat straightened_image(3300, 2550, CV_16U);
+
   //cout << "straightening image" << endl;
-  straightenImage(imgGrey, img, img.size());
+  straightenImage(imgGrey, straightened_image);
   
   //cout << "writing to output image" << endl;
-  imwrite("w_" + imagefilename, img);
+  imwrite("straightened_" + imagefilename, straightened_image);
   
   //cout << "checking bubbles" << endl;
   vector<Point2f>::iterator it;
   for (it = bubbles.begin(); it != bubbles.end(); it++) {
-    bubble_vals.push_back(checkBubble(img, *it));
+    Scalar color;
+    bubble_val current_bubble = checkBubble(straightened_image, *it);
+    bubble_vals.push_back(current_bubble);
+    if (current_bubble == 0)
+      color = Scalar(0, 0, 255);
+    else if (current_bubble == 1)
+      color = Scalar(0, 255, 0);
+    rectangle(straightened_image, (*it)-Point2f(7,9), (*it)+Point2f(7,9), color);
   }
+
+  imwrite("withbubbles_" + imagefilename, straightened_image);
 
   return bubble_vals;
 }
 
-void straightenImage(const Mat& input_image, Mat& output_image, Size dsize) {
+void straightenImage(const Mat& input_image, Mat& output_image) {
   Point2f orig_corners[4];
   Point2f corners_a[4];
   vector < Point2f > corners;
@@ -130,7 +141,7 @@ void straightenImage(const Mat& input_image, Mat& output_image, Size dsize) {
   configCornerArray(corners, corners_a);
   
   Mat H = getPerspectiveTransform(corners_a , orig_corners);
-  warpPerspective(input_image, output_image, H, dsize);
+  warpPerspective(input_image, output_image, H, output_image.size());
 }
 
 /*
