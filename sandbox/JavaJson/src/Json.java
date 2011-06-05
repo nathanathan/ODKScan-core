@@ -2,6 +2,12 @@
  * This class parses a given form description json file and prints information
  * about the form. This class provides an example of how to write Java code
  * that interacts with the json form.
+ * 
+ * Usage:
+ * 
+ * cd mScan/sandbox/JavaJson
+ * javac -classpath gson-1.7.1.jar Json.java
+ * java Json mScan/sandbox/json/village_reach.json 
  */
 
 import java.awt.Point;
@@ -22,6 +28,10 @@ import com.google.gson.JsonParser;
 
 public class Json {
 	
+	// The program will produce c++ code if this is set to true.
+	// IF false, the program will invoke JNI procedure calls.
+	private boolean TEST = true;
+	
 	// Keep track of indentation as objects are printed. 
 	private static int INDENTATION = -1;
 	
@@ -31,6 +41,11 @@ public class Json {
 	 * @throws FileNotFoundException
 	 */
 	public static void main(String[] args) throws FileNotFoundException {
+		if(args.length != 1) {
+			System.out.println("You must specify a json file as input.");
+			System.out.println("Usage: java Json json_file");
+		}
+		
 		String filename = args[0];
 		File file = new File(filename);
 		Reader reader = new FileReader(file);
@@ -51,7 +66,7 @@ public class Json {
 		String type = segment.get("dataType").getAsString();
 		// Parse this segment.
 		if (type.equals("segment")) {
-			printSegment(segment);
+			//printSegment(segment);
 			Iterator<JsonElement> iter = segment.get("segments").getAsJsonArray().iterator();
 			// Parse all segments within this segment.
 			while (iter.hasNext()) {
@@ -84,9 +99,8 @@ public class Json {
 		
 		// To generate tests, consider changing this to 
 		// String format = "cpp_method_to_call(\"%s\", %d, %d, %d, %d);";
-		String format = "%s, %d, %d, %d, %d";
-		
-		printWithIndent(String.format(format, name, width, height, x, y));
+		String format = "%d %d";
+		//System.out.println(String.format(format, x, y));
 	}
 	
 	/**
@@ -107,10 +121,12 @@ public class Json {
 			int x = iter.next().getAsInt();
 			int y = iter.next().getAsInt();
 			points.add(new Point(x, y));
+			// print each bubble point to the console.
+			System.out.println(x + " " + y);
 		}
 		
 		// Print the list of points.
-		printWithIndent(Arrays.deepToString(points.toArray()));
+		//printWithIndent(Arrays.deepToString(points.toArray()));
 	}
 	
 	/**
