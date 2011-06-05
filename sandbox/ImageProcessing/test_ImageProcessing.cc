@@ -13,11 +13,13 @@ int main(int argc, char *argv[]) {
   string json("bubble-locations");
   float i;
 
-  for (i = 0.0; i <= 1.0; i += 0.01) {
+  for (i = 0.0; i <= 0.01; i += 0.01) {
     vector<bubble_val> vr1_vals = ProcessImage(image, json, i);
 
     int tpos = 0, tneg = 0, fpos = 0, fneg = 0;
     check_values(vr1_vals, &tpos, &tneg, &fpos, &fneg);
+    std::cout << "parameter_name, parameter_value, true_positives, ";
+    std::cout << "false_positives, true_negatives, false_negatives" << std::endl;
     std::cout << "\"weight parameter\", " << i << ", ";
     std::cout << tpos << ", " << fpos << ", ";
     std::cout << tneg << ", " << fneg << std::endl;

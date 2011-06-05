@@ -11,7 +11,7 @@
 using namespace std;
 using namespace cv;
 
-#define DILATION 8
+#define DILATION 4
 #define BLOCK_SIZE 3
 #define DIST_PARAM 500
 
