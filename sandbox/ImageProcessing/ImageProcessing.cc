@@ -11,9 +11,11 @@
 using namespace std;
 using namespace cv;
 
-#define DILATION 4
+#define DILATION 6
 #define BLOCK_SIZE 3
 #define DIST_PARAM 500
+
+#define DEBUG 1
 
 Mat comparison_vectors;
 PCA my_PCA;
@@ -25,43 +27,25 @@ void configCornerArray(vector<Point2f>& corners, Point2f* corners_a);
 void straightenImage(const Mat& input_image, Mat& output_image);
 bubble_val checkBubble(Mat& det_img_gray, Point2f& bubble_location);
 
-vector<bubble_val> ProcessImage(string &imagefilename, string &jsonfilename, float &weight) {
+vector<bubble_val> ProcessImage(string &imagefilename, string &bubblefilename, float &weight) {
+  cout << "debug level is: " << DEBUG << endl;
   weight_param = weight;
   vector < Point2f > corners, bubbles;
   vector<bubble_val> bubble_vals;
-  vector<int> real_bubbles;
   Mat img, imgGrey, out, warped;
   string line;
-  float segx, segy, bubx, buby;
+  float bubx, buby;
   int bubble;
 
-  // read the json file for bubble locations
-  ifstream jsonfile(jsonfilename.c_str());
-  if (jsonfile.is_open()) {
-    while (getline(jsonfile, line)) {
-      if (line.at(0) == '-') {
-        line.erase(0, 1);
-        stringstream ss(line);
-        ss >> segx;
-        ss >> segy;
-      } else {
-        stringstream ss(line);
-        ss >> bubx;
-        ss >> buby;
-        Point2f bubble(segx+bubx, segy+buby);
-        bubbles.push_back(bubble);
-      }
-    }
-  }
-
-  // read the file containing the actual bubble values
-  ifstream bubblevalfile("bubble-val");
-  if (bubblevalfile.is_open()) {
-    while (getline(bubblevalfile, line)) {
+  // read the bubble location file for bubble locations
+  ifstream bubblefile(bubblefilename.c_str());
+  if (bubblefile.is_open()) {
+    while (getline(bubblefile, line)) {
       stringstream ss(line);
-      while (ss >> bubble) {
-        real_bubbles.push_back(bubble);
-      }
+      ss >> bubx;
+      ss >> buby;
+      Point2f bubble(bubx, buby);
+      bubbles.push_back(bubble);
     }
   }
 
@@ -71,18 +55,26 @@ vector<bubble_val> ProcessImage(string &imagefilename, string &jsonfilename, flo
     return vector<bubble_val>();
   }
 
-  //cout << "converting to grayscale" << endl;
+  #if DEBUG > 0
+  cout << "converting to grayscale" << endl;
+  #endif
   cvtColor(img, imgGrey, CV_RGB2GRAY);
 
   Mat straightened_image(3300, 2550, CV_16U);
 
-  //cout << "straightening image" << endl;
+  #if DEBUG > 0
+  cout << "straightening image" << endl;
+  #endif
   straightenImage(imgGrey, straightened_image);
   
-  //cout << "writing to output image" << endl;
+  #if DEBUG > 0
+  cout << "writing to output image" << endl;
   imwrite("straightened_" + imagefilename, straightened_image);
+  #endif
   
-  //cout << "checking bubbles" << endl;
+  #if DEBUG > 0
+  cout << "checking bubbles" << endl;
+  #endif
   vector<Point2f>::iterator it;
   for (it = bubbles.begin(); it != bubbles.end(); it++) {
     Scalar color(0, 0, 0);
@@ -91,12 +83,17 @@ vector<bubble_val> ProcessImage(string &imagefilename, string &jsonfilename, flo
     rectangle(straightened_image, (*it)-Point2f(7,9), (*it)+Point2f(7,9), color);
   }
 
+  #if DEBUG > 0
   imwrite("withbubbles_" + imagefilename, straightened_image);
+  #endif
 
   return bubble_vals;
 }
 
 void straightenImage(const Mat& input_image, Mat& output_image) {
+  #if DEBUG > 0
+  cout << "entering StraightenImage" << endl;
+  #endif
   Point2f orig_corners[4];
   Point2f corners_a[4];
   vector < Point2f > corners;
@@ -116,6 +113,9 @@ void straightenImage(const Mat& input_image, Mat& output_image) {
   orig_corners[2] = Point(0,output_image.rows);
   orig_corners[3] = Point(output_image.cols,output_image.rows);
 
+  #if DEBUG > 0
+  cout << "dilating image" << endl;
+  #endif
   // Dilating reduces noise, thin lines and small marks.
   dilate(input_image, input_image_dilated, Mat(), Point(-1, -1), DILATION);
 
@@ -130,6 +130,9 @@ void straightenImage(const Mat& input_image, Mat& output_image) {
   Use Harris detector (true) or cornerMinEigenVal() (false)
   Free parameter of Harris detector
   */
+  #if DEBUG > 0
+  cout << "finding corners of the paper" << endl;
+  #endif
   goodFeaturesToTrack(input_image_dilated, corners, 4, 0.01, DIST_PARAM, tmask, BLOCK_SIZE, false, 0.04);
 
   // Initialize the value of corners_a to that of orig_corners
@@ -137,7 +140,14 @@ void straightenImage(const Mat& input_image, Mat& output_image) {
   configCornerArray(corners, corners_a);
   
   Mat H = getPerspectiveTransform(corners_a , orig_corners);
+  #if DEBUG > 0
+  cout << "resizing and warping" << endl;
+  #endif
   warpPerspective(input_image, output_image, H, output_image.size());
+
+  #if DEBUG > 0
+  cout << "exiting StraightenImage" << endl;
+  #endif
 }
 
 /*
@@ -145,6 +155,9 @@ Takes a vector of corners and converts it into a properly formatted corner array
 Warning: destroys the corners vector in the process.
 */
 void configCornerArray(vector<Point2f>& corners, Point2f* corners_a){
+  #if DEBUG > 0
+  cout << "in configCornerArray" << endl;
+  #endif
   float min_dist;
   int min_idx;
   float dist;
@@ -166,11 +179,19 @@ void configCornerArray(vector<Point2f>& corners, Point2f* corners_a){
     //2. If 2 corners share a closest point this resolves the conflict.
     corners.erase(corners.begin()+min_idx);
   }
+
+  #if DEBUG > 0
+  cout << "exiting configCornerArray" << endl;
+  #endif
 }
 
 //Assuming there is a bubble at the specified location,
 //this function will tell you if it is filled, empty, or probably not a bubble.
 bubble_val checkBubble(Mat& det_img_gray, Point2f& bubble_location) {
+  #if DEBUG > 1
+  cout << "in checkBubble" << endl;
+  cout << "checking bubble location: " << bubble_location << endl;
+  #endif
   Mat query_pixels;
   getRectSubPix(det_img_gray, Point(14,18), bubble_location, query_pixels);
   query_pixels.convertTo(query_pixels, CV_32F);
@@ -180,11 +201,16 @@ bubble_val checkBubble(Mat& det_img_gray, Point2f& bubble_location) {
   query_pixels = comparison_vectors*query_pixels.mul(M);
   Point max_location;
   minMaxLoc(query_pixels, NULL, NULL, NULL, &max_location);
+  #if DEBUG > 1
+  cout << "exiting checkBubble" << endl;
+  #endif
   return training_bubble_values[max_location.y];
 }
 
 void train_PCA_classifier() {
+  #if DEBUG > 0
   cout << "training PCA classifier" << endl;
+  #endif
   //Goes though all the selected bubble locations and puts their pixels into rows of
   //a giant matrix called so we can perform PCA on them (we need at least 3 locations to do this)
   vector<Point2f> training_training_bubbles_locations;
@@ -230,4 +256,8 @@ void train_PCA_classifier() {
   for(size_t i = 0; i < comparison_vectors.rows; i+=1){
     comparison_vectors.row(i) /= norm(comparison_vectors.row(i));
   }
+
+  #if DEBUG > 0
+  cout << "finished training PCA classifier" << endl;
+  #endif
 }
