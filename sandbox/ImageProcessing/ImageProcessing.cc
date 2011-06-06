@@ -27,7 +27,7 @@ using namespace cv;
 #define SEGMENT_HEIGHT 200
 
 // buffer around segment in pixels
-#define SEGMENT_BUFFER 10
+#define SEGMENT_BUFFER 70 
 
 #define DEBUG 1
 
@@ -36,6 +36,7 @@ PCA my_PCA;
 vector <bubble_val> training_bubble_values;
 vector <Point2f> training_bubbles_locations;
 float weight_param;
+string imgfilename;
 
 void configCornerArray(vector<Point2f>& corners, Point2f* corners_a);
 void straightenImage(const Mat& input_image, Mat& output_image);
@@ -55,11 +56,12 @@ vector<vector<bubble_val> > ProcessImage(string &imagefilename, string &bubblefi
   vector<Mat> segmats;
   vector<vector<bubble_val> > segment_results;
   Mat img, imgGrey, out, warped;
+  imgfilename = imagefilename;
 
   // Read the input image
   img = imread(imagefilename);
   if (img.data == NULL) {
-    return vector<bubble_val>();
+    return vector<vector<bubble_val> >();
   }
 
   #if DEBUG > 0
@@ -98,25 +100,33 @@ vector<vector<bubble_val> > ProcessImage(string &imagefilename, string &bubblefi
   for (vector<Mat>::iterator it = segmats.begin(); it != segmats.end(); it++) {
     int top, bottom, left, right;
 
-    #if DEBUG > 0
+    #if DEBUG > 1
     cout << "finding top and bottom bounding lines" << endl;
     #endif
     find_bounding_lines(*it, &top, &bottom, true);
-    #if DEBUG > 0
+    #if DEBUG > 1
     cout << "finding left and right bounding lines" << endl;
     #endif
     find_bounding_lines(*it, &left, &right, false);
 
-    #if DEBUG > 0
+    #if DEBUG > 1
     cout << "processing segment" << endl;
     #endif
     segment_results.push_back(processSegment(*it, buboffsetfile, &top, &left));
   }
 
-  //rectangle(straightened_image, (*it)-Point2f(7,9), (*it)+Point2f(7,9), color);
-
   #if DEBUG > 0
-  imwrite("withbubbles_" + imagefilename, straightened_image);
+  cout << "writing segment images" << endl;
+  for (int i = 0; i < segmats.size(); i++) {
+    #if DEBUG > 1
+    cout << "writing segment " << i << endl;
+    #endif
+    string segfilename("marked_");
+    segfilename.append(i);
+    segfilename.append(".jpg");
+    cout << segfilename << endl;
+    //imwrite(segfilename, segmats[i]);
+  }
   #endif
 
   return segment_results;
@@ -131,11 +141,11 @@ vector<bubble_val> processSegment(Mat &segment, string bubble_offsets, int *top,
 
   if (offsets.is_open()) {
     while (getline(offsets, line)) {
-      if (line != "") {
+      if (line.size() > 2) {
         stringstream ss(line);
 
-        ss << bubx;
-        ss << buby;
+        ss >> bubx;
+        ss >> buby;
         Point2f bubble(bubx + *top, buby + *left);
         bubble_locations.push_back(bubble);
       }
@@ -145,6 +155,9 @@ vector<bubble_val> processSegment(Mat &segment, string bubble_offsets, int *top,
   vector<Point2f>::iterator it;
   for (it = bubble_locations.begin(); it != bubble_locations.end(); it++) {
     bubble_val current_bubble = checkBubble(segment, *it);
+    Scalar color(0, 0, 0);
+    rectangle(segment, (*it)-Point2f(7,9), (*it)+Point2f(7,9), color);
+
     retvals.push_back(current_bubble);
   }
 
@@ -160,12 +173,12 @@ Mat getSegmentMat(Mat &img, Point2f &corner) {
   Size segsize(SEGMENT_WIDTH + SEGMENT_BUFFER, SEGMENT_HEIGHT + SEGMENT_BUFFER);
   getRectSubPix(img, segsize, segcenter, segment);
 
-  #if DEBUG > 0
+  #if DEBUG > 1
   string pcorner;
   pcorner.push_back(corner.x);
   pcorner.append("-");
   pcorner.push_back(corner.y);
-  //imwrite("segment_" + pcorner, segment);
+  imwrite("segment_" + pcorner + "_" + imgfilename, segment);
   #endif
 
   return segment;
@@ -173,16 +186,16 @@ Mat getSegmentMat(Mat &img, Point2f &corner) {
 
 void getSegmentLocations(vector<Point2f> &segmentcorners, string segfile) {
   string line;
-  float segx, segy;
+  float segx = 0, segy = 0;
 
   ifstream segstream(segfile.c_str());
   if (segstream.is_open()) {
     while (getline(segstream, line)) {
-      if (line != "") {
+      if (line.size() > 2) {
         stringstream ss(line);
 
-        ss << segx;
-        ss << segy;
+        ss >> segx;
+        ss >> segy;
         Point2f corner(segx, segy);
         segmentcorners.push_back(corner);
       }

@@ -7,7 +7,7 @@
 
 using namespace std;
 
-void check_values(vector<bubble_val> &found, int *tpos, int *tneg, int *fpos, int *fneg);
+void check_values(vector<vector<bubble_val> > &found, int *tpos, int *tneg, int *fpos, int *fneg);
 
 int main(int argc, char *argv[]) {
   // teach the program what empty and filled bubbles look like
@@ -21,9 +21,9 @@ int main(int argc, char *argv[]) {
   float i;
 
   // testing loop, currently iterates over weight_param
-  for (i = 0.00; i <= 1.00; i += 0.01) {
+  for (i = 0.00; i <= 0.00; i += 0.01) {
     // process the image with the given parameter value
-    vector<bubble_val> bubble_vals = ProcessImage(image, bubbles, i);
+    vector<vector<bubble_val> > bubble_vals = ProcessImage(image, bubbles, i);
 
     // get true positive, false positive, true negative, and false negative data
     int tpos = 0, tneg = 0, fpos = 0, fneg = 0;
@@ -39,9 +39,9 @@ int main(int argc, char *argv[]) {
 }
 
 void check_values(vector<vector<bubble_val> > &found, int *tpos, int *tneg, int *fpos, int *fneg) {
-  vector<int> actual;
+  vector<vector<int> > actual;
   string line;
-  int bubble, i;
+  int bubble, i, j;
 
   // file with actual bubble values, format:
   //   val val val val val val\n
@@ -60,27 +60,31 @@ void check_values(vector<vector<bubble_val> > &found, int *tpos, int *tneg, int 
 
       while (ss.good()) {
         ss >> bubble;
-        actual.push_back(bubble);
+        actual[i].push_back(bubble);
       }
+
+      i++;
     }
   }
 
   for (i = 0; i < actual.size(); i++) {
-    // true positive
-    if (found[i] == 1 && actual[i] == 1) {
-      (*tpos)++;
-    }
-    // true negative
-    else if (found[i] == 0 && actual[i] == 0) {
-      (*tneg)++;
-    }
-    // false positive
-    else if (found[i] == 1 && actual[i] == 0) {
-      (*fpos)++;
-    }
-    // false negative
-    else if (found[i] == 0 && actual[i] == 1) {
-      (*fneg)++;
+    for (j = 0; j < actual[i].size(); j++) {
+      // true positive
+      if (found[i][j] == 1 && actual[i][j] == 1) {
+        (*tpos)++;
+      }
+      // true negative
+      else if (found[i][j] == 0 && actual[i][j] == 0) {
+        (*tneg)++;
+      }
+      // false positive
+      else if (found[i][j] == 1 && actual[i][j] == 0) {
+        (*fpos)++;
+      }
+      // false negative
+      else if (found[i][j] == 0 && actual[i][j] == 1) {
+        (*fneg)++;
+      }
     }
   }
 }
