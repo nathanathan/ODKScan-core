@@ -1,40 +1,6 @@
-#include "./FileUtils.h"
+#include "FileUtils.h"
 
-int CrawlFileTree(char *rootdir, vector<string> &filenames) {
-  struct stat rootstat;
-  int result;
-  DIR *rd;
-
-  // Verify that rootdir is a directory.
-  result = lstat((char *) rootdir, &rootstat);
-  if (result == -1) {
-    // We got some kind of error stat'ing the file. Give up
-    // and return an error.
-    return 0;
-  }
-  if (!S_ISDIR(rootstat.st_mode)) {
-    // It isn't a directory, so give up.
-    return 0;
-  }
-
-  // Try to open the directory using opendir().  If try but fail,
-  // (e.g., we don't have permissions on the directory), return NULL.
-  // ("man 3 opendir")
-  rd = opendir(rootdir);
-  if (rd == NULL) {
-    return 0;
-  }
-
-  // Begin the recursive handling of the directory.
-  HandleDir(rootdir, rd, filenames);
-
-  // All done, free up.
-  assert(closedir(rd) == 0);
-  return 1;
-}
-
-
-static void HandleDir(char *dirpath, DIR *d, vector<string> &filenames) {
+static void HandleDir(const char *dirpath, DIR *d, vector<string> &filenames) {
   // Loop through the directory.
   while (1) {
     char *newfile;
@@ -115,3 +81,38 @@ static void HandleDir(char *dirpath, DIR *d, vector<string> &filenames) {
     free(newfile);
   }
 }
+
+
+int CrawlFileTree(const char *rootdir, vector<string> &filenames) {
+  struct stat rootstat;
+  int result;
+  DIR *rd;
+
+  // Verify that rootdir is a directory.
+  result = lstat((char *) rootdir, &rootstat);
+  if (result == -1) {
+    // We got some kind of error stat'ing the file. Give up
+    // and return an error.
+    return 0;
+  }
+  if (!S_ISDIR(rootstat.st_mode)) {
+    // It isn't a directory, so give up.
+    return 0;
+  }
+
+  // Try to open the directory using opendir().  If try but fail,
+  // (e.g., we don't have permissions on the directory), return NULL.
+  // ("man 3 opendir")
+  rd = opendir(rootdir);
+  if (rd == NULL) {
+    return 0;
+  }
+
+  // Begin the recursive handling of the directory.
+  HandleDir(rootdir, rd, filenames);
+
+  // All done, free up.
+  assert(closedir(rd) == 0);
+  return 1;
+}
+
