@@ -13,9 +13,21 @@
 using namespace std;
 using namespace cv;
 
+/*
+ * processing constants
+ */
 #define DILATION 6
 #define BLOCK_SIZE 3
 #define DIST_PARAM 500
+
+// how wide is the segment in pixels
+#define SEGMENT_WIDTH 144
+
+// how tall is the segment in pixels
+#define SEGMENT_HEIGHT 200
+
+// buffer around segment in pixels
+#define SEGMENT_BUFFER 10
 
 #define DEBUG 1
 
@@ -28,32 +40,21 @@ float weight_param;
 void configCornerArray(vector<Point2f>& corners, Point2f* corners_a);
 void straightenImage(const Mat& input_image, Mat& output_image);
 bubble_val checkBubble(Mat& det_img_gray, Point2f& bubble_location);
+void getSegmentLocations(vector<Point2f> &segmentcorners, string segfile);
+vector<bubble_val> processSegment(Mat &segment, string bubble_offsets, int *top, int *left);
+Mat getSegmentMat(Mat &img, Point2f &corner);
+void find_bounding_lines(Mat& img, int* upper, int* lower, bool vertical);
 
-vector<bubble_val> ProcessImage(string &imagefilename, string &bubblefilename, float &weight) {
+vector<vector<bubble_val> > ProcessImage(string &imagefilename, string &bubblefilename, float &weight) {
   cout << "debug level is: " << DEBUG << endl;
+  string seglocfile("segment-offsets.txt");
+  string buboffsetfile("bubble-offsets.txt");
   weight_param = weight;
-  vector < Point2f > corners, bubbles;
+  vector < Point2f > corners, segment_locations;
   vector<bubble_val> bubble_vals;
+  vector<Mat> segmats;
+  vector<vector<bubble_val> > segment_results;
   Mat img, imgGrey, out, warped;
-  string line;
-  float bubx, buby;
-  int bubble;
-
-  // read the bubble location file for bubble locations
-  ifstream bubblefile(bubblefilename.c_str());
-  if (bubblefile.is_open()) {
-    while (getline(bubblefile, line)) {
-      stringstream ss(line);
-      // bubble x
-      ss >> bubx;
-      // bubble y
-      ss >> buby;
-
-      // push the bubble location onto the bubbles vector
-      Point2f bubble(bubx, buby);
-      bubbles.push_back(bubble);
-    }
-  }
 
   // Read the input image
   img = imread(imagefilename);
@@ -79,27 +80,132 @@ vector<bubble_val> ProcessImage(string &imagefilename, string &bubblefilename, f
   #endif
   
   #if DEBUG > 0
-  cout << "checking bubbles" << endl;
+  cout << "getting segment locations" << endl;
   #endif
+  getSegmentLocations(segment_locations, seglocfile);
 
-  // process each bubble location to find if it's empty or filled
-  vector<Point2f>::iterator it;
-  for (it = bubbles.begin(); it != bubbles.end(); it++) {
-    Scalar color(0, 0, 0);
-    bubble_val current_bubble = checkBubble(straightened_image, *it);
-    bubble_vals.push_back(current_bubble);
+  #if DEBUG > 0
+  cout << "grabbing individual segment images" << endl;
+  #endif
+  for (vector<Point2f>::iterator it = segment_locations.begin();
+       it != segment_locations.end(); it++) {
+    segmats.push_back(getSegmentMat(straightened_image, *it));
+  }
+
+  #if DEBUG > 0
+  cout << "processing all segments" << endl;
+  #endif
+  for (vector<Mat>::iterator it = segmats.begin(); it != segmats.end(); it++) {
+    int top, bottom, left, right;
 
     #if DEBUG > 0
-    // put a rectangle around where we're looking for the bubble (debug purposes)
-    rectangle(straightened_image, (*it)-Point2f(7,9), (*it)+Point2f(7,9), color);
+    cout << "finding top and bottom bounding lines" << endl;
     #endif
+    find_bounding_lines(*it, &top, &bottom, true);
+    #if DEBUG > 0
+    cout << "finding left and right bounding lines" << endl;
+    #endif
+    find_bounding_lines(*it, &left, &right, false);
+
+    #if DEBUG > 0
+    cout << "processing segment" << endl;
+    #endif
+    segment_results.push_back(processSegment(*it, buboffsetfile, &top, &left));
   }
+
+  //rectangle(straightened_image, (*it)-Point2f(7,9), (*it)+Point2f(7,9), color);
 
   #if DEBUG > 0
   imwrite("withbubbles_" + imagefilename, straightened_image);
   #endif
 
-  return bubble_vals;
+  return segment_results;
+}
+
+vector<bubble_val> processSegment(Mat &segment, string bubble_offsets, int *top, int *left) {
+  vector<Point2f> bubble_locations;
+  vector<bubble_val> retvals;
+  string line;
+  float bubx, buby;
+  ifstream offsets(bubble_offsets.c_str());
+
+  if (offsets.is_open()) {
+    while (getline(offsets, line)) {
+      if (line != "") {
+        stringstream ss(line);
+
+        ss << bubx;
+        ss << buby;
+        Point2f bubble(bubx + *top, buby + *left);
+        bubble_locations.push_back(bubble);
+      }
+    }
+  }
+
+  vector<Point2f>::iterator it;
+  for (it = bubble_locations.begin(); it != bubble_locations.end(); it++) {
+    bubble_val current_bubble = checkBubble(segment, *it);
+    retvals.push_back(current_bubble);
+  }
+
+  return retvals;
+}
+
+Mat getSegmentMat(Mat &img, Point2f &corner) {
+  Mat segment;
+  Point2f segcenter;
+  segcenter += corner;
+  segcenter.x += SEGMENT_WIDTH/2;
+  segcenter.y += SEGMENT_HEIGHT/2;
+  Size segsize(SEGMENT_WIDTH + SEGMENT_BUFFER, SEGMENT_HEIGHT + SEGMENT_BUFFER);
+  getRectSubPix(img, segsize, segcenter, segment);
+
+  #if DEBUG > 0
+  string pcorner;
+  pcorner.push_back(corner.x);
+  pcorner.append("-");
+  pcorner.push_back(corner.y);
+  //imwrite("segment_" + pcorner, segment);
+  #endif
+
+  return segment;
+}
+
+void getSegmentLocations(vector<Point2f> &segmentcorners, string segfile) {
+  string line;
+  float segx, segy;
+
+  ifstream segstream(segfile.c_str());
+  if (segstream.is_open()) {
+    while (getline(segstream, line)) {
+      if (line != "") {
+        stringstream ss(line);
+
+        ss << segx;
+        ss << segy;
+        Point2f corner(segx, segy);
+        segmentcorners.push_back(corner);
+      }
+    }
+  }
+}
+
+void find_bounding_lines(Mat& img, int* upper, int* lower, bool vertical) {
+  Mat grad_img, out;
+  Sobel(img, grad_img, 0, int(!vertical), int(vertical));
+  multiply(grad_img, img/100, grad_img);//seems to yield improvements on bright images
+  reduce(grad_img, out, int(!vertical), CV_REDUCE_SUM, CV_32F);
+  GaussianBlur(out, out, Size(1,3), 1.0);
+
+  if( vertical )
+    transpose(out,out);
+
+  Point min_location_top;
+  Point min_location_bottom;
+  minMaxLoc(out(Range(0, out.rows/2), Range(0,1)), NULL,NULL,&min_location_top);
+  minMaxLoc(out(Range(out.rows/2 ,out.rows), Range(0,1)), NULL,NULL,&min_location_bottom);
+  *upper = min_location_top.y;
+  *lower = min_location_bottom.y + out.rows/2;
 }
 
 void straightenImage(const Mat& input_image, Mat& output_image) {

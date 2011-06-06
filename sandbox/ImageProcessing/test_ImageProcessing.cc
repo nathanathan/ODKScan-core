@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
 
     // get true positive, false positive, true negative, and false negative data
     int tpos = 0, tneg = 0, fpos = 0, fneg = 0;
-    check_values(bubble_vals, &tpos, &tneg, &fpos, &fneg);
+    //check_values(bubble_vals, &tpos, &tneg, &fpos, &fneg);
 
     // print out results to console, >> filename to save to file
     std::cout << "parameter_name, parameter_value, true_positives, ";
@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
   }
 }
 
-void check_values(vector<bubble_val> &found, int *tpos, int *tneg, int *fpos, int *fneg) {
+void check_values(vector<vector<bubble_val> > &found, int *tpos, int *tneg, int *fpos, int *fneg) {
   vector<int> actual;
   string line;
   int bubble, i;
@@ -49,6 +49,7 @@ void check_values(vector<bubble_val> &found, int *tpos, int *tneg, int *fpos, in
   // etc, example:
   //   0 0 0 0 0 1 0 0 0 0 0 0 0
   // reads from left to right within row, top to bottom within segment
+  // one segment per line
   string valfile("bubble-vals");
 
   // read in bubble values
