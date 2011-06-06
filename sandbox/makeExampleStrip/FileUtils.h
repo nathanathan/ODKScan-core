@@ -15,7 +15,7 @@ extern "C" {
 #include <string.h>
 #include <errno.h>
 }
-
+using namespace std;
 // crawls a directory rootdir for filenames and appends them to the filenames
 // vector parameter (modifies filenames vector)
 //

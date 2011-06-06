@@ -34,7 +34,7 @@ int main(int argc, char* argv[])
 	};
 	vector<string> file_names_v (file_names, file_names + sizeof(file_names) / sizeof(string) );*/
 	vector<string> file_names_v;
-	string training_examples("training_examples");
+	string training_examples("./training_examples");
 
 	CrawlFileTree(training_examples.c_str(), file_names_v);
 	Mat example_strip;
