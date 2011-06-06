@@ -1,4 +1,26 @@
+#include <string>
+#include <iostream>
+#include <fstream>
+#include <vector>
+
+extern "C" {
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <sys/types.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <assert.h>
+#include <string.h>
+#include <errno.h>
+}
+
 #include "./FileUtils.h"
+
+using namespace std;
+
+static void HandleDir(char *dirpath, DIR *d, vector<string> &filenames); 
 
 int CrawlFileTree(char *rootdir, vector<string> &filenames) {
   struct stat rootstat;

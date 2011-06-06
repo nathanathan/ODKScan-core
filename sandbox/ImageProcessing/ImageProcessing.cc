@@ -29,7 +29,6 @@ void configCornerArray(vector<Point2f>& corners, Point2f* corners_a);
 void straightenImage(const Mat& input_image, Mat& output_image);
 bubble_val checkBubble(Mat& det_img_gray, Point2f& bubble_location);
 
-
 vector<bubble_val> ProcessImage(string &imagefilename, string &bubblefilename, float &weight) {
   cout << "debug level is: " << DEBUG << endl;
   weight_param = weight;

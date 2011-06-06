@@ -20,5 +20,15 @@ extern "C" {
 // vector parameter (modifies filenames vector)
 //
 // to call with a C++ string, call like so:
-//   CrawlFileTree(directory_string.c_str(), filenames);
-int CrawlFileTree(char *rootdir, vector<string> &filenames);
+//   string str("directory_name");
+//   cstr = new char[str.size() + 1];
+//   strcpy(cstr, str.c_str());
+//
+//   CrawlFileTree(cstr, filenames);
+//
+//   delete[] cstr;
+//
+// required libraries:
+//   #include <cstring>
+//   #include <string>
+int CrawlFileTree(char *rootdir, std::vector<std::string> &filenames);
