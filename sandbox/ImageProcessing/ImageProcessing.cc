@@ -41,6 +41,7 @@ void configCornerArray(vector<Point2f>& corners, Point2f* corners_a);
 void straightenImage(const Mat& input_image, Mat& output_image);
 bubble_val checkBubble(Mat& det_img_gray, Point2f& bubble_location);
 
+// recursive helper method to crawl directories
 static void HandleDir(char *dirpath, DIR *d, vector<string> &filenames);
 
 // crawls a directory rootdir for filenames and appends them to the filenames
@@ -62,8 +63,12 @@ vector<bubble_val> ProcessImage(string &imagefilename, string &bubblefilename, f
   if (bubblefile.is_open()) {
     while (getline(bubblefile, line)) {
       stringstream ss(line);
+      // bubble x
       ss >> bubx;
+      // bubble y
       ss >> buby;
+
+      // push the bubble location onto the bubbles vector
       Point2f bubble(bubx, buby);
       bubbles.push_back(bubble);
     }
@@ -95,12 +100,18 @@ vector<bubble_val> ProcessImage(string &imagefilename, string &bubblefilename, f
   #if DEBUG > 0
   cout << "checking bubbles" << endl;
   #endif
+
+  // process each bubble location to find if it's empty or filled
   vector<Point2f>::iterator it;
   for (it = bubbles.begin(); it != bubbles.end(); it++) {
     Scalar color(0, 0, 0);
     bubble_val current_bubble = checkBubble(straightened_image, *it);
     bubble_vals.push_back(current_bubble);
+
+    #if DEBUG > 0
+    // put a rectangle around where we're looking for the bubble (debug purposes)
     rectangle(straightened_image, (*it)-Point2f(7,9), (*it)+Point2f(7,9), color);
+    #endif
   }
 
   #if DEBUG > 0
@@ -243,6 +254,7 @@ void train_PCA_classifier() {
 
   cvtColor(train_img, train_img_gray, CV_RGB2GRAY);
 
+  // hardcoded training bubble locations
   training_bubble_values.push_back(EMPTY_BUBBLE);
   training_bubbles_locations.push_back(Point2f(35, 28));
   training_bubble_values.push_back(EMPTY_BUBBLE);
