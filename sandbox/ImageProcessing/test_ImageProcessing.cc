@@ -3,7 +3,7 @@
 #include <string>
 #include "./ImageProcessing.h"
 
-#define DEBUG 1
+#define DEBUG 0
 
 using namespace std;
 
@@ -14,11 +14,14 @@ int main(int argc, char *argv[]) {
   train_PCA_classifier();
 
   // image to be processed
-  string image("vr.jpg");
+  string image("vr_simulated.jpg");
 
   // bubble location file
   string bubbles("bubble-locations.full2");
   float i;
+
+  std::cout << "parameter_name, parameter_value, true_positives, ";
+  std::cout << "false_positives, true_negatives, false_negatives" << std::endl;
 
   // testing loop, currently iterates over weight_param
   for (i = 0.00; i <= 1.00; i += 0.01) {
@@ -27,12 +30,9 @@ int main(int argc, char *argv[]) {
 
     // get true positive, false positive, true negative, and false negative data
     int tpos = 0, tneg = 0, fpos = 0, fneg = 0;
-    cout << "checking bubble values" << endl;
     check_values(bubble_vals, &tpos, &tneg, &fpos, &fneg);
 
     // print out results to console, >> filename to save to file
-    std::cout << "parameter_name, parameter_value, true_positives, ";
-    std::cout << "false_positives, true_negatives, false_negatives" << std::endl;
     std::cout << "\"weight parameter\", " << i << ", ";
     std::cout << tpos << ", " << fpos << ", ";
     std::cout << tneg << ", " << fneg << std::endl;

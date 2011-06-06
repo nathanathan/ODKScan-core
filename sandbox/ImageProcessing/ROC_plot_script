@@ -1,0 +1,23 @@
+#!/bin/bash
+R --vanilla --slave << "EOF" # Pipe all subsequent lines into R. 
+
+# Generates ROC plots from csv files with the following format:
+# parameter_name, parameter_value, true_positives, false_positives, true_negatives, false_negatives
+alldata<-read.csv("weight-value-test",header=TRUE)
+parameter_names = names(summary(alldata$parameter_name))
+for(parameter_name in parameter_names){
+	# Data Manipulation:
+	pdata = alldata[alldata[,1]==parameter_name,]
+	sensitivities = pdata$true_positives / (pdata$true_positives + pdata$false_negatives)
+	specificities = pdata$true_negatives / (pdata$true_negatives + pdata$false_positives)
+	false_postive_rate = 1-specificities
+	point_order = sort(false_postive_rate, index.return = TRUE)$ix
+	
+	# Plotting:
+	png(filename = paste(parameter_name, ".png",sep=''), width= 2048, height=2048, res=300)
+	plot(c(0,1), c(0,1), type="l", col="red", pch=22, lty=2, xlab="False positive rate",
+		ylab="True positive rate", main=paste("Varying Parameter:", parameter_name))
+	lines(false_postive_rate[point_order], sensitivities[point_order], col="dark green")
+	dev.off()
+}
+EOF
