@@ -10,16 +10,26 @@ using namespace std;
 void check_values(vector<bubble_val> &found, int *tpos, int *tneg, int *fpos, int *fneg);
 
 int main(int argc, char *argv[]) {
+  // teach the program what empty and filled bubbles look like
   train_PCA_classifier();
+
+  // image to be processed
   string image("vr.jpg");
+
+  // bubble location file
   string bubbles("bubble-locations.full2");
   float i;
 
-  for (i = 0.0; i <= 0.00; i += 0.01) {
+  // testing loop, currently iterates over weight_param
+  for (i = 0.00; i <= 1.00; i += 0.01) {
+    // process the image with the given parameter value
     vector<bubble_val> bubble_vals = ProcessImage(image, bubbles, i);
 
+    // get true positive, false positive, true negative, and false negative data
     int tpos = 0, tneg = 0, fpos = 0, fneg = 0;
     check_values(bubble_vals, &tpos, &tneg, &fpos, &fneg);
+
+    // print out results to console, >> filename to save to file
     std::cout << "parameter_name, parameter_value, true_positives, ";
     std::cout << "false_positives, true_negatives, false_negatives" << std::endl;
     std::cout << "\"weight parameter\", " << i << ", ";
@@ -33,8 +43,15 @@ void check_values(vector<bubble_val> &found, int *tpos, int *tneg, int *fpos, in
   string line;
   int bubble, i;
 
+  // file with actual bubble values, format:
+  //   val val val val val val\n
+  //   val val val val val val\n
+  // etc, example:
+  //   0 0 0 0 0 1 0 0 0 0 0 0 0
+  // reads from left to right within row, top to bottom within segment
   string valfile("bubble-vals");
 
+  // read in bubble values
   ifstream bubble_value_file(valfile.c_str());
   if (bubble_value_file.is_open()) {
     while (getline(bubble_value_file, line)) {
@@ -48,18 +65,21 @@ void check_values(vector<bubble_val> &found, int *tpos, int *tneg, int *fpos, in
   }
 
   for (i = 0; i < actual.size(); i++) {
+    // true positive
     if (found[i] == 1 && actual[i] == 1) {
       (*tpos)++;
-      //std::cout << "true positive" << std::endl;
-    } else if (found[i] == 0 && actual[i] == 0) {
+    }
+    // true negative
+    else if (found[i] == 0 && actual[i] == 0) {
       (*tneg)++;
-      //std::cout << "true negative" << std::endl;
-    } else if (found[i] == 1 && actual[i] == 0) {
+    }
+    // false positive
+    else if (found[i] == 1 && actual[i] == 0) {
       (*fpos)++;
-      //std::cout << "false positive" << std::endl;
-    } else if (found[i] == 0 && actual[i] == 1) {
+    }
+    // false negative
+    else if (found[i] == 0 && actual[i] == 1) {
       (*fneg)++;
-      //std::cout << "false negative" << std::endl;
     }
   }
 }
