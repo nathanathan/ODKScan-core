@@ -3,7 +3,7 @@
 #include <string>
 #include "./ImageProcessing.h"
 
-#define DEBUG 0
+#define DEBUG 1
 
 using namespace std;
 
@@ -21,13 +21,14 @@ int main(int argc, char *argv[]) {
   float i;
 
   // testing loop, currently iterates over weight_param
-  for (i = 0.00; i <= 0.00; i += 0.01) {
+  for (i = 0.00; i <= 1.00; i += 0.01) {
     // process the image with the given parameter value
     vector<vector<bubble_val> > bubble_vals = ProcessImage(image, bubbles, i);
 
     // get true positive, false positive, true negative, and false negative data
     int tpos = 0, tneg = 0, fpos = 0, fneg = 0;
-    //check_values(bubble_vals, &tpos, &tneg, &fpos, &fneg);
+    cout << "checking bubble values" << endl;
+    check_values(bubble_vals, &tpos, &tneg, &fpos, &fneg);
 
     // print out results to console, >> filename to save to file
     std::cout << "parameter_name, parameter_value, true_positives, ";
@@ -58,12 +59,13 @@ void check_values(vector<vector<bubble_val> > &found, int *tpos, int *tneg, int 
     while (getline(bubble_value_file, line)) {
       stringstream ss(line);
 
+      vector<int> bubble_line;
       while (ss.good()) {
         ss >> bubble;
-        actual[i].push_back(bubble);
+        bubble_line.push_back(bubble);
       }
 
-      i++;
+      actual.push_back(bubble_line);
     }
   }
 
