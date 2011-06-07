@@ -24,7 +24,7 @@ int main(int argc, char *argv[]) {
   std::cout << "false_positives, true_negatives, false_negatives" << std::endl;
 
   // testing loop, currently iterates over weight_param
-  for (i = 0.00; i <= 1.00; i += 0.01) {
+  for (i = 0.50; i <= 0.50; i += 0.01) {
     // process the image with the given parameter value
     vector<vector<bubble_val> > bubble_vals = ProcessImage(image, bubbles, i);
 

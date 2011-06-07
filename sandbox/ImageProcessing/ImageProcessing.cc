@@ -32,7 +32,7 @@ using namespace cv;
 // buffer around segment in pixels
 #define SEGMENT_BUFFER 70 
 
-#define DEBUG 0
+#define DEBUG 1
 
 Mat comparison_vectors;
 PCA my_PCA;
@@ -126,10 +126,12 @@ vector<vector<bubble_val> > ProcessImage(string &imagefilename, string &bubblefi
     cout << "left is: " << left << endl;
     cout << "right is: " << right << endl;
     #endif
+    #if DEBUG > 0
     (*it).col(top)+=200;
     (*it).col(bottom)+=200;
     (*it).row(left)+=200;
     (*it).row(right)+=200;
+    #endif
   }
 
   #if DEBUG > 0
@@ -420,73 +422,34 @@ bubble_val checkBubble(Mat& det_img_gray, Point bubble_location, Point search_wi
     return training_bubble_values[max_idx];
 }
 
-
 void train_PCA_classifier() {
-  #if DEBUG > 0
-  cout << "training PCA classifier" << endl;
-  #endif
-  //Goes though all the selected bubble locations and puts their pixels into rows of
-  //a giant matrix called so we can perform PCA on them (we need at least 3 locations to do this)
-  Mat train_img, train_img_gray;
 
-  /*
-  train_img = imread("training-image.jpg");
-  if (train_img.data == NULL) {
-    return;
-  }
+ // Set training_bubble_values here
+  training_bubble_values.push_back(FILLED_BUBBLE);
+  training_bubble_values.push_back(FILLED_BUBBLE);
+  training_bubble_values.push_back(EMPTY_BUBBLE);
+  training_bubble_values.push_back(FILLED_BUBBLE);
+  training_bubble_values.push_back(FILLED_BUBBLE);
+  training_bubble_values.push_back(EMPTY_BUBBLE);
+  training_bubble_values.push_back(FILLED_BUBBLE);
+  training_bubble_values.push_back(FILLED_BUBBLE);
+  training_bubble_values.push_back(EMPTY_BUBBLE);
+  training_bubble_values.push_back(FILLED_BUBBLE);
 
-  cvtColor(train_img, train_img_gray, CV_RGB2GRAY);
-
-  // hardcoded training bubble locations
-  training_bubble_values.push_back(EMPTY_BUBBLE);
-  training_bubbles_locations.push_back(Point2f(35, 28));
-  training_bubble_values.push_back(EMPTY_BUBBLE);
-  training_bubbles_locations.push_back(Point2f(99, 35));
-  training_bubble_values.push_back(FILLED_BUBBLE);
-  training_bubbles_locations.push_back(Point2f(113, 58));
-  training_bubble_values.push_back(EMPTY_BUBBLE);
-  training_bubbles_locations.push_back(Point2f(187, 11));
-  training_bubble_values.push_back(FILLED_BUBBLE);
-  training_bubbles_locations.push_back(Point2f(200, 61));
-  training_bubble_values.push_back(EMPTY_BUBBLE);
-  training_bubbles_locations.push_back(Point2f(302, 58));
-  training_bubble_values.push_back(FILLED_BUBBLE);
-  training_bubbles_locations.push_back(Point2f(276, 12));
-  training_bubble_values.push_back(EMPTY_BUBBLE);
-  training_bubbles_locations.push_back(Point2f(385, 36));
-  training_bubble_values.push_back(FILLED_BUBBLE);
-  training_bubbles_locations.push_back(Point2f(372, 107));
-  */
-
-  training_bubble_values.push_back(FILLED_BUBBLE);
-  training_bubble_values.push_back(FILLED_BUBBLE);
-  training_bubble_values.push_back(EMPTY_BUBBLE);
-  training_bubble_values.push_back(FILLED_BUBBLE);
-  training_bubble_values.push_back(FILLED_BUBBLE);
-  training_bubble_values.push_back(EMPTY_BUBBLE);
-  training_bubble_values.push_back(FILLED_BUBBLE);
-  training_bubble_values.push_back(FILLED_BUBBLE);
-  training_bubble_values.push_back(EMPTY_BUBBLE);
-  training_bubble_values.push_back(FILLED_BUBBLE);
   Mat example_strip = imread("example_strip.jpg");
-  cvtColor(example_strip, example_strip, CV_RGB2GRAY);
-  int numexamples = example_strip.cols / EXAMPLE_WIDTH;
+  Mat example_strip_bw;
+  cvtColor(example_strip, example_strip_bw, CV_RGB2GRAY);
+
+  int numexamples = example_strip_bw.cols / EXAMPLE_WIDTH;
   Mat PCA_set = Mat::zeros(numexamples, EXAMPLE_HEIGHT*EXAMPLE_WIDTH, CV_32F);
 
   for (int i = 0; i < numexamples; i++) {
-    Mat PCA_set_row = example_strip(Rect(i * EXAMPLE_WIDTH, 0, EXAMPLE_WIDTH, EXAMPLE_HEIGHT));
+    Mat PCA_set_row = example_strip_bw(Rect(i * EXAMPLE_WIDTH, 0,
+                                            EXAMPLE_WIDTH, EXAMPLE_HEIGHT));
     PCA_set_row.convertTo(PCA_set_row, CV_32F);
-    normalize(PCA_set_row, PCA_set_row); //lighting invariance?
     PCA_set.row(i) += PCA_set_row.reshape(0,1);
   }
 
   my_PCA = PCA(PCA_set, Mat(), CV_PCA_DATA_AS_ROW, 3);
   comparison_vectors = my_PCA.project(PCA_set);
-  for(size_t i = 0; i < comparison_vectors.rows; i+=1){
-    comparison_vectors.row(i) /= norm(comparison_vectors.row(i));
-  }
-
-  #if DEBUG > 0
-  cout << "finished training PCA classifier" << endl;
-  #endif
 }
