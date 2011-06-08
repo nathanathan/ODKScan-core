@@ -7,8 +7,8 @@
 using namespace std;
 using namespace cv;
 
-#define EXAMPLE_WIDTH 26
-#define EXAMPLE_HEIGHT 32
+#define EXAMPLE_WIDTH 14
+#define EXAMPLE_HEIGHT 18
 
 bool make_example_strip(vector<string> example_filenames, Mat& example_strip){
     Mat example_image;
