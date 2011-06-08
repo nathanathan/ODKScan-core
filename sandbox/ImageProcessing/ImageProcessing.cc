@@ -29,12 +29,12 @@ using namespace cv;
 // how tall is the segment in pixels
 #define SEGMENT_HEIGHT 200
 
-#define SCALEPARAM 0.6
+#define SCALEPARAM 0.55
 
 // buffer around segment in pixels
 #define SEGMENT_BUFFER 70
 
-#define EIGENBUBBLES 5
+#define EIGENBUBBLES 3
 
 #define DEBUG 1
 
@@ -44,7 +44,7 @@ vector <bubble_val> training_bubble_values;
 vector <Point2f> training_bubbles_locations;
 float weight_param;
 string imgfilename;
-Point search_window(9 * SCALEPARAM, 9 * SCALEPARAM);
+Point search_window(1, 1);
 
 void configCornerArray(vector<Point2f>& corners, Point2f* corners_a);
 void straightenImage(const Mat& input_image, Mat& output_image);
@@ -424,7 +424,7 @@ void configCornerArray(vector<Point2f>& corners, Point2f* corners_a){
 //Rate a location on how likely it is to be a bubble
 double rateBubble(Mat& det_img_gray, Point bubble_location) {
     Mat query_pixels, pca_components;
-    getRectSubPix(det_img_gray, Point(EXAMPLE_WIDTH,EXAMPLE_HEIGHT), bubble_location, query_pixels);
+    getRectSubPix(det_img_gray, Size(EXAMPLE_WIDTH,EXAMPLE_HEIGHT), bubble_location, query_pixels);
     query_pixels.reshape(0,1).convertTo(query_pixels, CV_32F);
     pca_components = my_PCA.project(query_pixels);
     //The rating is the SSD of query pixels and their back projection
@@ -437,15 +437,18 @@ bubble_val checkBubble(Mat& det_img_gray, Point bubble_location) {
     Mat query_pixels;
     //This bit of code finds the location in the search_window most likely to be a bubble
     //then it checks that rather than the exact specified location.
-    Mat out = Mat::zeros(Size(search_window.y, search_window.x) , CV_32FC1);
-    Point offset = Point(bubble_location.x - search_window.x/2, bubble_location.y - search_window.y/2);
-    for(size_t i = 0; i < search_window.y; i+=1) {
-        for(size_t j = 0; j < search_window.x; j+=1) {
-            out.row(i).col(j) += rateBubble(det_img_gray, Point(j,i) + offset);
+    Mat out = Mat::zeros(Size(search_window.y*2, search_window.x*2) , CV_32FC1);
+    Point offset = Point(bubble_location.x - search_window.x, bubble_location.y - search_window.y);
+    for(size_t i = 0; i < search_window.y*2; i+=1) {
+        for(size_t j = 0; j < search_window.x*2; j+=1) {
+          /*cout << "accessing row " << i << " and column " << j << endl;
+          cout << "max row is " << out.rows << " and max column is " << out.cols << endl << endl;*/
+          out.row(j).col(i) += rateBubble(det_img_gray, Point(i,j) + offset);
         }
     }
     Point min_location;
     minMaxLoc(out, NULL,NULL, &min_location);
+    circle(det_img_gray, min_location+offset, 1, Scalar(255), -1);
 
     getRectSubPix(det_img_gray, Point(EXAMPLE_WIDTH,EXAMPLE_HEIGHT), min_location + offset, query_pixels);
 
