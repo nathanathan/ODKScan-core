@@ -34,10 +34,10 @@ using namespace cv;
 // buffer around segment in pixels
 #define SEGMENT_BUFFER 70
 
-#define EIGENBUBBLES 3
+#define EIGENBUBBLES 5
 
 #define DEBUG 1
-
+#define DEBUG_ALIGN_SEGMENT 1
 Mat comparison_vectors;
 PCA my_PCA;
 vector <bubble_val> training_bubble_values;
@@ -46,7 +46,8 @@ float weight_param;
 string imgfilename;
 Point search_window(1, 1);
 
-void configCornerArray(vector<Point2f>& corners, Point2f* corners_a);
+template <class Tp>
+void configCornerArray(vector<Tp>& found_corners, Point2f* dest_corners, float expand = 0);
 void straightenImage(const Mat& input_image, Mat& output_image);
 double rateBubble(Mat& det_img_gray, Point bubble_location);
 bubble_val checkBubble(Mat& det_img_gray, Point bubble_location);
@@ -56,37 +57,133 @@ Mat getSegmentMat(Mat &img, Point2f &corner);
 void find_bounding_lines(Mat& img, int* upper, int* lower, bool vertical);
 void align_segment(Mat& img, Mat& aligned_segment);
 
+
+//Takes a vector of found corners, and an array of destination corners they should map to
+//and replaces each corner in the dest_corners with the nearest unmatched found corner.
+//The optional expand arguement moves each found corner in the direction of the destination
+//corner it is mapped to.
 template <class Tp>
-void configCornerArray(vector<Tp>& orig_corners, Point2f* corners_a, float expand) {
-  float min_dist;
-  int min_idx;
-  float dist;
-  
-  vector<Point2f> corners;
-  
-  for(int i = 0; i < orig_corners.size(); i++ ){
-    corners.push_back(Point2f(float(orig_corners[i].x), float(orig_corners[i].y)));
-  }
-  //Make sure the form corners map to the correct image corner
-  //by snaping the nearest form corner to each image corner.
-  for(int i = 0; i < 4; i++) {
-    min_dist = FLT_MAX;
-    for(int j = 0; j < corners.size(); j++ ){
-      dist = norm(corners[j]-corners_a[i]);
-      if(dist < min_dist){
-        min_dist = dist;
-        min_idx = j;
-      }
-    }
-    corners_a[i]=corners[min_idx] + expand * (corners_a[i] - corners[min_idx]);
-    //Two relatively minor reasons for doing this,
-    //1. Small efficiency gain
-    //2. If 2 corners share a closest point this resolves the conflict.
-    corners.erase(corners.begin()+min_idx);
-  }
+void configCornerArray(vector<Tp>& found_corners, Point2f* dest_corners, float expand = 0) {
+	float min_dist;
+	int min_idx;
+	float dist;
+
+	vector<Point2f> corners;
+
+	for(int i = 0; i < found_corners.size(); i++ ){
+		corners.push_back(Point2f(float(found_corners[i].x), float(found_corners[i].y)));
+	}
+	for(int i = 0; i < 4; i++) {
+		min_dist = FLT_MAX;
+		for(int j = 0; j < corners.size(); j++ ){
+			dist = norm(corners[j]-dest_corners[i]);
+			if(dist < min_dist){
+				min_dist = dist;
+				min_idx = j;
+			}
+		}
+		dest_corners[i]=corners[min_idx] + expand * (dest_corners[i] - corners[min_idx]);
+		corners.erase(corners.begin()+min_idx);
+	}
 }
 
-vector<vector<bubble_val> > ProcessImage(string &imagefilename, string &bubblefilename, float &weight) {
+void find_bounding_lines(Mat& img, int* upper, int* lower, bool vertical) {
+  int center_size = 20 * SCALEPARAM;
+  Mat grad_img, out;
+  Sobel(img, grad_img, 0, int(!vertical), int(vertical));
+
+  reduce(grad_img, out, int(!vertical), CV_REDUCE_SUM, CV_32F);
+  GaussianBlur(out, out, Size(1,(int)(3 * SCALEPARAM)), 1.0 * SCALEPARAM);
+
+  if( vertical )
+    transpose(out,out);
+
+  Point min_location_top;
+  Point min_location_bottom;
+  minMaxLoc(out(Range(3, out.rows/2 - center_size), Range(0,1)), NULL,NULL,&min_location_top);
+  minMaxLoc(out(Range(out.rows/2 + center_size,out.rows - 3), Range(0,1)), NULL,NULL,&min_location_bottom);
+  *upper = min_location_top.y;
+  *lower = min_location_bottom.y + out.rows/2 + center_size;
+}
+
+void align_segment(Mat& img, Mat& aligned_segment){
+	vector < vector<Point> > contours;
+	vector < vector<Point> > borderContours;
+	vector < Point > approx;
+	vector < Point > maxRect;
+
+	//Threshold the image
+	//Maybe we should dilate or blur or something first?
+	//The ideal image would be black lines and white boxes with nothing in them
+	//so if we can filter to get something closer to that, it is a good thing.
+	Scalar my_mean;
+	Scalar my_stddev;
+	meanStdDev(img, my_mean, my_stddev);
+	Mat imgThresh = img > (my_mean.val[0]-.05*my_stddev.val[0]);
+
+	// Find all external contours of the image
+	findContours(imgThresh, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
+
+	float maxContourArea = 0;
+	// Iterate through all detected contours
+	for (size_t i = 0; i < contours.size(); ++i) {
+		// reduce the number of points in the contour
+		approxPolyDP(Mat(contours[i]), approx,
+				     arcLength(Mat(contours[i]), true) * 0.1, true);
+
+		float area = fabs(contourArea(Mat(approx)));
+
+		if (area > maxContourArea) {
+			maxRect = approx;
+			maxContourArea = area;
+		}
+		//Maybe I could refine this by using a corner detector and using
+		//the 4 contour points with the highest responce?
+	}
+	if ( maxRect.size() == 4 && isContourConvex(Mat(maxRect)) && maxContourArea > (img.cols/2) * (img.rows/2)) {
+		Point2f segment_corners[4] = {Point2f(0,0),Point2f(aligned_segment.cols,0),
+		Point2f(0,aligned_segment.rows),Point2f(aligned_segment.cols,aligned_segment.rows)};
+		Point2f corners_a[4] = {Point2f(0,0),Point2f(img.cols,0),
+		Point2f(0,img.rows),Point2f(img.cols,img.rows)};
+
+		configCornerArray(maxRect, corners_a, .1);
+		Mat H = getPerspectiveTransform(corners_a , segment_corners);
+		warpPerspective(img, aligned_segment, H, aligned_segment.size());
+	}
+	else{//use the bounding line method if the contour method fails
+		int top = 0, bottom = 0, left = 0, right = 0;
+		find_bounding_lines(img, &top, &bottom, false);
+		find_bounding_lines(img, &left, &right, true);
+      
+		#if DEBUG_ALIGN_SEGMENT > 0
+		img.copyTo(aligned_segment);
+		const Point* p = &maxRect[0];
+		int n = (int) maxRect.size();
+		polylines(aligned_segment, &p, &n, 1, true, 200, 2, CV_AA);
+
+		img.row(top)+=200;
+		img.row(bottom)+=200;
+		img.col(left)+=200;
+		img.col(right)+=200;
+		img.copyTo(aligned_segment);
+		#else
+		float bounding_lines_threshold = .2;
+		if ((abs((bottom - top) - aligned_segment.rows) < bounding_lines_threshold * aligned_segment.rows) &&
+			(abs((right - left) - aligned_segment.cols) < bounding_lines_threshold * aligned_segment.cols) &&
+			top + aligned_segment.rows < img.rows &&  top + aligned_segment.cols < img.cols) {
+
+			img(Rect(left, top, aligned_segment.cols, aligned_segment.rows)).copyTo(aligned_segment);
+
+		}
+		else{
+			img(Rect(SEGMENT_BUFFER * SCALEPARAM, SEGMENT_BUFFER * SCALEPARAM,
+				aligned_segment.cols, aligned_segment.rows)).copyTo(aligned_segment);
+		}
+		#endif
+	}
+}
+
+vector< vector<bubble_val> > ProcessImage(string &imagefilename, string &bubblefilename, float &weight) {
   #if DEBUG > 0
   cout << "debug level is: " << DEBUG << endl;
   #endif
@@ -133,6 +230,10 @@ vector<vector<bubble_val> > ProcessImage(string &imagefilename, string &bubblefi
   for (vector<Point2f>::iterator it = segment_locations.begin();
        it != segment_locations.end(); it++) {
     Point2f loc((*it).x * SCALEPARAM, (*it).y * SCALEPARAM);
+    
+    //Alternative: (might need some border pixels added)
+    //Mat segment = straightened_image(Rect((*it).x - SEGMENT_BUFFER * SCALEPARAM, (*it).y - SEGMENT_BUFFER * SCALEPARAM, SEGMENT_WIDTH + SEGMENT_BUFFER * SCALEPARAM, SEGMENT_HEIGHT + SEGMENT_BUFFER * SCALEPARAM));
+    
     Mat segment = getSegmentMat(straightened_image, loc);
     Mat aligned_segment(segment.rows - (SEGMENT_BUFFER * SCALEPARAM),
                         segment.cols - (SEGMENT_BUFFER * SCALEPARAM), CV_8UC1);
@@ -155,84 +256,6 @@ vector<vector<bubble_val> > ProcessImage(string &imagefilename, string &bubblefi
   }
 
   return segment_results;
-}
-
-void align_segment(Mat& img, Mat& aligned_segment){
-  vector < vector<Point> > contours;
-  vector < vector<Point> > borderContours;
-  vector < Point > approx;
-  vector < Point > maxRect;
-  
-  //Threshold the image
-  //Maybe we should dilate or blur or something first?
-  //The ideal image would be black lines and white boxes with nothing in them
-  //so if we can filter to get something closer to that, it is a good thing.
-  Scalar my_mean;
-  Scalar my_stddev;
-  meanStdDev(img, my_mean, my_stddev);
-  Mat imgThresh = img > (my_mean.val[0]-.05*my_stddev.val[0]);
-  
-  // Find all external contours of the image
-  findContours(imgThresh, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
-  
-  float maxContourArea = 0;
-  // Iterate through all detected contours
-  for (size_t i = 0; i < contours.size(); ++i) {
-    // reduce the number of points in the contour
-    approxPolyDP(Mat(contours[i]), approx,
-                     arcLength(Mat(contours[i]), true) * 0.1, true);
-
-    float area = fabs(contourArea(Mat(approx)));
-
-    if (area > maxContourArea) {
-      maxRect = approx;
-      maxContourArea = area;
-    }
-    //Maybe I could refine this by using a corner detector and using
-    //the 4 contour points with the highest responce?
-  }
-  if ( maxRect.size() == 4 && isContourConvex(Mat(maxRect)) && maxContourArea > (img.cols/2) * (img.rows/2)) {
-    Point2f segment_corners[4] = {Point2f(0,0),Point2f(aligned_segment.cols,0),
-      Point2f(0,aligned_segment.rows),Point2f(aligned_segment.cols,aligned_segment.rows)};
-    Point2f corners_a[4] = {Point2f(0,0),Point2f(img.cols,0),
-      Point2f(0,img.rows),Point2f(img.cols,img.rows)};
-    
-    configCornerArray(maxRect, corners_a, .1);
-    Mat H = getPerspectiveTransform(corners_a , segment_corners);
-    warpPerspective(img, aligned_segment, H, aligned_segment.size());
-  }
-  else{//use the bounding line method if the contour method fails
-    int top = 0, bottom = 0, left = 0, right = 0;
-      find_bounding_lines(img, &top, &bottom, false);
-      find_bounding_lines(img, &left, &right, true);
-      
-    //debug stuff
-    /*
-    img.copyTo(aligned_segment);
-    const Point* p = &maxRect[0];
-    int n = (int) maxRect.size();
-    polylines(aligned_segment, &p, &n, 1, true, 200, 2, CV_AA);
-    
-    img.row(top)+=200;
-      img.row(bottom)+=200;
-      img.col(left)+=200;
-      img.col(right)+=200;
-    img.copyTo(aligned_segment);
-    */
-
-      float bounding_lines_threshold = .2;
-      if ((abs((bottom - top) - aligned_segment.rows) < bounding_lines_threshold * aligned_segment.rows) &&
-        (abs((right - left) - aligned_segment.cols) < bounding_lines_threshold * aligned_segment.cols) &&
-        top + aligned_segment.rows < img.rows &&  top + aligned_segment.cols < img.cols) {
-        
-        img(Rect(left, top, aligned_segment.cols, aligned_segment.rows)).copyTo(aligned_segment);
-        
-      }
-      else{
-        img(Rect(SEGMENT_BUFFER * SCALEPARAM, SEGMENT_BUFFER * SCALEPARAM,
-                 aligned_segment.cols, aligned_segment.rows)).copyTo(aligned_segment);
-      }
-  }
 }
 
 vector<bubble_val> processSegment(Mat &segment, string bubble_offsets) {
@@ -307,25 +330,6 @@ void getSegmentLocations(vector<Point2f> &segmentcorners, string segfile) {
   }
 }
 
-void find_bounding_lines(Mat& img, int* upper, int* lower, bool vertical) {
-  int center_size = 20 * SCALEPARAM;
-  Mat grad_img, out;
-  Sobel(img, grad_img, 0, int(!vertical), int(vertical));
-  //multiply(grad_img, img/100, grad_img);//seems to yield improvements on bright images
-  reduce(grad_img, out, int(!vertical), CV_REDUCE_SUM, CV_32F);
-  GaussianBlur(out, out, Size(1,(int)(3 * SCALEPARAM)), 1.0 * SCALEPARAM);
-
-  if( vertical )
-    transpose(out,out);
-
-  Point min_location_top;
-  Point min_location_bottom;
-  minMaxLoc(out(Range(3, out.rows/2 - center_size), Range(0,1)), NULL,NULL,&min_location_top);
-  minMaxLoc(out(Range(out.rows/2 + center_size,out.rows - 3), Range(0,1)), NULL,NULL,&min_location_bottom);
-  *upper = min_location_top.y;
-  *lower = min_location_bottom.y + out.rows/2 + center_size;
-}
-
 void straightenImage(const Mat& input_image, Mat& output_image) {
   #if DEBUG > 0
   cout << "entering StraightenImage" << endl;
@@ -385,42 +389,6 @@ void straightenImage(const Mat& input_image, Mat& output_image) {
   cout << "exiting StraightenImage" << endl;
   #endif
 }
-
-/*
-Takes a vector of corners and converts it into a properly formatted corner array.
-Warning: destroys the corners vector in the process.
-*/
-void configCornerArray(vector<Point2f>& corners, Point2f* corners_a){
-  #if DEBUG > 0
-  cout << "in configCornerArray" << endl;
-  #endif
-  float min_dist;
-  int min_idx;
-  float dist;
-  
-  //Make sure the form corners map to the correct image corner
-  //by snaping the nearest form corner to each image corner.
-  for(int i = 0; i < 4; i++) {
-    min_dist = FLT_MAX;
-    for(int j = 0; j < corners.size(); j++ ){
-      dist = norm(corners[j]-corners_a[i]);
-      if(dist < min_dist){
-        min_dist = dist;
-        min_idx = j;
-      }
-    }
-    corners_a[i]=corners[min_idx];
-    //Two relatively minor reasons for doing this,
-    //1. Small efficiency gain
-    //2. If 2 corners share a closest point this resolves the conflict.
-    corners.erase(corners.begin()+min_idx);
-  }
-
-  #if DEBUG > 0
-  cout << "exiting configCornerArray" << endl;
-  #endif
-}
-
 //Rate a location on how likely it is to be a bubble
 double rateBubble(Mat& det_img_gray, Point bubble_location) {
     Mat query_pixels, pca_components;
