@@ -57,6 +57,7 @@ double rateBubble(Mat& det_img_gray, Point bubble_location);
 Point bubble_align(Mat& det_img_gray, Point bubble_location);
 bubble_val checkBubble(Mat& det_img_gray, Point bubble_location);
 void getSegmentLocations(vector<Point2f> &segmentcorners, string segfile);
+string get_unique_name(string prefix);
 vector<bubble_val> processSegment(Mat &segment, string bubble_offsets);
 Mat getSegmentMat(Mat &img, Point2f &corner);
 void find_bounding_lines(Mat& img, int* upper, int* lower, bool vertical);
@@ -118,14 +119,20 @@ void align_segment(Mat& img, Mat& aligned_segment){
 	vector < Point > maxRect;
 
 	//Threshold the image
-	//Maybe we should dilate or blur or something first?
 	//The ideal image would be black lines and white boxes with nothing in them
 	//so if we can filter to get something closer to that, it is a good thing.
+	Mat filt, dbg_out;
+	//One of the big problems with thresholding is that it is thrown off by filled in bubbles.
+	//Equalizing seems to mitigate this somewhat.
+	//It might help use the same threshold for all the segments, but if one is in shadow
+	//it will cause problems.
+	equalizeHist(img, filt);
+	
 	Scalar my_mean;
 	Scalar my_stddev;
-	meanStdDev(img, my_mean, my_stddev);
-	Mat imgThresh = img > (my_mean.val[0]-.05*my_stddev.val[0]);
-
+	meanStdDev(filt, my_mean, my_stddev);
+	Mat imgThresh = filt > (my_mean.val[0] - .5* my_stddev.val[0]);//(my_mean.val[0]-.05*my_stddev.val[0]);
+	imgThresh.convertTo(dbg_out, CV_8U);
 	// Find all external contours of the image
 	findContours(imgThresh, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
 
@@ -142,9 +149,14 @@ void align_segment(Mat& img, Mat& aligned_segment){
 			maxRect = approx;
 			maxContourArea = area;
 		}
-		//Maybe I could refine this by using a corner detector and using
-		//the 4 contour points with the highest harris responce?
 	}
+	#if DEBUG_ALIGN_SEGMENT > 0
+	string directory = "debug_segment_images";
+	directory.append("/");
+	string segfilename = get_unique_name("alignment_debug_");
+	segfilename.append(".jpg");
+	imwrite(directory+segfilename, dbg_out);
+	#endif
 	if ( maxRect.size() == 4 && isContourConvex(Mat(maxRect)) && maxContourArea > (img.cols/2) * (img.rows/2)) {
 		Point2f segment_corners[4] = {Point2f(0,0),Point2f(aligned_segment.cols,0),
 		Point2f(0,aligned_segment.rows),Point2f(aligned_segment.cols,aligned_segment.rows)};
@@ -159,18 +171,17 @@ void align_segment(Mat& img, Mat& aligned_segment){
 		int top = 0, bottom = 0, left = 0, right = 0;
 		find_bounding_lines(img, &top, &bottom, false);
 		find_bounding_lines(img, &left, &right, true);
-      
+
 		#if DEBUG_ALIGN_SEGMENT > 0
 		img.copyTo(aligned_segment);
 		const Point* p = &maxRect[0];
 		int n = (int) maxRect.size();
 		polylines(aligned_segment, &p, &n, 1, true, 200, 2, CV_AA);
 
-		img.row(top)+=200;
-		img.row(bottom)+=200;
-		img.col(left)+=200;
-		img.col(right)+=200;
-		img.copyTo(aligned_segment);
+		aligned_segment.row(top)+=200;
+		aligned_segment.row(bottom)+=200;
+		aligned_segment.col(left)+=200;
+		aligned_segment.col(right)+=200;
 		#else
 		float bounding_lines_threshold = .2;
 		if ((abs((bottom - top) - aligned_segment.rows) < bounding_lines_threshold * aligned_segment.rows) &&
@@ -236,9 +247,6 @@ vector< vector<bubble_val> > ProcessImage(string &imagefilename, string &bubblef
        it != segment_locations.end(); it++) {
     Point2f loc((*it).x * SCALEPARAM, (*it).y * SCALEPARAM);
     
-    //Alternative: (might need some border pixels added)
-    //Mat segment = straightened_image(Rect((*it).x - SEGMENT_BUFFER * SCALEPARAM, (*it).y - SEGMENT_BUFFER * SCALEPARAM, SEGMENT_WIDTH + SEGMENT_BUFFER * SCALEPARAM, SEGMENT_HEIGHT + SEGMENT_BUFFER * SCALEPARAM));
-    
     Mat segment = getSegmentMat(straightened_image, loc);
     Mat aligned_segment(segment.rows - (SEGMENT_BUFFER * SCALEPARAM),
                         segment.cols - (SEGMENT_BUFFER * SCALEPARAM), CV_8UC1);
@@ -247,7 +255,6 @@ vector< vector<bubble_val> > ProcessImage(string &imagefilename, string &bubblef
     #endif
     align_segment(segment, aligned_segment);
     segment_results.push_back(processSegment(aligned_segment, buboffsetfile));
-    aligned_segment.copyTo(segment);
   }
 
   return segment_results;
@@ -297,6 +304,7 @@ vector<bubble_val> processSegment(Mat &segment, string bubble_offsets) {
 	
 		Point refined_location = bubble_align(segment, *it);
 		bubble_val current_bubble = checkBubble(segment, refined_location);
+		retvals.push_back(current_bubble);
 		
 		#if DEBUG > 0
 		Scalar color(0, 255, 0);
@@ -307,8 +315,6 @@ vector<bubble_val> processSegment(Mat &segment, string bubble_offsets) {
 			(*it)+Point2f(EXAMPLE_WIDTH/2,EXAMPLE_HEIGHT/2), color);
 		circle(dbg_out, refined_location, 1, Scalar(255, 2555, 255), -1);
 		#endif
-		
-		retvals.push_back(current_bubble);
 	}
 
 	#if DEBUG > 0
