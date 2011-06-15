@@ -38,6 +38,10 @@ using namespace cv;
 
 #define DEBUG 1
 #define DEBUG_ALIGN_SEGMENT 1
+
+//This counter is used to generate unique file names;
+int global_counter = 0;
+
 Mat comparison_vectors;
 PCA my_PCA;
 vector <bubble_val> training_bubble_values;
@@ -50,6 +54,7 @@ template <class Tp>
 void configCornerArray(vector<Tp>& found_corners, Point2f* dest_corners, float expand = 0);
 void straightenImage(const Mat& input_image, Mat& output_image);
 double rateBubble(Mat& det_img_gray, Point bubble_location);
+Point bubble_align(Mat& det_img_gray, Point bubble_location);
 bubble_val checkBubble(Mat& det_img_gray, Point bubble_location);
 void getSegmentLocations(vector<Point2f> &segmentcorners, string segfile);
 vector<bubble_val> processSegment(Mat &segment, string bubble_offsets);
@@ -243,56 +248,78 @@ vector< vector<bubble_val> > ProcessImage(string &imagefilename, string &bubblef
     align_segment(segment, aligned_segment);
     segment_results.push_back(processSegment(aligned_segment, buboffsetfile));
     aligned_segment.copyTo(segment);
-
-    #if DEBUG > 0
-    string segfilename("marked_");
-    stringstream ss;
-    ss << loc.x;
-    ss << loc.y;
-    segfilename.append(ss.str());
-    segfilename.append(".jpg");
-    imwrite(segfilename, segment);
-    #endif
   }
 
   return segment_results;
 }
 
+string get_unique_name(string prefix) {
+	stringstream ss;
+	int gc_temp = global_counter;
+	while( true ) {
+		ss << (char) ((gc_temp % 10) + '0');
+		gc_temp /= 10;
+		if(gc_temp == 0)
+			break;
+	}
+	global_counter++;
+	prefix.append(ss.str());
+	return prefix;
+}
+
 vector<bubble_val> processSegment(Mat &segment, string bubble_offsets) {
-  vector<Point2f> bubble_locations;
-  vector<bubble_val> retvals;
-  string line;
-  float bubx, buby;
-  ifstream offsets(bubble_offsets.c_str());
+	vector<Point2f> bubble_locations;
+	vector<bubble_val> retvals;
+	string line;
+	float bubx, buby;
+	ifstream offsets(bubble_offsets.c_str());
+	
+	#if DEBUG > 0
+	Mat dbg_out;
+	cvtColor(segment, dbg_out, CV_GRAY2RGB);
+	#endif
+	
+	if (offsets.is_open()) {
+		while (getline(offsets, line)) {
+			if (line.size() > 2) {
+				stringstream ss(line);
 
-  if (offsets.is_open()) {
-    while (getline(offsets, line)) {
-      if (line.size() > 2) {
-        stringstream ss(line);
+				ss >> bubx;
+				ss >> buby;
+				Point2f bubble(bubx * SCALEPARAM, buby * SCALEPARAM);
+				bubble_locations.push_back(bubble);
+			}
+		}
+	}
 
-        ss >> bubx;
-        ss >> buby;
-        Point2f bubble(bubx * SCALEPARAM, buby * SCALEPARAM);
-        bubble_locations.push_back(bubble);
-      }
-    }
-  }
+	vector<Point2f>::iterator it;
+	for (it = bubble_locations.begin(); it != bubble_locations.end(); it++) {
+	
+		Point refined_location = bubble_align(segment, *it);
+		bubble_val current_bubble = checkBubble(segment, refined_location);
+		
+		#if DEBUG > 0
+		Scalar color(0, 255, 0);
+		if (current_bubble == 1) {
+			color = (255, 0, 255);
+		}
+		rectangle(dbg_out, (*it)-Point2f(EXAMPLE_WIDTH/2,EXAMPLE_HEIGHT/2),
+			(*it)+Point2f(EXAMPLE_WIDTH/2,EXAMPLE_HEIGHT/2), color);
+		circle(dbg_out, refined_location, 1, Scalar(255, 2555, 255), -1);
+		#endif
+		
+		retvals.push_back(current_bubble);
+	}
 
-  vector<Point2f>::iterator it;
-  for (it = bubble_locations.begin(); it != bubble_locations.end(); it++) {
-    bubble_val current_bubble = checkBubble(segment, *it);
-    #if DEBUG > 0
-    Scalar color(0, 0, 0);
-    if (current_bubble == 1) {
-      color = (255, 255, 255);
-    }
-    //rectangle(segment, (*it)-Point2f(EXAMPLE_WIDTH/2,EXAMPLE_HEIGHT/2),
-    //          (*it)+Point2f(EXAMPLE_WIDTH/2,EXAMPLE_HEIGHT/2), color);
-    #endif
-    retvals.push_back(current_bubble);
-  }
+	#if DEBUG > 0
+	string directory = "debug_segment_images";
+	directory.append("/");
+	string segfilename = get_unique_name("marked_");
+	segfilename.append(".jpg");
+	imwrite(directory+segfilename, dbg_out);
+	#endif
 
-  return retvals;
+	return retvals;
 }
 
 Mat getSegmentMat(Mat &img, Point2f &corner) {
@@ -399,77 +426,37 @@ double rateBubble(Mat& det_img_gray, Point bubble_location) {
     Mat out = my_PCA.backProject(pca_components)- query_pixels;
     return sum(out.mul(out)).val[0];
 }
-
-/*
-//Compare the bubbles with all the bubbles used in the classifier.
-bubble_val checkBubble(Mat& det_img_gray, Point bubble_location) {
-    Mat query_pixels;
-    //This bit of code finds the location in the search_window most likely to be a bubble
-    //then it checks that rather than the exact specified location.
-    Mat out = Mat::zeros(Size(search_window.y*2, search_window.x*2) , CV_32FC1);
-    Point offset = Point(bubble_location.x - search_window.x, bubble_location.y - search_window.y);
-    for(size_t i = 0; i < search_window.y*2; i+=1) {
-        for(size_t j = 0; j < search_window.x*2; j+=1) {
-          //cout << "accessing row " << i << " and column " << j << endl;
-          //cout << "max row is " << out.rows << " and max column is " << out.cols << endl << endl;
-          out.row(j).col(i) += rateBubble(det_img_gray, Point(i,j) + offset);
-        }
-    }
-    Point min_location;
-    minMaxLoc(out, NULL,NULL, &min_location);
-    circle(det_img_gray, min_location+offset, 1, Scalar(255), -1);
-
-    getRectSubPix(det_img_gray, Point(EXAMPLE_WIDTH,EXAMPLE_HEIGHT), min_location + offset, query_pixels);
-
-    query_pixels.reshape(0,1).convertTo(query_pixels, CV_32F);
-   
-	//Here we find the best match in our PCA training set with weighting applied.
-    Mat responce;
-    matchTemplate(comparison_vectors, my_PCA.project(query_pixels), responce, CV_TM_CCOEFF_NORMED);
-    reduce(responce, out, 1, CV_REDUCE_MAX);
-    int max_idx = -1;
-    float max_responce = 0;
-    for(size_t i = 0; i < training_bubble_values.size(); i+=1) {
-        float current_responce = sum(out.row(i)).val[0];
-        switch( training_bubble_values[i] ){
-            case FILLED_BUBBLE:
-                current_responce *= weight_param;
-                break;
-            case EMPTY_BUBBLE:
-                current_responce *= (1 - weight_param);
-                break;
-        }
-        if(current_responce > max_responce){
-            max_idx = i;
-            max_responce = current_responce;
-        }
-    }
-
-    return training_bubble_values[max_idx];
-}
-*/
-//Compare the bubbles with all the bubbles used in the classifier.
-bubble_val checkBubble(Mat& det_img_gray, Point bubble_location) {
-	Mat query_pixels;
-	
+Point bubble_align(Mat& det_img_gray, Point bubble_location){
 	//This bit of code finds the location in the search_window most likely to be a bubble
 	//then it checks that rather than the exact specified location.
+	//This section probably slows things down by quite a bit and it might not provide significant
+	//improvement to accuracy. We will need to run some tests to find out if it's worth keeping.
 	Mat out = Mat::zeros(Size(search_window.x*2 + 1, search_window.y*2 + 1) , CV_32FC1);
 	Point offset = Point(bubble_location.x - search_window.x, bubble_location.y - search_window.y);
 	for(size_t i = 0; i <= search_window.x*2; i+=1) {
 		for(size_t j = 0; j <= search_window.y*2; j+=1) {
-			//cout << "accessing row " << i << " and column " << j << endl;
-			//cout << "max row is " << out.rows << " and max column is " << out.cols << endl << endl;
 			out.col(i).row(j) += rateBubble(det_img_gray, Point(i,j) + offset);
 		}
 	}
+	//Multiplying by a 2D gaussian weights the search so that we are more likely to choose
+	//locations near the expected bubble location.
+	//However, the sigma parameter probably needs to be teaked.
+	Mat v_gauss = 1 - getGaussianKernel(out.rows, 1.0, CV_32F);
+	Mat h_gauss;
+	transpose(1 - getGaussianKernel(out.cols, 1.0, CV_32F), h_gauss);
+	v_gauss = repeat(v_gauss, 1, out.cols);
+	h_gauss = repeat(h_gauss, out.rows, 1);
+	out = out.mul(v_gauss.mul(h_gauss));
+	
 	Point min_location;
-	//Multiplying by a gaussian might help, but I'm not even sure if this is really necessairy.
 	minMaxLoc(out, NULL,NULL, &min_location);
-	circle(det_img_gray, min_location+offset, 1, Scalar(255), -1);
+	return min_location + offset;
+}
 
-	//getRectSubPix expects Sizes ordered width then height.
-	getRectSubPix(det_img_gray, Size(EXAMPLE_WIDTH, EXAMPLE_HEIGHT), min_location + offset, query_pixels);
+//Compare the bubbles with all the bubbles used in the classifier.
+bubble_val checkBubble(Mat& det_img_gray, Point bubble_location) {
+	Mat query_pixels, out;
+	getRectSubPix(det_img_gray, Size(EXAMPLE_WIDTH, EXAMPLE_HEIGHT), bubble_location, query_pixels);
 	query_pixels.reshape(0,1).convertTo(query_pixels, CV_32F);
 
 	//Here we find the best filled and empty matches in the PCA training set.
@@ -503,34 +490,33 @@ bubble_val checkBubble(Mat& det_img_gray, Point bubble_location) {
 }
 
 void train_PCA_classifier() {
+	// Set training_bubble_values here
+	training_bubble_values.push_back(FILLED_BUBBLE);
+	training_bubble_values.push_back(EMPTY_BUBBLE);
+	training_bubble_values.push_back(FILLED_BUBBLE);
+	training_bubble_values.push_back(EMPTY_BUBBLE);
+	training_bubble_values.push_back(FILLED_BUBBLE);
+	training_bubble_values.push_back(EMPTY_BUBBLE);
+	training_bubble_values.push_back(FILLED_BUBBLE);
+	training_bubble_values.push_back(FILLED_BUBBLE);
+	training_bubble_values.push_back(EMPTY_BUBBLE);
+	training_bubble_values.push_back(FILLED_BUBBLE);
+	training_bubble_values.push_back(FILLED_BUBBLE);
 
- // Set training_bubble_values here
-  training_bubble_values.push_back(FILLED_BUBBLE);
-  training_bubble_values.push_back(EMPTY_BUBBLE);
-  training_bubble_values.push_back(FILLED_BUBBLE);
-  training_bubble_values.push_back(EMPTY_BUBBLE);
-  training_bubble_values.push_back(FILLED_BUBBLE);
-  training_bubble_values.push_back(EMPTY_BUBBLE);
-  training_bubble_values.push_back(FILLED_BUBBLE);
-  training_bubble_values.push_back(FILLED_BUBBLE);
-  training_bubble_values.push_back(EMPTY_BUBBLE);
-  training_bubble_values.push_back(FILLED_BUBBLE);
-  training_bubble_values.push_back(FILLED_BUBBLE);
+	Mat example_strip = imread("example_strip.jpg");
+	Mat example_strip_bw;
+	cvtColor(example_strip, example_strip_bw, CV_RGB2GRAY);
 
-  Mat example_strip = imread("example_strip.jpg");
-  Mat example_strip_bw;
-  cvtColor(example_strip, example_strip_bw, CV_RGB2GRAY);
+	int numexamples = example_strip_bw.cols / EXAMPLE_WIDTH;
+	Mat PCA_set = Mat::zeros(numexamples, EXAMPLE_HEIGHT*EXAMPLE_WIDTH, CV_32F);
 
-  int numexamples = example_strip_bw.cols / EXAMPLE_WIDTH;
-  Mat PCA_set = Mat::zeros(numexamples, EXAMPLE_HEIGHT*EXAMPLE_WIDTH, CV_32F);
+	for (int i = 0; i < numexamples; i++) {
+		Mat PCA_set_row = example_strip_bw(Rect(i * EXAMPLE_WIDTH, 0,
+				                                EXAMPLE_WIDTH, EXAMPLE_HEIGHT));
+		PCA_set_row.convertTo(PCA_set_row, CV_32F);
+		PCA_set.row(i) += PCA_set_row.reshape(0,1);
+	}
 
-  for (int i = 0; i < numexamples; i++) {
-    Mat PCA_set_row = example_strip_bw(Rect(i * EXAMPLE_WIDTH, 0,
-                                            EXAMPLE_WIDTH, EXAMPLE_HEIGHT));
-    PCA_set_row.convertTo(PCA_set_row, CV_32F);
-    PCA_set.row(i) += PCA_set_row.reshape(0,1);
-  }
-
-  my_PCA = PCA(PCA_set, Mat(), CV_PCA_DATA_AS_ROW, EIGENBUBBLES);
-  comparison_vectors = my_PCA.project(PCA_set);
+	my_PCA = PCA(PCA_set, Mat(), CV_PCA_DATA_AS_ROW, EIGENBUBBLES);
+	comparison_vectors = my_PCA.project(PCA_set);
 }
