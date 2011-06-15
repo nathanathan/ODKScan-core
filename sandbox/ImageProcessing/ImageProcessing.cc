@@ -44,7 +44,7 @@ vector <bubble_val> training_bubble_values;
 vector <Point2f> training_bubbles_locations;
 float weight_param;
 string imgfilename;
-Point search_window(1, 1);
+Point search_window(6, 8);
 
 template <class Tp>
 void configCornerArray(vector<Tp>& found_corners, Point2f* dest_corners, float expand = 0);
@@ -138,7 +138,7 @@ void align_segment(Mat& img, Mat& aligned_segment){
 			maxContourArea = area;
 		}
 		//Maybe I could refine this by using a corner detector and using
-		//the 4 contour points with the highest responce?
+		//the 4 contour points with the highest harris responce?
 	}
 	if ( maxRect.size() == 4 && isContourConvex(Mat(maxRect)) && maxContourArea > (img.cols/2) * (img.rows/2)) {
 		Point2f segment_corners[4] = {Point2f(0,0),Point2f(aligned_segment.cols,0),
@@ -286,8 +286,8 @@ vector<bubble_val> processSegment(Mat &segment, string bubble_offsets) {
     if (current_bubble == 1) {
       color = (255, 255, 255);
     }
-    rectangle(segment, (*it)-Point2f(EXAMPLE_WIDTH/2,EXAMPLE_HEIGHT/2),
-              (*it)+Point2f(EXAMPLE_WIDTH/2,EXAMPLE_HEIGHT/2), color);
+    //rectangle(segment, (*it)-Point2f(EXAMPLE_WIDTH/2,EXAMPLE_HEIGHT/2),
+    //          (*it)+Point2f(EXAMPLE_WIDTH/2,EXAMPLE_HEIGHT/2), color);
     #endif
     retvals.push_back(current_bubble);
   }
@@ -400,6 +400,7 @@ double rateBubble(Mat& det_img_gray, Point bubble_location) {
     return sum(out.mul(out)).val[0];
 }
 
+/*
 //Compare the bubbles with all the bubbles used in the classifier.
 bubble_val checkBubble(Mat& det_img_gray, Point bubble_location) {
     Mat query_pixels;
@@ -409,8 +410,8 @@ bubble_val checkBubble(Mat& det_img_gray, Point bubble_location) {
     Point offset = Point(bubble_location.x - search_window.x, bubble_location.y - search_window.y);
     for(size_t i = 0; i < search_window.y*2; i+=1) {
         for(size_t j = 0; j < search_window.x*2; j+=1) {
-          /*cout << "accessing row " << i << " and column " << j << endl;
-          cout << "max row is " << out.rows << " and max column is " << out.cols << endl << endl;*/
+          //cout << "accessing row " << i << " and column " << j << endl;
+          //cout << "max row is " << out.rows << " and max column is " << out.cols << endl << endl;
           out.row(j).col(i) += rateBubble(det_img_gray, Point(i,j) + offset);
         }
     }
@@ -422,10 +423,9 @@ bubble_val checkBubble(Mat& det_img_gray, Point bubble_location) {
 
     query_pixels.reshape(0,1).convertTo(query_pixels, CV_32F);
    
+	//Here we find the best match in our PCA training set with weighting applied.
     Mat responce;
     matchTemplate(comparison_vectors, my_PCA.project(query_pixels), responce, CV_TM_CCOEFF_NORMED);
-   
-    //Here we find the best match in our PCA training set with weighting applied.
     reduce(responce, out, 1, CV_REDUCE_MAX);
     int max_idx = -1;
     float max_responce = 0;
@@ -446,6 +446,60 @@ bubble_val checkBubble(Mat& det_img_gray, Point bubble_location) {
     }
 
     return training_bubble_values[max_idx];
+}
+*/
+//Compare the bubbles with all the bubbles used in the classifier.
+bubble_val checkBubble(Mat& det_img_gray, Point bubble_location) {
+	Mat query_pixels;
+	
+	//This bit of code finds the location in the search_window most likely to be a bubble
+	//then it checks that rather than the exact specified location.
+	Mat out = Mat::zeros(Size(search_window.x*2 + 1, search_window.y*2 + 1) , CV_32FC1);
+	Point offset = Point(bubble_location.x - search_window.x, bubble_location.y - search_window.y);
+	for(size_t i = 0; i <= search_window.x*2; i+=1) {
+		for(size_t j = 0; j <= search_window.y*2; j+=1) {
+			//cout << "accessing row " << i << " and column " << j << endl;
+			//cout << "max row is " << out.rows << " and max column is " << out.cols << endl << endl;
+			out.col(i).row(j) += rateBubble(det_img_gray, Point(i,j) + offset);
+		}
+	}
+	Point min_location;
+	//Multiplying by a gaussian might help, but I'm not even sure if this is really necessairy.
+	minMaxLoc(out, NULL,NULL, &min_location);
+	circle(det_img_gray, min_location+offset, 1, Scalar(255), -1);
+
+	//getRectSubPix expects Sizes ordered width then height.
+	getRectSubPix(det_img_gray, Size(EXAMPLE_WIDTH, EXAMPLE_HEIGHT), min_location + offset, query_pixels);
+	query_pixels.reshape(0,1).convertTo(query_pixels, CV_32F);
+
+	//Here we find the best filled and empty matches in the PCA training set.
+	Mat responce;
+	matchTemplate(comparison_vectors, my_PCA.project(query_pixels), responce, CV_TM_CCOEFF_NORMED);
+	reduce(responce, out, 1, CV_REDUCE_MAX);
+	float max_filled_responce = 0;
+	float max_empty_responce = 0;
+	for(size_t i = 0; i < training_bubble_values.size(); i+=1) {
+		float current_responce = sum(out.row(i)).val[0];
+		if( training_bubble_values[i] == FILLED_BUBBLE){
+			if(current_responce > max_filled_responce){
+				max_filled_responce = current_responce;
+			}
+		}
+		else{
+			if(current_responce > max_empty_responce){
+			    max_empty_responce = current_responce;
+			}
+		}
+	}
+	//Here we compare our filled and empty score with some weighting.
+	//To use neighboring bubbles in classification we will probably want this method
+	//to return the scores without comparing them.
+	if( (weight_param) * max_filled_responce > (1 - weight_param) * max_empty_responce){
+		return FILLED_BUBBLE;
+    }
+    else{
+	    return EMPTY_BUBBLE;
+    }
 }
 
 void train_PCA_classifier() {
