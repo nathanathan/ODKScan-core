@@ -1,17 +1,14 @@
 #include "cv.h"
 #include "cxcore.h"
 #include "highgui.h"
-#include "ImageProcessing.h"
 #include <string>
 #include <iostream>
 #include <fstream>
 #include <vector>
 
-#include "./ImageProcessing.h"
-#include "./FileUtils.h"
+#include "ImageProcessing.h"
 
-using namespace std;
-using namespace cv;
+#include "./FileUtils.h"
 
 /*
  * processing constants
@@ -19,9 +16,6 @@ using namespace cv;
 #define DILATION 6
 #define BLOCK_SIZE 3
 #define DIST_PARAM 500
-
-#define EXAMPLE_WIDTH 14
-#define EXAMPLE_HEIGHT 18
 
 // how wide is the segment in pixels
 #define SEGMENT_WIDTH 144
@@ -34,28 +28,19 @@ using namespace cv;
 // buffer around segment in pixels
 #define SEGMENT_BUFFER 70
 
-#define EIGENBUBBLES 5
+#define DEBUG 0
+#define DEBUG_ALIGN_SEGMENT 0
 
-#define DEBUG 1
-#define DEBUG_ALIGN_SEGMENT 1
+using namespace cv;
 
 //This counter is used to generate unique file names;
 int global_counter = 0;
 
-Mat comparison_vectors;
-PCA my_PCA;
-vector <bubble_val> training_bubble_values;
-vector <Point2f> training_bubbles_locations;
-float weight_param;
 string imgfilename;
-Point search_window(6, 8);
 
 template <class Tp>
 void configCornerArray(vector<Tp>& found_corners, Point2f* dest_corners, float expand = 0);
 void straightenImage(const Mat& input_image, Mat& output_image);
-double rateBubble(Mat& det_img_gray, Point bubble_location);
-Point bubble_align(Mat& det_img_gray, Point bubble_location);
-bubble_val checkBubble(Mat& det_img_gray, Point bubble_location);
 void getSegmentLocations(vector<Point2f> &segmentcorners, string segfile);
 string get_unique_name(string prefix);
 vector<bubble_val> processSegment(Mat &segment, string bubble_offsets);
@@ -111,28 +96,33 @@ void find_bounding_lines(Mat& img, int* upper, int* lower, bool vertical) {
   *upper = min_location_top.y;
   *lower = min_location_bottom.y + out.rows/2 + center_size;
 }
-
-void align_segment(Mat& img, Mat& aligned_segment){
-	vector < vector<Point> > contours;
-	vector < vector<Point> > borderContours;
-	vector < Point > approx;
-	vector < Point > maxRect;
-
-	//Threshold the image
-	//The ideal image would be black lines and white boxes with nothing in them
-	//so if we can filter to get something closer to that, it is a good thing.
-	Mat filt, dbg_out;
+//Threshold the image
+//The ideal image would be black lines and white boxes with nothing in them
+//so if we can filter to get something closer to that, it is a good thing.
+void my_threshold(Mat& img, Mat& thresholded_img) {
 	//One of the big problems with thresholding is that it is thrown off by filled in bubbles.
 	//Equalizing seems to mitigate this somewhat.
 	//It might help use the same threshold for all the segments, but if one is in shadow
 	//it will cause problems.
-	equalizeHist(img, filt);
-	
+	Mat equalized_img;
+	equalizeHist(img, equalized_img);
 	Scalar my_mean;
 	Scalar my_stddev;
-	meanStdDev(filt, my_mean, my_stddev);
-	Mat imgThresh = filt > (my_mean.val[0] - .5* my_stddev.val[0]);//(my_mean.val[0]-.05*my_stddev.val[0]);
+	meanStdDev(equalized_img, my_mean, my_stddev);
+	thresholded_img = equalized_img > (my_mean.val[0] - .5* my_stddev.val[0]);
+}
+void align_segment(Mat& img, Mat& aligned_segment){
+	vector < vector<Point> > contours;
+	vector < Point > approx;
+	vector < Point > maxRect;
+	
+	Mat dbg_out, imgThresh;
+	my_threshold(img, imgThresh);
+	
+	#if DEBUG_ALIGN_SEGMENT > 0
 	imgThresh.convertTo(dbg_out, CV_8U);
+	#endif
+	
 	// Find all external contours of the image
 	findContours(imgThresh, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
 
@@ -205,7 +195,7 @@ vector< vector<bubble_val> > ProcessImage(string &imagefilename, string &bubblef
   #endif
   string seglocfile("segment-offsets-tmp.txt");
   string buboffsetfile("bubble-offsets.txt");
-  weight_param = weight;
+  set_weight(weight);
   vector < Point2f > corners, segment_locations;
   vector<bubble_val> bubble_vals;
   vector<vector<bubble_val> > segment_results;
@@ -421,108 +411,4 @@ void straightenImage(const Mat& input_image, Mat& output_image) {
   #if DEBUG > 0
   cout << "exiting StraightenImage" << endl;
   #endif
-}
-//Rate a location on how likely it is to be a bubble
-double rateBubble(Mat& det_img_gray, Point bubble_location) {
-    Mat query_pixels, pca_components;
-    getRectSubPix(det_img_gray, Size(EXAMPLE_WIDTH,EXAMPLE_HEIGHT), bubble_location, query_pixels);
-    query_pixels.reshape(0,1).convertTo(query_pixels, CV_32F);
-    pca_components = my_PCA.project(query_pixels);
-    //The rating is the SSD of query pixels and their back projection
-    Mat out = my_PCA.backProject(pca_components)- query_pixels;
-    return sum(out.mul(out)).val[0];
-}
-Point bubble_align(Mat& det_img_gray, Point bubble_location){
-	//This bit of code finds the location in the search_window most likely to be a bubble
-	//then it checks that rather than the exact specified location.
-	//This section probably slows things down by quite a bit and it might not provide significant
-	//improvement to accuracy. We will need to run some tests to find out if it's worth keeping.
-	Mat out = Mat::zeros(Size(search_window.x*2 + 1, search_window.y*2 + 1) , CV_32FC1);
-	Point offset = Point(bubble_location.x - search_window.x, bubble_location.y - search_window.y);
-	for(size_t i = 0; i <= search_window.x*2; i+=1) {
-		for(size_t j = 0; j <= search_window.y*2; j+=1) {
-			out.col(i).row(j) += rateBubble(det_img_gray, Point(i,j) + offset);
-		}
-	}
-	//Multiplying by a 2D gaussian weights the search so that we are more likely to choose
-	//locations near the expected bubble location.
-	//However, the sigma parameter probably needs to be teaked.
-	Mat v_gauss = 1 - getGaussianKernel(out.rows, 1.0, CV_32F);
-	Mat h_gauss;
-	transpose(1 - getGaussianKernel(out.cols, 1.0, CV_32F), h_gauss);
-	v_gauss = repeat(v_gauss, 1, out.cols);
-	h_gauss = repeat(h_gauss, out.rows, 1);
-	out = out.mul(v_gauss.mul(h_gauss));
-	
-	Point min_location;
-	minMaxLoc(out, NULL,NULL, &min_location);
-	return min_location + offset;
-}
-
-//Compare the bubbles with all the bubbles used in the classifier.
-bubble_val checkBubble(Mat& det_img_gray, Point bubble_location) {
-	Mat query_pixels, out;
-	getRectSubPix(det_img_gray, Size(EXAMPLE_WIDTH, EXAMPLE_HEIGHT), bubble_location, query_pixels);
-	query_pixels.reshape(0,1).convertTo(query_pixels, CV_32F);
-
-	//Here we find the best filled and empty matches in the PCA training set.
-	Mat responce;
-	matchTemplate(comparison_vectors, my_PCA.project(query_pixels), responce, CV_TM_CCOEFF_NORMED);
-	reduce(responce, out, 1, CV_REDUCE_MAX);
-	float max_filled_responce = 0;
-	float max_empty_responce = 0;
-	for(size_t i = 0; i < training_bubble_values.size(); i+=1) {
-		float current_responce = sum(out.row(i)).val[0];
-		if( training_bubble_values[i] == FILLED_BUBBLE){
-			if(current_responce > max_filled_responce){
-				max_filled_responce = current_responce;
-			}
-		}
-		else{
-			if(current_responce > max_empty_responce){
-			    max_empty_responce = current_responce;
-			}
-		}
-	}
-	//Here we compare our filled and empty score with some weighting.
-	//To use neighboring bubbles in classification we will probably want this method
-	//to return the scores without comparing them.
-	if( (weight_param) * max_filled_responce > (1 - weight_param) * max_empty_responce){
-		return FILLED_BUBBLE;
-    }
-    else{
-	    return EMPTY_BUBBLE;
-    }
-}
-
-void train_PCA_classifier() {
-	// Set training_bubble_values here
-	training_bubble_values.push_back(FILLED_BUBBLE);
-	training_bubble_values.push_back(EMPTY_BUBBLE);
-	training_bubble_values.push_back(FILLED_BUBBLE);
-	training_bubble_values.push_back(EMPTY_BUBBLE);
-	training_bubble_values.push_back(FILLED_BUBBLE);
-	training_bubble_values.push_back(EMPTY_BUBBLE);
-	training_bubble_values.push_back(FILLED_BUBBLE);
-	training_bubble_values.push_back(FILLED_BUBBLE);
-	training_bubble_values.push_back(EMPTY_BUBBLE);
-	training_bubble_values.push_back(FILLED_BUBBLE);
-	training_bubble_values.push_back(FILLED_BUBBLE);
-
-	Mat example_strip = imread("example_strip.jpg");
-	Mat example_strip_bw;
-	cvtColor(example_strip, example_strip_bw, CV_RGB2GRAY);
-
-	int numexamples = example_strip_bw.cols / EXAMPLE_WIDTH;
-	Mat PCA_set = Mat::zeros(numexamples, EXAMPLE_HEIGHT*EXAMPLE_WIDTH, CV_32F);
-
-	for (int i = 0; i < numexamples; i++) {
-		Mat PCA_set_row = example_strip_bw(Rect(i * EXAMPLE_WIDTH, 0,
-				                                EXAMPLE_WIDTH, EXAMPLE_HEIGHT));
-		PCA_set_row.convertTo(PCA_set_row, CV_32F);
-		PCA_set.row(i) += PCA_set_row.reshape(0,1);
-	}
-
-	my_PCA = PCA(PCA_set, Mat(), CV_PCA_DATA_AS_ROW, EIGENBUBBLES);
-	comparison_vectors = my_PCA.project(PCA_set);
 }

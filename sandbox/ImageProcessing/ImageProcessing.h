@@ -4,18 +4,14 @@
 #ifndef IMAGEPROCESSING_H
 #define IMAGEPROCESSING_H
 
-#include "cv.h"
-#include "cxcore.h"
-#include "highgui.h"
 #include <string>
-
-enum bubble_val { EMPTY_BUBBLE, FILLED_BUBBLE, FALSE_POSITIVE };
+#include "PCA_classifier.h"
 
 // takes a filename and processes the entire image for bubbles
-vector<vector<bubble_val> > ProcessImage(std::string &imagefilename, std::string &bubblefilename, float &weight);
+vector< vector<bubble_val> > ProcessImage(std::string &imagefilename, std::string &bubblefilename, float &weight);
 
 // trains the program what bubbles look like
-void train_PCA_classifier();
+//void train_PCA_classifier();
 
 // takes a filename and JSON spec and looks for bubbles according
 // to locations coded in the JSON

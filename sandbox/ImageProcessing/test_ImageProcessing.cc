@@ -1,7 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-#include "./ImageProcessing.h"
+#include "ImageProcessing.h"
 
 #define DEBUG 0
 
@@ -24,7 +24,11 @@ int main(int argc, char *argv[]) {
   std::cout << "false_positives, true_negatives, false_negatives" << std::endl;
 
   // testing loop, currently iterates over weight_param
-  for (i = 0.50; i <= 0.50; i += 0.01) {
+  #if 1
+  for (i = 0.5; i <= .5; i += 0.05) {
+  #else
+  for (i = 0.0; i <= 1.0; i += 0.05) {
+  #endif
     // process the image with the given parameter value
     vector<vector<bubble_val> > bubble_vals = ProcessImage(image, bubbles, i);
 
