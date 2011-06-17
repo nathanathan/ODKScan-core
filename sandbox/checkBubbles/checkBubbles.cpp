@@ -182,7 +182,14 @@ int main(int argc, char* argv[])
 				rectangle(train_img_marked, bubble_locations[i]-Point2f(7,9) , bubble_locations[i]+Point2f(7,9), color);
 			}
 			classifier_trained = false;
-			imshow(training_window, train_img_marked);
+
+
+			Mat v_gauss = getGaussianKernel(20, 1.0);
+			Mat h_gauss;
+			transpose(getGaussianKernel(10, 1.0), h_gauss);
+			v_gauss = repeat(v_gauss, 1, 10);
+			h_gauss = repeat(h_gauss, 20, 1);
+			imshow(training_window, 1 - v_gauss.mul(h_gauss));
 		}
 
 		if(bubble_locations.size() > 2){
