@@ -47,12 +47,22 @@ void configCornerArray(vector<Tp>& found_corners, Point2f* dest_corners, float e
 }
 //Finds two vertical or horizontal lines that have the minimal gradient sum.
 void find_bounding_lines(Mat& img, int* upper, int* lower, bool vertical) {
-	int center_size = 20 * SCALEPARAM;
 	Mat grad_img, out;
+	
+	int center_size;
+	if( vertical ){
+		// Watch out, I haven't tested to make sure these aren't backwards.
+		center_size = img.cols/4;
+	}
+	else{
+		center_size = img.rows/4;
+	}
+	
 	Sobel(img, grad_img, 0, int(!vertical), int(vertical));
 
 	reduce(grad_img, out, int(!vertical), CV_REDUCE_SUM, CV_32F);
-	GaussianBlur(out, out, Size(1,(int)(3 * SCALEPARAM)), 1.0 * SCALEPARAM);
+	
+	//GaussianBlur(out, out, Size(1, center_size/4), 1.0);
 
 	if( vertical )
 		transpose(out,out);
@@ -177,7 +187,9 @@ void align_image(Mat& img, Mat& aligned_image, float thresh_seed = 1.0){
 
 		}
 		else{
-			img(Rect(SEGMENT_BUFFER * SCALEPARAM, SEGMENT_BUFFER * SCALEPARAM,
+			int seg_buffer_w = (img.cols - aligned_image.cols) / 2;
+			int seg_buffer_h = (img.rows - aligned_image.rows) / 2;
+			img(Rect(seg_buffer_w, seg_buffer_h,
 				aligned_image.cols, aligned_image.rows)).copyTo(aligned_image);
 		}
 	}

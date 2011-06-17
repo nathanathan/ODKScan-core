@@ -10,6 +10,20 @@
 #include "./formAlignment.h"
 #include "./FileUtils.h"
 
+// how wide is the segment in pixels
+#define SEGMENT_WIDTH 144
+// how tall is the segment in pixels
+#define SEGMENT_HEIGHT 200
+
+#if 0
+#define SCALEPARAM 1.1
+#else
+#define SCALEPARAM 0.55
+#endif
+
+// buffer around segment in pixels
+#define SEGMENT_BUFFER 70
+
 #define DEBUG 1
 
 using namespace cv;

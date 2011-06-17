@@ -3,8 +3,13 @@
 
 #include "cv.h"
 
+#if 0
+#define EXAMPLE_WIDTH 28
+#define EXAMPLE_HEIGHT 36
+#else
 #define EXAMPLE_WIDTH 14
 #define EXAMPLE_HEIGHT 18
+#endif
 
 enum bubble_val { EMPTY_BUBBLE, FILLED_BUBBLE };
 
