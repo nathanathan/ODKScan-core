@@ -1,4 +1,4 @@
-SRCS := test_ImageProcessing.cc ImageProcessing.cc PCA_classifier.cpp
+SRCS := test_ImageProcessing.cc ImageProcessing.cc PCA_classifier.cpp formAlignment.cpp
 
 run: suite $(SRCS)
 	@rm -rf debug_segment_images
@@ -9,5 +9,5 @@ suite: $(SRCS)
 	g++ -g -o suite $(SRCS) `pkg-config opencv --cflags --libs`
 	
 clean:
-	rm -f marked_*
+	rm -rf debug_segment_images
 	rm suite
