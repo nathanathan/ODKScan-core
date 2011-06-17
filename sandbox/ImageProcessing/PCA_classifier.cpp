@@ -17,6 +17,10 @@
 
 //TODO: Add a sigma constant for the search window weighting function and determine approriate value
 
+#define OUTPUT_BUBBLE_IMAGES
+#include "nameGenerator.h"
+NameGenerator classifierNamer("bubble_images/");
+
 using namespace cv;
 
 Mat comparison_vectors;
@@ -159,22 +163,27 @@ Point bubble_align(Mat& det_img_gray, Point bubble_location){
 }
 //Compare the specified bubble with all the training bubbles via PCA.
 bubble_val classifyBubble(Mat& det_img_gray, Point bubble_location) {
-	Mat query_pixels, out;
+	Mat query_pixels;
 
     #ifdef USE_GET_RECT_SUB_PIX
 	getRectSubPix(det_img_gray, Size(EXAMPLE_WIDTH, EXAMPLE_HEIGHT), bubble_location, query_pixels);
-	query_pixels.reshape(0,1).convertTo(query_pixels, CV_32F);
 	#else
-	det_img_gray(Rect(bubble_location-Point(EXAMPLE_WIDTH/2, EXAMPLE_HEIGHT/2), Size(EXAMPLE_WIDTH, EXAMPLE_HEIGHT))).convertTo(query_pixels, CV_32F);
-	query_pixels = query_pixels.reshape(0,1);
+	query_pixels = det_img_gray(Rect(bubble_location-Point(EXAMPLE_WIDTH/2, EXAMPLE_HEIGHT/2), Size(EXAMPLE_WIDTH, EXAMPLE_HEIGHT)));
 	#endif
+	#ifdef OUTPUT_BUBBLE_IMAGES
+	string segfilename = classifierNamer.get_unique_name("bubble_");
+	segfilename.append(".jpg");
+	imwrite(segfilename, query_pixels);
+	#endif
+	query_pixels.convertTo(query_pixels, CV_32F);
+	query_pixels = query_pixels.reshape(0,1);
 	
 	#ifdef NORMALIZE
 	normalize(query_pixels, query_pixels);
 	#endif
 	
 	//Here we find the best filled and empty matches in the PCA training set.
-	Mat responce;
+	Mat responce, out;
 	matchTemplate(comparison_vectors, my_PCA.project(query_pixels), responce, CV_TM_CCOEFF_NORMED);
 	reduce(responce, out, 1, CV_REDUCE_MAX);
 	float max_filled_responce = 0;

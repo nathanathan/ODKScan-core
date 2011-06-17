@@ -1,6 +1,8 @@
 #include "formAlignment.h"
 #include "highgui.h"
-#include <iostream>
+
+#include "nameGenerator.h"
+NameGenerator alignmentNamer("debug_segment_images/");
 
 //Image straightening constants
 #define DILATION 6
@@ -14,28 +16,6 @@
 #define DEBUG_ALIGN_IMAGE 1
 
 using namespace cv;
-
-//This counter is used to generate unique file names;
-int unique_name_counter = 0;
-
-//Returns prefix with a number concatinated to the end.
-//Each call increments the number so that the resulting string will always be unique.
-//(unless you make more than 2^32 of them)
-string get_unique_name(string prefix) {
-	stringstream ss;
-	int gc_temp = unique_name_counter;
-	while( true ) {
-		ss << (char) ((gc_temp % 10) + '0');
-		gc_temp = gc_temp / 10;
-		if(gc_temp == 0)
-			break;
-	}
-	string temp = ss.str();
-	reverse(temp.begin(), temp.end());
-	prefix.append(temp);
-	unique_name_counter+=1;
-	return prefix;
-}
 
 //Takes a vector of found corners, and an array of destination corners they should map to
 //and replaces each corner in the dest_corners with the nearest unmatched found corner.
@@ -153,11 +133,9 @@ void align_image(Mat& img, Mat& aligned_image, float thresh_seed = 1.0){
 	#if DEBUG_ALIGN_IMAGE > 0
 	Mat dbg_out;
 	imgThresh.convertTo(dbg_out, CV_8U);
-	string directory = "debug_segment_images";
-	directory.append("/");
-	string segfilename = get_unique_name("alignment_debug_");
+	string segfilename = alignmentNamer.get_unique_name("alignment_debug_");
 	segfilename.append(".jpg");
-	imwrite(directory+segfilename, dbg_out);
+	imwrite(segfilename, dbg_out);
 	#endif
 	
 	if ( maxRect.size() == 4 && isContourConvex(Mat(maxRect)) && maxContourArea > (img.cols/2) * (img.rows/2)) {
@@ -185,11 +163,9 @@ void align_image(Mat& img, Mat& aligned_image, float thresh_seed = 1.0){
 		dbg_out.row(bottom)+=200;
 		dbg_out.col(left)+=200;
 		dbg_out.col(right)+=200;
-		string directory = "debug_segment_images";
-		directory.append("/");
-		string segfilename = get_unique_name("alignment_debug_");
+		string segfilename = alignmentNamer.get_unique_name("alignment_debug_");
 		segfilename.append(".jpg");
-		imwrite(directory+segfilename, dbg_out);
+		imwrite(segfilename, dbg_out);
 		#endif
 		
 		float bounding_lines_threshold = .2;

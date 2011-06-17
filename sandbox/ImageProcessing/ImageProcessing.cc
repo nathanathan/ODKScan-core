@@ -14,16 +14,14 @@
 
 using namespace cv;
 
+#include "nameGenerator.h"
+NameGenerator namer("");
+
 string imgfilename;
 
-template <class Tp>
-void configCornerArray(vector<Tp>& found_corners, Point2f* dest_corners, float expand = 0);
-void straightenImage(const Mat& input_image, Mat& output_image);
 void getSegmentLocations(vector<Point2f> &segmentcorners, string segfile);
-string get_unique_name(string prefix);
 vector<bubble_val> processSegment(Mat &segment, string bubble_offsets);
 Mat getSegmentMat(Mat &img, Point2f &corner);
-void find_bounding_lines(Mat& img, int* upper, int* lower, bool vertical);
 
 vector< vector<bubble_val> > ProcessImage(string &imagefilename, string &bubblefilename, float &weight) {
 	#if DEBUG > 0
@@ -133,7 +131,7 @@ vector<bubble_val> processSegment(Mat &segment, string bubble_offsets) {
 	#if DEBUG > 0
 	string directory = "debug_segment_images";
 	directory.append("/");
-	string segfilename = get_unique_name("marked_");
+	string segfilename = namer.get_unique_name("marked_");
 	segfilename.append(".jpg");
 	imwrite(directory+segfilename, dbg_out);
 	#endif
