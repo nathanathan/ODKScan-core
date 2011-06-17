@@ -1,8 +1,7 @@
 #include "PCA_classifier.h"
 #include "highgui.h"
+#include <iostream>
 
-#define EXAMPLE_WIDTH 14
-#define EXAMPLE_HEIGHT 18
 #define EIGENBUBBLES 5
 
 using namespace cv;
@@ -20,6 +19,53 @@ void set_weight(float weight){
 	assert(weight >= 0 && weight <= 1);
 	weight_param = weight;
 }
+void PCA_set_add(Mat& PCA_set, Mat img){
+	Mat PCA_set_row;
+	img.convertTo(PCA_set_row, CV_32F);
+	#ifdef NORMALIZE
+	//Be careful about this
+	normalize(PCA_set_row, PCA_set_row);
+	#endif
+	if(PCA_set.data == NULL){
+		PCA_set_row.reshape(0,1).copyTo(PCA_set);
+	}
+	else{
+		PCA_set.push_back(PCA_set_row.reshape(0,1));
+	}
+}
+void PCA_set_add(Mat& PCA_set, string filename){
+	Mat example = imread(filename, 0);
+	if (example.data == NULL) {
+        cout << "could not read " << filename << endl;
+        return;
+    }
+    Mat aptly_sized_example;
+	resize(example, aptly_sized_example, Size(EXAMPLE_WIDTH, EXAMPLE_HEIGHT));
+	PCA_set_add(PCA_set, aptly_sized_example);
+}
+/*
+//This trains the PCA classifer by query
+void train_PCA_classifier(vector<string> include,vector<string> exclude) {
+	vector<string> filled_filenames;
+	vector<string> empty_filenames;
+	exclude.push_back("filled");
+	SearchFileTree("training_examples", include, exclude, empty_filenames);
+	exclude.pop_back();
+	exclude.push_back("empty");
+	SearchFileTree("/", include, exclude, filled_filenames);
+	exclude.pop_back();
+	Mat PCA_set;
+	for (size_t i = 0; i < empty_filenames.size(); i++) {
+		PCA_set_add(PCA_set, empty_filenames[i]);
+		training_bubble_values.push_back(EMPTY_BUBBLE);
+	}
+	for (size_t i = 0; i < filled_filenames.size(); i++) {
+		PCA_set_add(PCA_set, filled_filenames[i]);
+		training_bubble_values.push_back(FILLED_BUBBLE);
+	}
+	my_PCA = PCA(PCA_set, Mat(), CV_PCA_DATA_AS_ROW, EIGENBUBBLES);
+	comparison_vectors = my_PCA.project(PCA_set);
+}*/
 void train_PCA_classifier() {
 	// Set training_bubble_values here
 	training_bubble_values.push_back(FILLED_BUBBLE);
@@ -34,20 +80,13 @@ void train_PCA_classifier() {
 	training_bubble_values.push_back(FILLED_BUBBLE);
 	training_bubble_values.push_back(FILLED_BUBBLE);
 
-	Mat example_strip = imread("example_strip.jpg");
-	Mat example_strip_bw;
-	cvtColor(example_strip, example_strip_bw, CV_RGB2GRAY);
+	Mat example_strip_bw = imread("example_strip.jpg", 0);
 
 	int numexamples = example_strip_bw.cols / EXAMPLE_WIDTH;
-	Mat PCA_set = Mat::zeros(numexamples, EXAMPLE_HEIGHT*EXAMPLE_WIDTH, CV_32F);
-
+	Mat PCA_set;
 	for (int i = 0; i < numexamples; i++) {
-		Mat PCA_set_row = example_strip_bw(Rect(i * EXAMPLE_WIDTH, 0,
-				                                EXAMPLE_WIDTH, EXAMPLE_HEIGHT));
-		PCA_set_row.convertTo(PCA_set_row, CV_32F);
-		PCA_set.row(i) += PCA_set_row.reshape(0,1);
+		PCA_set_add(PCA_set, example_strip_bw(Rect(i * EXAMPLE_WIDTH, 0, EXAMPLE_WIDTH, EXAMPLE_HEIGHT)));
 	}
-
 	my_PCA = PCA(PCA_set, Mat(), CV_PCA_DATA_AS_ROW, EIGENBUBBLES);
 	comparison_vectors = my_PCA.project(PCA_set);
 }
