@@ -4,14 +4,31 @@
 
 #define EIGENBUBBLES 5
 
+//#define NORMALIZE
+//Normalizing everything that goes into the PCA *might* help with lighting problems
+//But so far just seems to hurt accuracy.
+
+#define USE_GET_RECT_SUB_PIX
+//getRectSubPix might slow things down, but provides 2 advanges over the roi method
+//1. If the example images have an odd dimension it will linearly interpolate the
+//   half pixel error.
+//2. If the rectangle crosses the image boundary (because of a large search window)
+//   it won't give an error.
+
+//TODO: Add a sigma constant for the search window weighting function and determine approriate value
+
 using namespace cv;
 
 Mat comparison_vectors;
 PCA my_PCA;
 vector <bubble_val> training_bubble_values;
+
 float weight_param = .5;
+
 //Point search_window(6, 8);
 Point search_window(0, 0);
+//The search window slows things down by a factor
+//of the number of pixels it contains.
 
 //Sets the weight to a value between 0 and 1 to bias
 //the classifier towards filled 0? or empty 1?
@@ -23,7 +40,6 @@ void PCA_set_add(Mat& PCA_set, Mat img){
 	Mat PCA_set_row;
 	img.convertTo(PCA_set_row, CV_32F);
 	#ifdef NORMALIZE
-	//Be careful about this
 	normalize(PCA_set_row, PCA_set_row);
 	#endif
 	if(PCA_set.data == NULL){
@@ -66,6 +82,9 @@ void train_PCA_classifier(vector<string> include,vector<string> exclude) {
 	my_PCA = PCA(PCA_set, Mat(), CV_PCA_DATA_AS_ROW, EIGENBUBBLES);
 	comparison_vectors = my_PCA.project(PCA_set);
 }*/
+//Train the PCA_classifier using example_strip.jpg
+//If example_strip.jpg is altered you must make the corresponding
+//changes to training_bubble_values in the code below
 void train_PCA_classifier() {
 	// Set training_bubble_values here
 	training_bubble_values.push_back(FILLED_BUBBLE);
@@ -90,23 +109,35 @@ void train_PCA_classifier() {
 	my_PCA = PCA(PCA_set, Mat(), CV_PCA_DATA_AS_ROW, EIGENBUBBLES);
 	comparison_vectors = my_PCA.project(PCA_set);
 }
-//Rate a location on how likely it is to be a bubble
+//Rate a location on how likely it is to be a bubble.
+//The rating is the SSD of the queried pixels and their PCA back projection,
+//so lower ratings mean more bubble like.
 double rateBubble(Mat& det_img_gray, Point bubble_location) {
     Mat query_pixels, pca_components;
-    getRectSubPix(det_img_gray, Size(EXAMPLE_WIDTH,EXAMPLE_HEIGHT), bubble_location, query_pixels);
-    query_pixels.reshape(0,1).convertTo(query_pixels, CV_32F);
+    
+    #ifdef USE_GET_RECT_SUB_PIX
+	getRectSubPix(det_img_gray, Size(EXAMPLE_WIDTH, EXAMPLE_HEIGHT), bubble_location, query_pixels);
+	query_pixels.reshape(0,1).convertTo(query_pixels, CV_32F);
+	#else
+	det_img_gray(Rect(bubble_location-Point(EXAMPLE_WIDTH/2, EXAMPLE_HEIGHT/2), Size(EXAMPLE_WIDTH, EXAMPLE_HEIGHT))).convertTo(query_pixels, CV_32F);
+	query_pixels = query_pixels.reshape(0,1);
+	#endif
+	
+	#ifdef NORMALIZE
+	normalize(query_pixels, query_pixels);
+	#endif
     pca_components = my_PCA.project(query_pixels);
-    //The rating is the SSD of query pixels and their back projection
     Mat out = my_PCA.backProject(pca_components)- query_pixels;
     return sum(out.mul(out)).val[0];
 }
+//This bit of code finds the location in the search_window most likely to be a bubble
+//then it checks that rather than the exact specified location.
+//This section probably slows things down by quite a bit and it might not provide significant
+//improvement to accuracy. We will need to run some tests to find out if it's worth keeping.
 Point bubble_align(Mat& det_img_gray, Point bubble_location){
-	//This bit of code finds the location in the search_window most likely to be a bubble
-	//then it checks that rather than the exact specified location.
-	//This section probably slows things down by quite a bit and it might not provide significant
-	//improvement to accuracy. We will need to run some tests to find out if it's worth keeping.
 	Mat out = Mat::zeros(Size(search_window.x*2 + 1, search_window.y*2 + 1) , CV_32FC1);
 	Point offset = Point(bubble_location.x - search_window.x, bubble_location.y - search_window.y);
+	
 	for(size_t i = 0; i <= search_window.x*2; i+=1) {
 		for(size_t j = 0; j <= search_window.y*2; j+=1) {
 			out.col(i).row(j) += rateBubble(det_img_gray, Point(i,j) + offset);
@@ -114,7 +145,7 @@ Point bubble_align(Mat& det_img_gray, Point bubble_location){
 	}
 	//Multiplying by a 2D gaussian weights the search so that we are more likely to choose
 	//locations near the expected bubble location.
-	//However, the sigma parameter probably needs to be teaked.
+	//However, the sigma parameter probably needs to be tweaked.
 	Mat v_gauss = 1 - getGaussianKernel(out.rows, 1.0, CV_32F);
 	Mat h_gauss;
 	transpose(1 - getGaussianKernel(out.cols, 1.0, CV_32F), h_gauss);
@@ -126,13 +157,22 @@ Point bubble_align(Mat& det_img_gray, Point bubble_location){
 	minMaxLoc(out, NULL,NULL, &min_location);
 	return min_location + offset;
 }
-
-//Compare the bubbles with all the bubbles used in the classifier.
-bubble_val checkBubble(Mat& det_img_gray, Point bubble_location) {
+//Compare the specified bubble with all the training bubbles via PCA.
+bubble_val classifyBubble(Mat& det_img_gray, Point bubble_location) {
 	Mat query_pixels, out;
+
+    #ifdef USE_GET_RECT_SUB_PIX
 	getRectSubPix(det_img_gray, Size(EXAMPLE_WIDTH, EXAMPLE_HEIGHT), bubble_location, query_pixels);
 	query_pixels.reshape(0,1).convertTo(query_pixels, CV_32F);
-
+	#else
+	det_img_gray(Rect(bubble_location-Point(EXAMPLE_WIDTH/2, EXAMPLE_HEIGHT/2), Size(EXAMPLE_WIDTH, EXAMPLE_HEIGHT))).convertTo(query_pixels, CV_32F);
+	query_pixels = query_pixels.reshape(0,1);
+	#endif
+	
+	#ifdef NORMALIZE
+	normalize(query_pixels, query_pixels);
+	#endif
+	
 	//Here we find the best filled and empty matches in the PCA training set.
 	Mat responce;
 	matchTemplate(comparison_vectors, my_PCA.project(query_pixels), responce, CV_TM_CCOEFF_NORMED);
