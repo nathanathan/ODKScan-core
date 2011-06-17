@@ -13,7 +13,6 @@
 // buffer around segment in pixels
 #define SEGMENT_BUFFER 70
 
-string get_unique_name(string prefix);
 void align_image(cv::Mat& img, cv::Mat& aligned_image, float thresh_seed);
 void straightenImage(const cv::Mat& input_image, cv::Mat& output_image);
 
