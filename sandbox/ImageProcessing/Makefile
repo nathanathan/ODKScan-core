@@ -1,4 +1,4 @@
-SRCS := test_ImageProcessing.cpp ImageProcessing.cpp PCA_classifier.cpp formAlignment.cpp
+SRCS := test_ImageProcessing.cpp ImageProcessing.cpp PCA_classifier.cpp formAlignment.cpp FileUtils.cpp
 
 run: suite $(SRCS) nameGenerator.h
 	@rm -rf debug_segment_images

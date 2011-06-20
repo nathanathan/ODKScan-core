@@ -37,7 +37,11 @@ void getSegmentLocations(vector<Point2f> &segmentcorners, string segfile);
 vector<bubble_val> processSegment(Mat &segment, string bubble_offsets);
 Mat getSegmentMat(Mat &img, Point2f &corner);
 
-vector< vector<bubble_val> > ProcessImage(string &imagefilename, string &bubblefilename, float &weight) {
+//TODO:	1. Ged rid of the bubble/segment-offsets files and start reading from template_filename.
+//		2. Remove the weight arguement and make a setter function for adjusting different parameters.
+//		   I'm not sure how the organize the parameters for the aligmener and classifier, I guess they should
+//		   all go in the same file.
+vector< vector<bubble_val> > ProcessImage(string &imagefilename, string &template_filename, float &weight) {
 	#if DEBUG > 0
 	cout << "debug level is: " << DEBUG << endl;
 	#endif
@@ -154,36 +158,36 @@ vector<bubble_val> processSegment(Mat &segment, string bubble_offsets) {
 }
 
 Mat getSegmentMat(Mat &img, Point2f &corner) {
-  Mat segment;
-  Point2f segcenter;
-  segcenter = corner;
-  segcenter.x += (SEGMENT_WIDTH*SCALEPARAM)/2;
-  segcenter.y += (SEGMENT_HEIGHT*SCALEPARAM)/2;
-  Size segsize((SEGMENT_WIDTH + SEGMENT_BUFFER) * SCALEPARAM,
-               (SEGMENT_HEIGHT + SEGMENT_BUFFER) * SCALEPARAM);
-  getRectSubPix(img, segsize, segcenter, segment);
+	Mat segment;
+	Point2f segcenter;
+	segcenter = corner;
+	segcenter.x += (SEGMENT_WIDTH*SCALEPARAM)/2;
+	segcenter.y += (SEGMENT_HEIGHT*SCALEPARAM)/2;
+	Size segsize((SEGMENT_WIDTH + SEGMENT_BUFFER) * SCALEPARAM,
+		       (SEGMENT_HEIGHT + SEGMENT_BUFFER) * SCALEPARAM);
+	getRectSubPix(img, segsize, segcenter, segment);
 
-  return segment;
+	return segment;
 }
 
 void getSegmentLocations(vector<Point2f> &segmentcorners, string segfile) {
-  string line;
-  float segx = 0, segy = 0;
+	string line;
+	float segx = 0, segy = 0;
 
-  ifstream segstream(segfile.c_str());
-  if (segstream.is_open()) {
-    while (getline(segstream, line)) {
-      if (line.size() > 2) {
-        stringstream ss(line);
+	ifstream segstream(segfile.c_str());
+	if (segstream.is_open()) {
+		while (getline(segstream, line)) {
+			if (line.size() > 2) {
+				stringstream ss(line);
 
-        ss >> segx;
-        ss >> segy;
-        Point2f corner(segx, segy);
-        #if DEBUG > 1
-        cout << "adding segment corner " << corner << endl;
-        #endif
-        segmentcorners.push_back(corner);
-      }
-    }
-  }
+				ss >> segx;
+				ss >> segy;
+				Point2f corner(segx, segy);
+				#if DEBUG > 1
+				cout << "adding segment corner " << corner << endl;
+				#endif
+				segmentcorners.push_back(corner);
+			}
+		}
+	}
 }

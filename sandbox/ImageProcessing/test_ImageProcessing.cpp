@@ -11,6 +11,8 @@ using namespace std;
 
 void check_values(vector<vector<bubble_val> > &found, int *tpos, int *tneg, int *fpos, int *fneg);
 
+//Maybe this should go in image processing?
+//Although it is likey to change when we switch to JSON templates.
 void writeBubbleVals(string filename, vector< vector<bubble_val> > bubble_vals) {
 	ofstream outfile(filename.c_str(), ios::out | ios::binary);
 	vector< vector<bubble_val> >::iterator it;
@@ -23,8 +25,10 @@ void writeBubbleVals(string filename, vector< vector<bubble_val> > bubble_vals) 
 }
 
 int main(int argc, char *argv[]) {
-	// teach the program what empty and filled bubbles look like
-	train_PCA_classifier();
+	vector<string> include;
+	vector<string> exclude;
+	exclude.push_back("filled");
+	train_PCA_classifier(include, exclude);
 
 	// image to be processed
 	string image("vr_simulated.jpg");

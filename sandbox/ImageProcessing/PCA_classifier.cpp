@@ -2,6 +2,8 @@
 #include "highgui.h"
 #include <iostream>
 
+#include "FileUtils.h"
+
 #define EIGENBUBBLES 5
 
 //#define NORMALIZE
@@ -63,29 +65,54 @@ void PCA_set_add(Mat& PCA_set, string filename){
 	resize(example, aptly_sized_example, Size(EXAMPLE_WIDTH, EXAMPLE_HEIGHT));
 	PCA_set_add(PCA_set, aptly_sized_example);
 }
-/*
+
+bool isFilled(string filename){
+	return filename.find("filled") != string::npos;
+}
+bool isEmpty(string filename){
+	return filename.find("empty") != string::npos;
+}
+
 //This trains the PCA classifer by query
-void train_PCA_classifier(vector<string> include,vector<string> exclude) {
-	vector<string> filled_filenames;
-	vector<string> empty_filenames;
-	exclude.push_back("filled");
-	SearchFileTree("training_examples", include, exclude, empty_filenames);
-	exclude.pop_back();
-	exclude.push_back("empty");
-	SearchFileTree("/", include, exclude, filled_filenames);
-	exclude.pop_back();
+//TODO: Clean this up and made it possible to pass in predicate functions
+void train_PCA_classifier(vector<string>& include,vector<string>& exclude) {
+	vector<string> filenames;
+	
+	string training_examples("training_examples");
+	CrawlFileTree(training_examples, filenames);
+	vector<string> filenames_copy(filenames.begin(), filenames.end());
+	vector<string>::iterator it_filled = remove_if(filenames.begin(), filenames.end(), isEmpty);
+	vector<string>::iterator it_empty = remove_if(filenames_copy.begin(), filenames_copy.end(), isFilled);
+
+	vector<string>::iterator it;
+	for(it = filenames_copy.begin(); it != it_empty; it++) {
+		cout << (*it) << endl;
+	}
+	/*
+	empty_filenames.push_back("training_examples/empty.png");
+	empty_filenames.push_back("training_examples/empty_suspect_dim.png");
+	empty_filenames.push_back("training_examples/empty_template_bright.png");
+	filled_filenames.push_back("training_examples/filled_barely_blue.png");
+	filled_filenames.push_back("training_examples/filled_full_black.png");
+	filled_filenames.push_back("training_examples/filled_barely_outside_blue.png");
+	filled_filenames.push_back("training_examples/filled_full_outside_black.png");
+	filled_filenames.push_back("training_examples/filled_full_outside_blue.png");
+	filled_filenames.push_back("training_examples/filled_partial_blue.png");
+	filled_filenames.push_back("training_examples/filled_partial_outside_black.png");
+	*/
+	
 	Mat PCA_set;
-	for (size_t i = 0; i < empty_filenames.size(); i++) {
-		PCA_set_add(PCA_set, empty_filenames[i]);
+	for (it = filenames_copy.begin(); it != it_empty; it++) {
+		PCA_set_add(PCA_set, (*it));
 		training_bubble_values.push_back(EMPTY_BUBBLE);
 	}
-	for (size_t i = 0; i < filled_filenames.size(); i++) {
-		PCA_set_add(PCA_set, filled_filenames[i]);
+	for(it = filenames.begin(); it != it_filled; it++) {
+		PCA_set_add(PCA_set, (*it));
 		training_bubble_values.push_back(FILLED_BUBBLE);
 	}
 	my_PCA = PCA(PCA_set, Mat(), CV_PCA_DATA_AS_ROW, EIGENBUBBLES);
 	comparison_vectors = my_PCA.project(PCA_set);
-}*/
+}
 //Train the PCA_classifier using example_strip.jpg
 //If example_strip.jpg is altered you must make the corresponding
 //changes to training_bubble_values in the code below
