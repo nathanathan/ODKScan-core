@@ -1,3 +1,4 @@
+#include "testSuite.h"
 #include "PCA_classifier.h"
 #include "highgui.h"
 #include <iostream>
@@ -6,7 +7,7 @@
 
 #define EIGENBUBBLES 5
 
-//#define NORMALIZE
+#define NORMALIZE
 //Normalizing everything that goes into the PCA *might* help with lighting problems
 //But so far just seems to hurt accuracy.
 
@@ -20,8 +21,13 @@
 //TODO: Add a sigma constant for the search window weighting function and determine approriate value
 
 #define OUTPUT_BUBBLE_IMAGES
+#define OUTPUT_EXAMPLES
+
 #include "nameGenerator.h"
 NameGenerator classifierNamer("bubble_images/");
+#ifdef OUTPUT_EXAMPLES
+NameGenerator exampleNamer("example_images_used/");
+#endif
 
 using namespace cv;
 
@@ -42,6 +48,9 @@ void set_weight(float weight){
 	assert(weight >= 0 && weight <= 1);
 	weight_param = weight;
 }
+void set_search_window(Point sw){
+	search_window = sw;
+}
 void PCA_set_add(Mat& PCA_set, Mat img){
 	Mat PCA_set_row;
 	img.convertTo(PCA_set_row, CV_32F);
@@ -55,7 +64,7 @@ void PCA_set_add(Mat& PCA_set, Mat img){
 		PCA_set.push_back(PCA_set_row.reshape(0,1));
 	}
 }
-void PCA_set_add(Mat& PCA_set, string filename){
+void PCA_set_add(Mat& PCA_set, string filename, bubble_val classification){
 	Mat example = imread(filename, 0);
 	if (example.data == NULL) {
         cout << "could not read " << filename << endl;
@@ -63,7 +72,21 @@ void PCA_set_add(Mat& PCA_set, string filename){
     }
     Mat aptly_sized_example;
 	resize(example, aptly_sized_example, Size(EXAMPLE_WIDTH, EXAMPLE_HEIGHT));
+
+	#ifdef OUTPUT_EXAMPLES
+	string outfilename;
+	if( classification == EMPTY_BUBBLE){
+		outfilename = exampleNamer.get_unique_name("empty_");
+	}
+	else{
+		outfilename = exampleNamer.get_unique_name("full_");
+	}
+	outfilename.append(".jpg");
+	imwrite(outfilename, aptly_sized_example);
+	#endif
+	
 	PCA_set_add(PCA_set, aptly_sized_example);
+	training_bubble_values.push_back(classification);
 }
 
 bool isFilled(string filename){
@@ -103,12 +126,10 @@ void train_PCA_classifier(vector<string>& include,vector<string>& exclude) {
 	
 	Mat PCA_set;
 	for (it = filenames_copy.begin(); it != it_empty; it++) {
-		PCA_set_add(PCA_set, (*it));
-		training_bubble_values.push_back(EMPTY_BUBBLE);
+		PCA_set_add(PCA_set, (*it), EMPTY_BUBBLE);
 	}
 	for(it = filenames.begin(); it != it_filled; it++) {
-		PCA_set_add(PCA_set, (*it));
-		training_bubble_values.push_back(FILLED_BUBBLE);
+		PCA_set_add(PCA_set, (*it), FILLED_BUBBLE);
 	}
 	my_PCA = PCA(PCA_set, Mat(), CV_PCA_DATA_AS_ROW, EIGENBUBBLES);
 	comparison_vectors = my_PCA.project(PCA_set);

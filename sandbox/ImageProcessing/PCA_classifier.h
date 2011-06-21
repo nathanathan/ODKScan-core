@@ -18,8 +18,9 @@ enum bubble_val { EMPTY_BUBBLE, FILLED_BUBBLE };
 //maybe they should be in a different header.
 
 void set_weight(float weight);
-void train_PCA_classifier();
+void set_search_window(cv::Point sw);
 void train_PCA_classifier(vector<string>&, vector<string>&);
+void train_PCA_classifier();//TODO: remove this once it's clear that it won't be useful.
 double rateBubble(cv::Mat& det_img_gray, cv::Point bubble_location);
 cv::Point bubble_align(cv::Mat& det_img_gray, cv::Point bubble_location);
 bubble_val classifyBubble(cv::Mat& det_img_gray, cv::Point bubble_location);

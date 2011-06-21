@@ -1,3 +1,4 @@
+#include "testSuite.h"
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -32,6 +33,7 @@ int main(int argc, char *argv[]) {
 
 	// image to be processed
 	string image("vr_simulated.jpg");
+	//string image("booklet_form.jpg");
 
 	// bubble location file
 	string bubbles("bubble-locations.full2");

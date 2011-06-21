@@ -1,3 +1,4 @@
+#include "testSuite.h"
 #include "cv.h"
 #include "highgui.h"
 
@@ -8,7 +9,7 @@
 
 #include "./ImageProcessing.h"
 #include "./formAlignment.h"
-#include "./FileUtils.h"
+//#include "./FileUtils.h"
 
 // how wide is the segment in pixels
 #define SEGMENT_WIDTH 144
@@ -51,19 +52,12 @@ vector< vector<bubble_val> > ProcessImage(string &imagefilename, string &templat
 	vector < Point2f > corners, segment_locations;
 	vector<bubble_val> bubble_vals;
 	vector<vector<bubble_val> > segment_results;
-	Mat img, imgGrey, out, warped;
+	Mat imgGrey, out, warped;
 	imgfilename = imagefilename;
 
 	// Read the input image
-	img = imread(imagefilename);
-	if (img.data == NULL) {
-	return vector<vector<bubble_val> >();
-	}
-
-	#if DEBUG > 0
-	cout << "converting to grayscale" << endl;
-	#endif
-	cvtColor(img, imgGrey, CV_RGB2GRAY);
+	imgGrey = imread(imagefilename, 0);
+	assert(imgGrey.data != NULL);
 
 	Mat straightened_image(3300 * SCALEPARAM, 2550 * SCALEPARAM, CV_8U);
 
@@ -71,7 +65,8 @@ vector< vector<bubble_val> > ProcessImage(string &imagefilename, string &templat
 	cout << "straightening image" << endl;
 	#endif
 	straightenImage(imgGrey, straightened_image);
-	//align_image(imgGrey, straightened_image, 1.0);
+	//align_image(imgGrey, straightened_image, 1.65);
+	
 
 	#if DEBUG > 0
 	cout << "writing to output image" << endl;

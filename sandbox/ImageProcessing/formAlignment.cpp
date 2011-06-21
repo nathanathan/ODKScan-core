@@ -1,8 +1,21 @@
+#include "testSuite.h"
 #include "formAlignment.h"
-#include "highgui.h"
 
+#ifndef TEST_SUITE_H
+#include <opencv2/highgui/highgui_c.h>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc_c.h>
+#include <opencv2/imgproc/imgproc.hpp>
+#else
+#include "highgui.h"
+#endif
+
+#define DEBUG_ALIGN_IMAGE 0
+
+#if DEBUG_ALIGN_IMAGE > 0
 #include "nameGenerator.h"
 NameGenerator alignmentNamer("debug_segment_images/");
+#endif
 
 //Image straightening constants
 #define DILATION 6
@@ -12,8 +25,6 @@ NameGenerator alignmentNamer("debug_segment_images/");
 //image_align constants
 #define THRESH_OFFSET_LB -.3
 #define THRESH_DECR_SIZE .05
-
-#define DEBUG_ALIGN_IMAGE 1
 
 using namespace cv;
 
