@@ -42,13 +42,13 @@ Mat getSegmentMat(Mat &img, Point2f &corner);
 //		2. Remove the weight arguement and make a setter function for adjusting different parameters.
 //		   I'm not sure how the organize the parameters for the aligmener and classifier, I guess they should
 //		   all go in the same file.
-vector< vector<bubble_val> > ProcessImage(string &imagefilename, string &template_filename, float &weight) {
+vector< vector<bubble_val> > ProcessImage(string &imagefilename, string &template_filename) {
 	#if DEBUG > 0
 	cout << "debug level is: " << DEBUG << endl;
 	#endif
 	string seglocfile("segment-offsets-tmp.txt");
 	string buboffsetfile("bubble-offsets.txt");
-	set_weight(weight);
+	
 	vector < Point2f > corners, segment_locations;
 	vector<bubble_val> bubble_vals;
 	vector<vector<bubble_val> > segment_results;
@@ -59,13 +59,12 @@ vector< vector<bubble_val> > ProcessImage(string &imagefilename, string &templat
 	imgGrey = imread(imagefilename, 0);
 	assert(imgGrey.data != NULL);
 
-	Mat straightened_image(3300 * SCALEPARAM, 2550 * SCALEPARAM, CV_8U);
-
 	#if DEBUG > 0
 	cout << "straightening image" << endl;
 	#endif
-	straightenImage(imgGrey, straightened_image);
-	//align_image(imgGrey, straightened_image, 1.65);
+	Mat straightened_image(1, 1, CV_8U);
+	//straightenImage(imgGrey, straightened_image);
+	align_image(imgGrey, straightened_image, Size(2550 * SCALEPARAM, 3300 * SCALEPARAM));
 	
 
 	#if DEBUG > 0
@@ -91,7 +90,7 @@ vector< vector<bubble_val> > ProcessImage(string &imagefilename, string &templat
 		#if DEBUG > 0
 		cout << "aligning segment" << endl;
 		#endif
-		align_image(segment, aligned_segment, .6);
+		align_image(segment, aligned_segment, aligned_segment.size());
 		segment_results.push_back(processSegment(aligned_segment, buboffsetfile));
 	}
 
@@ -131,9 +130,17 @@ vector<bubble_val> processSegment(Mat &segment, string bubble_offsets) {
 		retvals.push_back(current_bubble);
 		
 		#if DEBUG > 0
-		Scalar color(0, 255, 0);
-		if (current_bubble == 1) {
-			color = (255, 0, 255);
+		Scalar color(0, 0, 0);
+		switch(current_bubble){
+			case EMPTY_BUBBLE:
+				color = Scalar(0, 0, 255);
+				break;
+			case PARTIAL_BUBBLE:
+				color = Scalar(255, 0, 255);
+				break;
+			case FILLED_BUBBLE:
+				color = Scalar(255, 0, 0);
+				break;
 		}
 		rectangle(dbg_out, (*it)-Point2f(EXAMPLE_WIDTH/2,EXAMPLE_HEIGHT/2),
 			(*it)+Point2f(EXAMPLE_WIDTH/2,EXAMPLE_HEIGHT/2), color);

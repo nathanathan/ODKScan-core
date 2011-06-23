@@ -11,16 +11,15 @@
 #define EXAMPLE_HEIGHT 18
 #endif
 
-enum bubble_val { EMPTY_BUBBLE, FILLED_BUBBLE };
-//TODO: Add 1 or 2 more values for different degrees of filledness.
-//		This will help determine which bubbles are ambiguous
-//Also since this enum and the EXAMPLE_ size constants get used pretty much everywhere
-//maybe they should be in a different header.
+enum bubble_val { EMPTY_BUBBLE = 0, PARTIAL_BUBBLE, FILLED_BUBBLE, NUM_BUBBLE_VALS };
+//since this enum and the EXAMPLE_ size constants get used pretty much everywhere
+//maybe they should be in a different header?
 
-void set_weight(float weight);
+void set_weight(bubble_val classification, float weight);
 void set_search_window(cv::Point sw);
-void train_PCA_classifier(vector<string>&, vector<string>&);
-void train_PCA_classifier();//TODO: remove this once it's clear that it won't be useful.
+
+bool returnTrue(string& filename);
+void train_PCA_classifier(bool (*pred)(string& filename) = &returnTrue);
 double rateBubble(cv::Mat& det_img_gray, cv::Point bubble_location);
 cv::Point bubble_align(cv::Mat& det_img_gray, cv::Point bubble_location);
 bubble_val classifyBubble(cv::Mat& det_img_gray, cv::Point bubble_location);

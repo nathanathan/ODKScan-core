@@ -7,7 +7,7 @@
 
 #define EIGENBUBBLES 5
 
-#define NORMALIZE
+//#define NORMALIZE
 //Normalizing everything that goes into the PCA *might* help with lighting problems
 //But so far just seems to hurt accuracy.
 
@@ -24,7 +24,9 @@
 #define OUTPUT_EXAMPLES
 
 #include "nameGenerator.h"
+#ifdef OUTPUT_BUBBLE_IMAGES
 NameGenerator classifierNamer("bubble_images/");
+#endif
 #ifdef OUTPUT_EXAMPLES
 NameGenerator exampleNamer("example_images_used/");
 #endif
@@ -32,26 +34,27 @@ NameGenerator exampleNamer("example_images_used/");
 using namespace cv;
 
 Mat comparison_vectors;
-PCA my_PCA;
 vector <bubble_val> training_bubble_values;
+PCA my_PCA;
 
-float weight_param = .5;
+Mat weights = (Mat_<float>(3,1) << 1, 1, 1);
+//The weights Mat can be used to bias the classifier
+//Each element corresponds to a classification.
 
 //Point search_window(6, 8);
 Point search_window(0, 0);
 //The search window slows things down by a factor
 //of the number of pixels it contains.
 
-//Sets the weight to a value between 0 and 1 to bias
-//the classifier towards filled 0? or empty 1?
-void set_weight(float weight){
-	assert(weight >= 0 && weight <= 1);
-	weight_param = weight;
+void set_weight(bubble_val classification, float weight) {
+	weights.at<float>((int)classification, 0) = weight;
 }
-void set_search_window(Point sw){
+void set_search_window(Point sw) {
 	search_window = sw;
 }
-void PCA_set_add(Mat& PCA_set, Mat img){
+//Add an image Mat to a PCA_set performing the 
+//necessairy reshaping and type conversion.
+void PCA_set_add(Mat& PCA_set, Mat& img) {
 	Mat PCA_set_row;
 	img.convertTo(PCA_set_row, CV_32F);
 	#ifdef NORMALIZE
@@ -64,99 +67,51 @@ void PCA_set_add(Mat& PCA_set, Mat img){
 		PCA_set.push_back(PCA_set_row.reshape(0,1));
 	}
 }
-void PCA_set_add(Mat& PCA_set, string filename, bubble_val classification){
+//Loads a image with the specified filename and adds it to the PCA set.
+//Classifications are inferred from the filename and added to training_bubble_values.
+void PCA_set_add(Mat& PCA_set, string& filename) {
 	Mat example = imread(filename, 0);
 	if (example.data == NULL) {
         cout << "could not read " << filename << endl;
         return;
     }
     Mat aptly_sized_example;
-	resize(example, aptly_sized_example, Size(EXAMPLE_WIDTH, EXAMPLE_HEIGHT));
+	resize(example, aptly_sized_example, Size(EXAMPLE_WIDTH, EXAMPLE_HEIGHT), INTER_CUBIC);
 
 	#ifdef OUTPUT_EXAMPLES
-	string outfilename;
-	if( classification == EMPTY_BUBBLE){
-		outfilename = exampleNamer.get_unique_name("empty_");
-	}
-	else{
-		outfilename = exampleNamer.get_unique_name("full_");
-	}
+	string outfilename = exampleNamer.get_unique_name("bubble_");
 	outfilename.append(".jpg");
 	imwrite(outfilename, aptly_sized_example);
 	#endif
 	
 	PCA_set_add(PCA_set, aptly_sized_example);
-	training_bubble_values.push_back(classification);
-}
+	if( filename.find("filled") != string::npos ) {
+		training_bubble_values.push_back(FILLED_BUBBLE);
+	}
+	else if( filename.find("partial") != string::npos ) {
+		training_bubble_values.push_back(PARTIAL_BUBBLE);
 
-bool isFilled(string filename){
-	return filename.find("filled") != string::npos;
+	}
+	else if( filename.find("empty") != string::npos ) {
+		training_bubble_values.push_back(EMPTY_BUBBLE);
+	}
 }
-bool isEmpty(string filename){
-	return filename.find("empty") != string::npos;
+bool returnTrue(string& filename){
+	return true;
 }
-
-//This trains the PCA classifer by query
-//TODO: Clean this up and made it possible to pass in predicate functions
-void train_PCA_classifier(vector<string>& include,vector<string>& exclude) {
+//This trains the PCA classifer by query.
+//A predicate can be supplied for filtering out undesireable filenames
+void train_PCA_classifier(bool (*pred)(string&)) {
 	vector<string> filenames;
-	
 	string training_examples("training_examples");
 	CrawlFileTree(training_examples, filenames);
-	vector<string> filenames_copy(filenames.begin(), filenames.end());
-	vector<string>::iterator it_filled = remove_if(filenames.begin(), filenames.end(), isEmpty);
-	vector<string>::iterator it_empty = remove_if(filenames_copy.begin(), filenames_copy.end(), isFilled);
 
+	Mat PCA_set;
 	vector<string>::iterator it;
-	for(it = filenames_copy.begin(); it != it_empty; it++) {
-		cout << (*it) << endl;
-	}
-	/*
-	empty_filenames.push_back("training_examples/empty.png");
-	empty_filenames.push_back("training_examples/empty_suspect_dim.png");
-	empty_filenames.push_back("training_examples/empty_template_bright.png");
-	filled_filenames.push_back("training_examples/filled_barely_blue.png");
-	filled_filenames.push_back("training_examples/filled_full_black.png");
-	filled_filenames.push_back("training_examples/filled_barely_outside_blue.png");
-	filled_filenames.push_back("training_examples/filled_full_outside_black.png");
-	filled_filenames.push_back("training_examples/filled_full_outside_blue.png");
-	filled_filenames.push_back("training_examples/filled_partial_blue.png");
-	filled_filenames.push_back("training_examples/filled_partial_outside_black.png");
-	*/
-	
-	Mat PCA_set;
-	for (it = filenames_copy.begin(); it != it_empty; it++) {
-		PCA_set_add(PCA_set, (*it), EMPTY_BUBBLE);
-	}
-	for(it = filenames.begin(); it != it_filled; it++) {
-		PCA_set_add(PCA_set, (*it), FILLED_BUBBLE);
-	}
-	my_PCA = PCA(PCA_set, Mat(), CV_PCA_DATA_AS_ROW, EIGENBUBBLES);
-	comparison_vectors = my_PCA.project(PCA_set);
-}
-//Train the PCA_classifier using example_strip.jpg
-//If example_strip.jpg is altered you must make the corresponding
-//changes to training_bubble_values in the code below
-void train_PCA_classifier() {
-	// Set training_bubble_values here
-	training_bubble_values.push_back(FILLED_BUBBLE);
-	training_bubble_values.push_back(EMPTY_BUBBLE);
-	training_bubble_values.push_back(FILLED_BUBBLE);
-	training_bubble_values.push_back(EMPTY_BUBBLE);
-	training_bubble_values.push_back(FILLED_BUBBLE);
-	training_bubble_values.push_back(EMPTY_BUBBLE);
-	training_bubble_values.push_back(FILLED_BUBBLE);
-	training_bubble_values.push_back(FILLED_BUBBLE);
-	training_bubble_values.push_back(EMPTY_BUBBLE);
-	training_bubble_values.push_back(FILLED_BUBBLE);
-	training_bubble_values.push_back(FILLED_BUBBLE);
-
-	Mat example_strip_bw = imread("example_strip.jpg", 0);
-
-	int numexamples = example_strip_bw.cols / EXAMPLE_WIDTH;
-	Mat PCA_set;
-	for (int i = 0; i < numexamples; i++) {
-		PCA_set_add(PCA_set, example_strip_bw(Rect(i * EXAMPLE_WIDTH, 0, EXAMPLE_WIDTH, EXAMPLE_HEIGHT)));
+	for(it = filenames.begin(); it != filenames.end(); it++) {
+		if( pred((*it)) ) {
+			PCA_set_add(PCA_set, (*it));
+		}
 	}
 	my_PCA = PCA(PCA_set, Mat(), CV_PCA_DATA_AS_ROW, EIGENBUBBLES);
 	comparison_vectors = my_PCA.project(PCA_set);
@@ -218,11 +173,13 @@ bubble_val classifyBubble(Mat& det_img_gray, Point bubble_location) {
 	#else
 	query_pixels = det_img_gray(Rect(bubble_location-Point(EXAMPLE_WIDTH/2, EXAMPLE_HEIGHT/2), Size(EXAMPLE_WIDTH, EXAMPLE_HEIGHT)));
 	#endif
+	
 	#ifdef OUTPUT_BUBBLE_IMAGES
 	string segfilename = classifierNamer.get_unique_name("bubble_");
 	segfilename.append(".jpg");
 	imwrite(segfilename, query_pixels);
 	#endif
+	
 	query_pixels.convertTo(query_pixels, CV_32F);
 	query_pixels = query_pixels.reshape(0,1);
 	
@@ -234,28 +191,18 @@ bubble_val classifyBubble(Mat& det_img_gray, Point bubble_location) {
 	Mat responce, out;
 	matchTemplate(comparison_vectors, my_PCA.project(query_pixels), responce, CV_TM_CCOEFF_NORMED);
 	reduce(responce, out, 1, CV_REDUCE_MAX);
-	float max_filled_responce = 0;
-	float max_empty_responce = 0;
+	vector<float> max_responces(NUM_BUBBLE_VALS, 0);
 	for(size_t i = 0; i < training_bubble_values.size(); i+=1) {
-		float current_responce = sum(out.row(i)).val[0];
-		if( training_bubble_values[i] == FILLED_BUBBLE){
-			if(current_responce > max_filled_responce){
-				max_filled_responce = current_responce;
-			}
-		}
-		else{
-			if(current_responce > max_empty_responce){
-			    max_empty_responce = current_responce;
-			}
+		float current_responce = sum(out.row(i)).val[0]; //This only uses the sum function for convenience
+		if(current_responce > max_responces[training_bubble_values[i]]) {
+			max_responces[training_bubble_values[i]] = current_responce;
 		}
 	}
-	//Here we compare our filled and empty score with some weighting.
+	//Here we weight and compare the responces for all classifications,
+	//returning the classification with the maximum weighted responce.
 	//To use neighboring bubbles in classification we will probably want this method
 	//to return the scores without comparing them.
-	if( (weight_param) * max_filled_responce > (1 - weight_param) * max_empty_responce){
-		return FILLED_BUBBLE;
-    }
-    else{
-	    return EMPTY_BUBBLE;
-    }
+	Point max_location;
+	minMaxLoc(Mat(max_responces).mul(weights), NULL, NULL, NULL, &max_location);
+	return (bubble_val) max_location.y;
 }

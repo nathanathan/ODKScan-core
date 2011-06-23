@@ -8,6 +8,8 @@
 
 #define DEBUG 0
 
+#define DUMP_BUBBLE_VALS
+
 using namespace std;
 
 void check_values(vector<vector<bubble_val> > &found, int *tpos, int *tneg, int *fpos, int *fneg);
@@ -26,10 +28,7 @@ void writeBubbleVals(string filename, vector< vector<bubble_val> > bubble_vals) 
 }
 
 int main(int argc, char *argv[]) {
-	vector<string> include;
-	vector<string> exclude;
-	exclude.push_back("filled");
-	train_PCA_classifier(include, exclude);
+	train_PCA_classifier();
 
 	// image to be processed
 	string image("vr_simulated.jpg");
@@ -48,10 +47,16 @@ int main(int argc, char *argv[]) {
 	#else
 	for (i = 0.0; i <= 1.0; i += 0.05) {
 	#endif
-		// process the image with the given parameter value
-		vector<vector<bubble_val> > bubble_vals = ProcessImage(image, bubbles, i);
+		set_weight(FILLED_BUBBLE, i);
+		set_weight(PARTIAL_BUBBLE, 1-i);
+		set_weight(EMPTY_BUBBLE, 1-i);
 		
+		// process the image with the given parameter value
+		vector<vector<bubble_val> > bubble_vals = ProcessImage(image, bubbles);
+		
+		#ifdef DUMP_BUBBLE_VALS
 		writeBubbleVals("output-vals-test", bubble_vals);
+		#endif
 		
 		// get true positive, false positive, true negative, and false negative data
 		int tpos = 0, tneg = 0, fpos = 0, fneg = 0;
@@ -63,7 +68,7 @@ int main(int argc, char *argv[]) {
 		std::cout << tneg << ", " << fneg << std::endl;
 	}
 }
-
+//Compares the found bubble values against those in the bubble-vals file
 void check_values(vector<vector<bubble_val> > &found, int *tpos, int *tneg, int *fpos, int *fneg) {
 	vector<vector<int> > actual;
 	string line;
@@ -97,7 +102,7 @@ void check_values(vector<vector<bubble_val> > &found, int *tpos, int *tneg, int 
 	for (i = 0; i < actual.size(); i++) {
 		for (j = 0; j < actual[i].size(); j++) {
 			// true positive
-			if (found[i][j] == 1 && actual[i][j] == 1) {
+			if (found[i][j] != 0 && actual[i][j] == 1) {
 				(*tpos)++;
 			}
 			// true negative
@@ -105,7 +110,7 @@ void check_values(vector<vector<bubble_val> > &found, int *tpos, int *tneg, int 
 				(*tneg)++;
 			}
 			// false positive
-			else if (found[i][j] == 1 && actual[i][j] == 0) {
+			else if (found[i][j] != 0 && actual[i][j] == 0) {
 				(*fpos)++;
 			}
 			// false negative
