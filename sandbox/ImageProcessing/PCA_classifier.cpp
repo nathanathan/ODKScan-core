@@ -18,8 +18,6 @@
 //2. If the rectangle crosses the image boundary (because of a large search window)
 //   it won't give an error.
 
-//TODO: Add a sigma constant for the search window weighting function and determine approriate value
-
 #define OUTPUT_BUBBLE_IMAGES
 #define OUTPUT_EXAMPLES
 
@@ -41,16 +39,32 @@ Mat weights = (Mat_<float>(3,1) << 1, 1, 1);
 //The weights Mat can be used to bias the classifier
 //Each element corresponds to a classification.
 
-//Point search_window(6, 8);
-Point search_window(0, 0);
-//The search window slows things down by a factor
-//of the number of pixels it contains.
+Point search_window(6, 8);
+//Point search_window(0, 0);
 
+Mat gaussian_weights;
+//A matrix for precomputing gaussian weights
+
+void update_gaussian_weights(){
+	//This precomputes the gaussian for subbbubble alignment.
+	int height = 2*search_window.y + 1;
+	int width = 2*search_window.x + 1;
+	Mat v_gauss = getGaussianKernel(height, float(height)*.5, CV_32F);
+	Mat h_gauss;
+	transpose(getGaussianKernel(width, float(width)*.5, CV_32F), h_gauss);
+	v_gauss = repeat(v_gauss, 1, width);
+	h_gauss = repeat(h_gauss, height, 1);
+	Mat temp = v_gauss.mul(h_gauss);
+	double temp_max;
+	minMaxLoc(temp, NULL, &temp_max);
+	gaussian_weights = temp_max - temp + .001;//.001 is to avoid roundoff problems, it might not be necessiary.
+}
 void set_weight(bubble_val classification, float weight) {
 	weights.at<float>((int)classification, 0) = weight;
 }
 void set_search_window(Point sw) {
 	search_window = sw;
+	update_gaussian_weights();
 }
 //Add an image Mat to a PCA_set performing the 
 //necessairy reshaping and type conversion.
@@ -115,6 +129,10 @@ void train_PCA_classifier(bool (*pred)(string&)) {
 	}
 	my_PCA = PCA(PCA_set, Mat(), CV_PCA_DATA_AS_ROW, EIGENBUBBLES);
 	comparison_vectors = my_PCA.project(PCA_set);
+	
+	//This might not be the best place to but this.
+	//If this was a class this would go into the initializer
+	update_gaussian_weights();
 }
 //Rate a location on how likely it is to be a bubble.
 //The rating is the SSD of the queried pixels and their PCA back projection,
@@ -141,8 +159,8 @@ double rateBubble(Mat& det_img_gray, Point bubble_location) {
 //then it checks that rather than the exact specified location.
 //This section probably slows things down by quite a bit and it might not provide significant
 //improvement to accuracy. We will need to run some tests to find out if it's worth keeping.
-Point bubble_align(Mat& det_img_gray, Point bubble_location){
-	Mat out = Mat::zeros(Size(search_window.x*2 + 1, search_window.y*2 + 1) , CV_32FC1);
+Point bubble_align(Mat& det_img_gray, Point bubble_location) {
+	Mat out = Mat::zeros(Size(search_window.x*2 + 1, search_window.y*2 + 1) , CV_32F);
 	Point offset = Point(bubble_location.x - search_window.x, bubble_location.y - search_window.y);
 	
 	for(size_t i = 0; i <= search_window.x*2; i+=1) {
@@ -150,15 +168,7 @@ Point bubble_align(Mat& det_img_gray, Point bubble_location){
 			out.col(i).row(j) += rateBubble(det_img_gray, Point(i,j) + offset);
 		}
 	}
-	//Multiplying by a 2D gaussian weights the search so that we are more likely to choose
-	//locations near the expected bubble location.
-	//However, the sigma parameter probably needs to be tweaked.
-	Mat v_gauss = 1 - getGaussianKernel(out.rows, 1.0, CV_32F);
-	Mat h_gauss;
-	transpose(1 - getGaussianKernel(out.cols, 1.0, CV_32F), h_gauss);
-	v_gauss = repeat(v_gauss, 1, out.cols);
-	h_gauss = repeat(h_gauss, out.rows, 1);
-	out = out.mul(v_gauss.mul(h_gauss));
+	out = out.mul(gaussian_weights);
 	
 	Point min_location;
 	minMaxLoc(out, NULL,NULL, &min_location);

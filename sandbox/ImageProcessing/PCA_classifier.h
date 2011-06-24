@@ -12,9 +12,8 @@
 #endif
 
 enum bubble_val { EMPTY_BUBBLE = 0, PARTIAL_BUBBLE, FILLED_BUBBLE, NUM_BUBBLE_VALS };
-//since this enum and the EXAMPLE_ size constants get used pretty much everywhere
-//maybe they should be in a different header?
 
+//Should this be a class?
 void set_weight(bubble_val classification, float weight);
 void set_search_window(cv::Point sw);
 
