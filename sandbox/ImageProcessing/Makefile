@@ -1,6 +1,6 @@
-SRCS := test_ImageProcessing.cpp ImageProcessing.cpp PCA_classifier.cpp formAlignment.cpp FileUtils.cpp
+SRCS := test_ImageProcessing.cpp ImageProcessing.cpp PCA_classifier.cpp FormAlignment.cpp FileUtils.cpp
 
-run: suite $(SRCS) nameGenerator.h
+run: suite $(SRCS) NameGenerator.h configuration.h
 	@rm -rf debug_segment_images
 	@mkdir debug_segment_images
 	@rm -rf bubble_images

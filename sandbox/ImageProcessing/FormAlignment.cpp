@@ -1,5 +1,5 @@
 #include "configuration.h"
-#include "formAlignment.h"
+#include "FormAlignment.h"
 
 #ifndef TEST_SUITE_H
 #include <opencv2/highgui/highgui_c.h>
@@ -13,7 +13,7 @@
 #define DEBUG_ALIGN_IMAGE 0
 
 #if DEBUG_ALIGN_IMAGE > 0
-#include "nameGenerator.h"
+#include "NameGenerator.h"
 NameGenerator alignmentNamer("debug_segment_images/");
 #endif
 

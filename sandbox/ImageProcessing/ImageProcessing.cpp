@@ -6,8 +6,8 @@
 #include <fstream>
 #include <vector>
 
-#include "./ImageProcessing.h"
-#include "./formAlignment.h"
+#include "ImageProcessing.h"
+#include "FormAlignment.h"
 //#include "./FileUtils.h"
 
 // how wide is the segment in pixels
@@ -28,8 +28,8 @@
 
 using namespace cv;
 
-#include "nameGenerator.h"
-NameGenerator namer("");
+#include "NameGenerator.h"
+NameGenerator namer("debug_segment_images/");
 
 string imgfilename;
 
@@ -88,11 +88,9 @@ vector<bubble_val> processSegment(Mat &segment, string bubble_offsets, PCA_class
 	}
 
 	#if DEBUG > 0
-	string directory = "debug_segment_images";
-	directory.append("/");
 	string segfilename = namer.get_unique_name("marked_");
 	segfilename.append(".jpg");
-	imwrite(directory+segfilename, dbg_out);
+	imwrite(segfilename, dbg_out);
 	#endif
 
 	return retvals;

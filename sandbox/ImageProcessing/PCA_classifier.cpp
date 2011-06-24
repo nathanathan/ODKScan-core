@@ -1,7 +1,7 @@
 #include "configuration.h"
 #include "PCA_classifier.h"
 #include "FileUtils.h"
-#include "nameGenerator.h"
+#include "NameGenerator.h"
 #include <iostream>
 
 //Number of eigenvalues to generate for the PCA
@@ -24,7 +24,7 @@
 
 	#include <opencv2/highgui/highgui.hpp>
 	//I suspect the following path will need to change
-	#define TRAINING_EXAMPLE_DIRECTORY "training_examples"
+	#define TRAINING_EXAMPLE_DIRECTORY "/sdcard/mScan/training_examples"
 
 #else //If we are compiling for the test suite
 	
