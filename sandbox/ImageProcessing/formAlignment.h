@@ -7,7 +7,7 @@
 #include "cv.h"
 #endif
 
-void align_image(cv::Mat& img, cv::Mat& aligned_image, float thresh_seed);
+void align_image(cv::Mat& img, cv::Mat& aligned_image, cv::Size aligned_image_sz);
 void straightenImage(const cv::Mat& input_image, cv::Mat& output_image);
 
 #endif
