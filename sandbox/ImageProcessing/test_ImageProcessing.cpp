@@ -1,4 +1,3 @@
-#include "testSuite.h"
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -28,7 +27,8 @@ void writeBubbleVals(string filename, vector< vector<bubble_val> > bubble_vals) 
 }
 
 int main(int argc, char *argv[]) {
-	train_PCA_classifier();
+	 PCA_classifier myClassifier;
+	 myClassifier.train_PCA_classifier();
 
 	// image to be processed
 	string image("vr_simulated.jpg");
@@ -47,12 +47,12 @@ int main(int argc, char *argv[]) {
 	#else
 	for (i = 0.0; i <= 1.0; i += 0.05) {
 	#endif
-		set_weight(FILLED_BUBBLE, i);
-		set_weight(PARTIAL_BUBBLE, 1-i);
-		set_weight(EMPTY_BUBBLE, 1-i);
+		myClassifier.set_weight(FILLED_BUBBLE, i);
+		myClassifier.set_weight(PARTIAL_BUBBLE, 1-i);
+		myClassifier.set_weight(EMPTY_BUBBLE, 1-i);
 		
 		// process the image with the given parameter value
-		vector<vector<bubble_val> > bubble_vals = ProcessImage(image, bubbles);
+		vector<vector<bubble_val> > bubble_vals = ProcessImage(image, bubbles, myClassifier);
 		
 		#ifdef DUMP_BUBBLE_VALS
 		writeBubbleVals("output-vals-test", bubble_vals);

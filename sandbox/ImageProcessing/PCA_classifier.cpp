@@ -1,51 +1,54 @@
-#include "testSuite.h"
+#include "configuration.h"
 #include "PCA_classifier.h"
-#include "highgui.h"
+#include "FileUtils.h"
+#include "nameGenerator.h"
 #include <iostream>
 
-#include "FileUtils.h"
-
+//Number of eigenvalues to generate for the PCA
 #define EIGENBUBBLES 5
 
-//#define NORMALIZE
 //Normalizing everything that goes into the PCA *might* help with lighting problems
 //But so far just seems to hurt accuracy.
+//#define NORMALIZE
 
-#define USE_GET_RECT_SUB_PIX
 //getRectSubPix might slow things down, but provides 2 advanges over the roi method
 //1. If the example images have an odd dimension it will linearly interpolate the
 //   half pixel error.
 //2. If the rectangle crosses the image boundary (because of a large search window)
 //   it won't give an error.
+#define USE_GET_RECT_SUB_PIX
 
-#define OUTPUT_BUBBLE_IMAGES
-#define OUTPUT_EXAMPLES
 
-#include "nameGenerator.h"
-#ifdef OUTPUT_BUBBLE_IMAGES
-NameGenerator classifierNamer("bubble_images/");
+//TestSuite.h will be the file that defines this:
+#ifdef USE_ANDROID_HEADERS_AND_IO
+
+	#include <opencv2/highgui/highgui.hpp>
+	//I suspect the following path will need to change
+	#define TRAINING_EXAMPLE_DIRECTORY "training_examples"
+
+#else //If we are compiling for the test suite
+	
+	#include "highgui.h"
+
+	#define TRAINING_EXAMPLE_DIRECTORY "training_examples"
+
+	#define OUTPUT_BUBBLE_IMAGES
+	#define OUTPUT_EXAMPLES
+
+	#ifdef OUTPUT_BUBBLE_IMAGES
+	NameGenerator classifierNamer("bubble_images/");
+	#endif
+
+	#ifdef OUTPUT_EXAMPLES
+	NameGenerator exampleNamer("example_images_used/");
+	#endif
+
 #endif
-#ifdef OUTPUT_EXAMPLES
-NameGenerator exampleNamer("example_images_used/");
-#endif
+
 
 using namespace cv;
 
-Mat comparison_vectors;
-vector <bubble_val> training_bubble_values;
-PCA my_PCA;
-
-Mat weights = (Mat_<float>(3,1) << 1, 1, 1);
-//The weights Mat can be used to bias the classifier
-//Each element corresponds to a classification.
-
-Point search_window(6, 8);
-//Point search_window(0, 0);
-
-Mat gaussian_weights;
-//A matrix for precomputing gaussian weights
-
-void update_gaussian_weights(){
+void PCA_classifier::update_gaussian_weights(){
 	//This precomputes the gaussian for subbbubble alignment.
 	int height = 2*search_window.y + 1;
 	int width = 2*search_window.x + 1;
@@ -59,16 +62,22 @@ void update_gaussian_weights(){
 	minMaxLoc(temp, NULL, &temp_max);
 	gaussian_weights = temp_max - temp + .001;//.001 is to avoid roundoff problems, it might not be necessiary.
 }
-void set_weight(bubble_val classification, float weight) {
+PCA_classifier::PCA_classifier() {
+	search_window = Point(6, 8);
+	weights = (Mat_<float>(3,1) << 1, 1, 1);
+	update_gaussian_weights();
+}
+
+void PCA_classifier::set_weight(bubble_val classification, float weight) {
 	weights.at<float>((int)classification, 0) = weight;
 }
-void set_search_window(Point sw) {
+void PCA_classifier::set_search_window(Point sw) {
 	search_window = sw;
 	update_gaussian_weights();
 }
 //Add an image Mat to a PCA_set performing the 
 //necessairy reshaping and type conversion.
-void PCA_set_add(Mat& PCA_set, Mat& img) {
+void PCA_classifier::PCA_set_add(Mat& PCA_set, Mat& img) {
 	Mat PCA_set_row;
 	img.convertTo(PCA_set_row, CV_32F);
 	#ifdef NORMALIZE
@@ -83,7 +92,7 @@ void PCA_set_add(Mat& PCA_set, Mat& img) {
 }
 //Loads a image with the specified filename and adds it to the PCA set.
 //Classifications are inferred from the filename and added to training_bubble_values.
-void PCA_set_add(Mat& PCA_set, string& filename) {
+void PCA_classifier::PCA_set_add(Mat& PCA_set, string& filename) {
 	Mat example = imread(filename, 0);
 	if (example.data == NULL) {
         cout << "could not read " << filename << endl;
@@ -110,14 +119,11 @@ void PCA_set_add(Mat& PCA_set, string& filename) {
 		training_bubble_values.push_back(EMPTY_BUBBLE);
 	}
 }
-bool returnTrue(string& filename){
-	return true;
-}
 //This trains the PCA classifer by query.
 //A predicate can be supplied for filtering out undesireable filenames
-void train_PCA_classifier(bool (*pred)(string&)) {
+void PCA_classifier::train_PCA_classifier(bool (*pred)(string&)) {
 	vector<string> filenames;
-	string training_examples("training_examples");
+	string training_examples(TRAINING_EXAMPLE_DIRECTORY);
 	CrawlFileTree(training_examples, filenames);
 
 	Mat PCA_set;
@@ -129,15 +135,11 @@ void train_PCA_classifier(bool (*pred)(string&)) {
 	}
 	my_PCA = PCA(PCA_set, Mat(), CV_PCA_DATA_AS_ROW, EIGENBUBBLES);
 	comparison_vectors = my_PCA.project(PCA_set);
-	
-	//This might not be the best place to but this.
-	//If this was a class this would go into the initializer
-	update_gaussian_weights();
 }
 //Rate a location on how likely it is to be a bubble.
 //The rating is the SSD of the queried pixels and their PCA back projection,
 //so lower ratings mean more bubble like.
-double rateBubble(Mat& det_img_gray, Point bubble_location) {
+double PCA_classifier::rateBubble(Mat& det_img_gray, Point bubble_location) {
     Mat query_pixels, pca_components;
     
     #ifdef USE_GET_RECT_SUB_PIX
@@ -159,7 +161,7 @@ double rateBubble(Mat& det_img_gray, Point bubble_location) {
 //then it checks that rather than the exact specified location.
 //This section probably slows things down by quite a bit and it might not provide significant
 //improvement to accuracy. We will need to run some tests to find out if it's worth keeping.
-Point bubble_align(Mat& det_img_gray, Point bubble_location) {
+Point PCA_classifier::bubble_align(Mat& det_img_gray, Point bubble_location) {
 	Mat out = Mat::zeros(Size(search_window.x*2 + 1, search_window.y*2 + 1) , CV_32F);
 	Point offset = Point(bubble_location.x - search_window.x, bubble_location.y - search_window.y);
 	
@@ -175,7 +177,7 @@ Point bubble_align(Mat& det_img_gray, Point bubble_location) {
 	return min_location + offset;
 }
 //Compare the specified bubble with all the training bubbles via PCA.
-bubble_val classifyBubble(Mat& det_img_gray, Point bubble_location) {
+bubble_val PCA_classifier::classifyBubble(Mat& det_img_gray, Point bubble_location) {
 	Mat query_pixels;
 
     #ifdef USE_GET_RECT_SUB_PIX

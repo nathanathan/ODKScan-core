@@ -1,6 +1,8 @@
 #ifndef FORM_ALIGNMENT_H
 #define FORM_ALIGNMENT_H
 
+#include "configuration.h"
+
 #ifndef TEST_SUITE_H
 #include <opencv2/core/core.hpp>
 #else

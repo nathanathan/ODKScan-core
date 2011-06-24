@@ -1,4 +1,4 @@
-#include "testSuite.h"
+#include "configuration.h"
 #include "formAlignment.h"
 
 #ifndef TEST_SUITE_H

@@ -1,4 +1,3 @@
-#include "testSuite.h"
 #include "cv.h"
 #include "highgui.h"
 
@@ -35,14 +34,75 @@ NameGenerator namer("");
 string imgfilename;
 
 void getSegmentLocations(vector<Point2f> &segmentcorners, string segfile);
-vector<bubble_val> processSegment(Mat &segment, string bubble_offsets);
 Mat getSegmentMat(Mat &img, Point2f &corner);
+
+vector<bubble_val> processSegment(Mat &segment, string bubble_offsets, PCA_classifier& myClassifier) {
+	vector<Point2f> bubble_locations;
+	vector<bubble_val> retvals;
+	string line;
+	float bubx, buby;
+	ifstream offsets(bubble_offsets.c_str());
+	
+	#if DEBUG > 0
+	Mat dbg_out;
+	cvtColor(segment, dbg_out, CV_GRAY2RGB);
+	#endif
+	
+	if (offsets.is_open()) {
+		while (getline(offsets, line)) {
+			if (line.size() > 2) {
+				stringstream ss(line);
+
+				ss >> bubx;
+				ss >> buby;
+				Point2f bubble(bubx * SCALEPARAM, buby * SCALEPARAM);
+				bubble_locations.push_back(bubble);
+			}
+		}
+	}
+
+	vector<Point2f>::iterator it;
+	for (it = bubble_locations.begin(); it != bubble_locations.end(); it++) {
+	
+		Point refined_location = myClassifier.bubble_align(segment, *it);
+		bubble_val current_bubble = myClassifier.classifyBubble(segment, refined_location);
+		retvals.push_back(current_bubble);
+		
+		#if DEBUG > 0
+		Scalar color(0, 0, 0);
+		switch(current_bubble){
+			case EMPTY_BUBBLE:
+				color = Scalar(0, 0, 255);
+				break;
+			case PARTIAL_BUBBLE:
+				color = Scalar(255, 0, 255);
+				break;
+			case FILLED_BUBBLE:
+				color = Scalar(255, 0, 0);
+				break;
+		}
+		rectangle(dbg_out, (*it)-Point2f(EXAMPLE_WIDTH/2,EXAMPLE_HEIGHT/2),
+			(*it)+Point2f(EXAMPLE_WIDTH/2,EXAMPLE_HEIGHT/2), color);
+		circle(dbg_out, refined_location, 1, Scalar(255, 2555, 255), -1);
+		#endif
+	}
+
+	#if DEBUG > 0
+	string directory = "debug_segment_images";
+	directory.append("/");
+	string segfilename = namer.get_unique_name("marked_");
+	segfilename.append(".jpg");
+	imwrite(directory+segfilename, dbg_out);
+	#endif
+
+	return retvals;
+}
 
 //TODO:	1. Ged rid of the bubble/segment-offsets files and start reading from template_filename.
 //		2. Remove the weight arguement and make a setter function for adjusting different parameters.
 //		   I'm not sure how the organize the parameters for the aligmener and classifier, I guess they should
 //		   all go in the same file.
-vector< vector<bubble_val> > ProcessImage(string &imagefilename, string &template_filename) {
+vector< vector<bubble_val> > ProcessImage(string &imagefilename, string &template_filename, PCA_classifier& myClassifier) {
 	#if DEBUG > 0
 	cout << "debug level is: " << DEBUG << endl;
 	#endif
@@ -91,72 +151,10 @@ vector< vector<bubble_val> > ProcessImage(string &imagefilename, string &templat
 		cout << "aligning segment" << endl;
 		#endif
 		align_image(segment, aligned_segment, aligned_segment.size());
-		segment_results.push_back(processSegment(aligned_segment, buboffsetfile));
+		segment_results.push_back(processSegment(aligned_segment, buboffsetfile, myClassifier));
 	}
 
 	return segment_results;
-}
-
-vector<bubble_val> processSegment(Mat &segment, string bubble_offsets) {
-	vector<Point2f> bubble_locations;
-	vector<bubble_val> retvals;
-	string line;
-	float bubx, buby;
-	ifstream offsets(bubble_offsets.c_str());
-	
-	#if DEBUG > 0
-	Mat dbg_out;
-	cvtColor(segment, dbg_out, CV_GRAY2RGB);
-	#endif
-	
-	if (offsets.is_open()) {
-		while (getline(offsets, line)) {
-			if (line.size() > 2) {
-				stringstream ss(line);
-
-				ss >> bubx;
-				ss >> buby;
-				Point2f bubble(bubx * SCALEPARAM, buby * SCALEPARAM);
-				bubble_locations.push_back(bubble);
-			}
-		}
-	}
-
-	vector<Point2f>::iterator it;
-	for (it = bubble_locations.begin(); it != bubble_locations.end(); it++) {
-	
-		Point refined_location = bubble_align(segment, *it);
-		bubble_val current_bubble = classifyBubble(segment, refined_location);
-		retvals.push_back(current_bubble);
-		
-		#if DEBUG > 0
-		Scalar color(0, 0, 0);
-		switch(current_bubble){
-			case EMPTY_BUBBLE:
-				color = Scalar(0, 0, 255);
-				break;
-			case PARTIAL_BUBBLE:
-				color = Scalar(255, 0, 255);
-				break;
-			case FILLED_BUBBLE:
-				color = Scalar(255, 0, 0);
-				break;
-		}
-		rectangle(dbg_out, (*it)-Point2f(EXAMPLE_WIDTH/2,EXAMPLE_HEIGHT/2),
-			(*it)+Point2f(EXAMPLE_WIDTH/2,EXAMPLE_HEIGHT/2), color);
-		circle(dbg_out, refined_location, 1, Scalar(255, 2555, 255), -1);
-		#endif
-	}
-
-	#if DEBUG > 0
-	string directory = "debug_segment_images";
-	directory.append("/");
-	string segfilename = namer.get_unique_name("marked_");
-	segfilename.append(".jpg");
-	imwrite(directory+segfilename, dbg_out);
-	#endif
-
-	return retvals;
 }
 
 Mat getSegmentMat(Mat &img, Point2f &corner) {
