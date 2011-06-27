@@ -18,6 +18,7 @@
 //   it won't give an error.
 #define USE_GET_RECT_SUB_PIX
 
+#define FLIP_EXAMPLES
 
 //TestSuite.h will be the file that defines this:
 #ifdef USE_ANDROID_HEADERS_AND_IO
@@ -93,6 +94,21 @@ void PCA_classifier::PCA_set_add(Mat& PCA_set, Mat& img) {
 //Loads a image with the specified filename and adds it to the PCA set.
 //Classifications are inferred from the filename and added to training_bubble_values.
 void PCA_classifier::PCA_set_add(Mat& PCA_set, string& filename) {
+	//Infer classification
+	bubble_val classification;
+	if( filename.find("filled") != string::npos ) {
+		classification = FILLED_BUBBLE;
+	}
+	else if( filename.find("partial") != string::npos ) {
+		classification = PARTIAL_BUBBLE;
+	}
+	else if( filename.find("empty") != string::npos ) {
+		classification = EMPTY_BUBBLE;
+	}
+	else{
+		return;
+	}
+	//Add example to PCA_set
 	Mat example = imread(filename, 0);
 	if (example.data == NULL) {
         cout << "could not read " << filename << endl;
@@ -108,16 +124,16 @@ void PCA_classifier::PCA_set_add(Mat& PCA_set, string& filename) {
 	#endif
 	
 	PCA_set_add(PCA_set, aptly_sized_example);
-	if( filename.find("filled") != string::npos ) {
-		training_bubble_values.push_back(FILLED_BUBBLE);
+	training_bubble_values.push_back(classification);
+	
+	#ifdef FLIP_EXAMPLES
+	for(size_t i = 0; i < 4; i++){
+		Mat temp;
+		flip(aptly_sized_example, temp, i);
+		PCA_set_add(PCA_set, temp);
+		training_bubble_values.push_back(classification);
 	}
-	else if( filename.find("partial") != string::npos ) {
-		training_bubble_values.push_back(PARTIAL_BUBBLE);
-
-	}
-	else if( filename.find("empty") != string::npos ) {
-		training_bubble_values.push_back(EMPTY_BUBBLE);
-	}
+	#endif
 }
 //This trains the PCA classifer by query.
 //A predicate can be supplied for filtering out undesireable filenames

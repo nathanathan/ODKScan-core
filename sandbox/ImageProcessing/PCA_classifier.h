@@ -31,7 +31,7 @@ bool returnTrue(Tp& filename){
 class PCA_classifier
 {
 	cv::Mat comparison_vectors;
-	vector <bubble_val> training_bubble_values;
+	std::vector <bubble_val> training_bubble_values;
 	cv::PCA my_PCA;
 	
 	cv::Point search_window;
@@ -47,7 +47,7 @@ class PCA_classifier
 		void set_weight(bubble_val classification, float weight);
 		void set_search_window(cv::Point sw);
 		double rateBubble(cv::Mat& det_img_gray, cv::Point bubble_location);
-		void train_PCA_classifier(bool (*pred)(string& filename) = &returnTrue);
+		void train_PCA_classifier(bool (*pred)(std::string& filename) = &returnTrue);
 		cv::Point bubble_align(cv::Mat& det_img_gray, cv::Point bubble_location);
 		bubble_val classifyBubble(cv::Mat& det_img_gray, cv::Point bubble_location);
 		virtual ~PCA_classifier() {
@@ -57,7 +57,7 @@ class PCA_classifier
 	private:
 		void update_gaussian_weights();
 		void PCA_set_add(cv::Mat& PCA_set, cv::Mat& img);
-		void PCA_set_add(cv::Mat& PCA_set, string& filename);
+		void PCA_set_add(cv::Mat& PCA_set, std::string& filename);
 };
 
 #endif
