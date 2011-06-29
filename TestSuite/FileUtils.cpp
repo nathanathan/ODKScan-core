@@ -41,7 +41,7 @@ int CrawlFileTree(char* rootdir, vector<string> &filenames) {
 		// and return an error.
 		return 0;
 	}
-	if (!S_ISDIR(rootstat.st_mode)) {
+	if (!S_ISDIR(rootstat.st_mode) && !S_ISLNK(rootstat.st_mode)) {
 		// It isn't a directory, so give up.
 		return 0;
 	}
