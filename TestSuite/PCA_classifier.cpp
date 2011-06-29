@@ -31,7 +31,7 @@
 	
 	#include "highgui.h"
 
-	#define TRAINING_EXAMPLE_DIRECTORY "../assets/training_examples"
+	#define TRAINING_EXAMPLE_DIRECTORY "training_examples"
 
 	#define OUTPUT_BUBBLE_IMAGES
 	#define OUTPUT_EXAMPLES
