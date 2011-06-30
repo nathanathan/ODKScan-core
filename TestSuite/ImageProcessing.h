@@ -1,17 +1,28 @@
 /*
- * Header file for image processing functions.
- */
+Header file for image processing functions.
+*/
+
 #ifndef IMAGEPROCESSING_H
 #define IMAGEPROCESSING_H
 
 #include <string>
-#include "PCA_classifier.h"
 
-// takes a filename and processes the entire image for bubbles
-vector< vector<bubble_val> > ProcessImage(std::string &imagefilename, std::string &bubblefilename, PCA_classifier &myClassifier);
+class Processor{
+	public:
+		Processor(std::string &templatePath);
+		virtual ~Processor();
+		
+		//These two probably don't need to be exposed except for in the testing suite
+		bool trainClassifier();
+		void setClassifierWeight(float weight);
+		
+		bool loadForm(std::string &imagePath);
+		//Maybe instead of exposing alignForm I should just expose a method
+		//for finding and displaying the contour.
+		bool alignForm();
+		bool processForm(std::string &outPath);
+	private:
+};
 
-// takes a filename and JSON spec and looks for bubbles according
-// to locations coded in the JSON
-// int ProcessImage(string image, JSON_OBJ json);
 
 #endif
