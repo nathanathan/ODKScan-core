@@ -64,9 +64,7 @@ void PCA_classifier::update_gaussian_weights(){
 	gaussian_weights = temp_max - temp + .001;//.001 is to avoid roundoff problems, it might not be necessiary.
 }
 PCA_classifier::PCA_classifier() {
-	search_window = Point(6, 8);
 	weights = (Mat_<float>(3,1) << 1, 1, 1);
-	update_gaussian_weights();
 }
 
 void PCA_classifier::set_weight(bubble_val classification, float weight) {
@@ -115,7 +113,7 @@ void PCA_classifier::PCA_set_add(Mat& PCA_set, string& filename) {
         return;
     }
     Mat aptly_sized_example;
-	resize(example, aptly_sized_example, Size(EXAMPLE_WIDTH, EXAMPLE_HEIGHT), INTER_CUBIC);
+	resize(example, aptly_sized_example, Size(exampleSize.width, exampleSize.height), INTER_CUBIC);
 
 	#ifdef OUTPUT_EXAMPLES
 	string outfilename = exampleNamer.get_unique_name("bubble_");
@@ -137,7 +135,12 @@ void PCA_classifier::PCA_set_add(Mat& PCA_set, string& filename) {
 }
 //This trains the PCA classifer by query.
 //A predicate can be supplied for filtering out undesireable filenames
-void PCA_classifier::train_PCA_classifier(bool (*pred)(string&)) {
+void PCA_classifier::train_PCA_classifier(Size myExampleSize, bool (*pred)(string&)) {
+	//TODO: Put this in an initializer
+	exampleSize = myExampleSize;
+	search_window = Point(myExampleSize.width, myExampleSize.height);
+	update_gaussian_weights();
+	
 	vector<string> filenames;
 	string training_examples(TRAINING_EXAMPLE_DIRECTORY);
 	CrawlFileTree(training_examples, filenames);
@@ -159,10 +162,10 @@ double PCA_classifier::rateBubble(Mat& det_img_gray, Point bubble_location) {
     Mat query_pixels, pca_components;
     
     #ifdef USE_GET_RECT_SUB_PIX
-	getRectSubPix(det_img_gray, Size(EXAMPLE_WIDTH, EXAMPLE_HEIGHT), bubble_location, query_pixels);
+	getRectSubPix(det_img_gray, Size(exampleSize.width, exampleSize.height), bubble_location, query_pixels);
 	query_pixels.reshape(0,1).convertTo(query_pixels, CV_32F);
 	#else
-	det_img_gray(Rect(bubble_location-Point(EXAMPLE_WIDTH/2, EXAMPLE_HEIGHT/2), Size(EXAMPLE_WIDTH, EXAMPLE_HEIGHT))).convertTo(query_pixels, CV_32F);
+	det_img_gray(Rect(bubble_location-Point(exampleSize.width/2, exampleSize.height/2), Size(exampleSize.width, exampleSize.height))).convertTo(query_pixels, CV_32F);
 	query_pixels = query_pixels.reshape(0,1);
 	#endif
 	
@@ -197,9 +200,9 @@ bubble_val PCA_classifier::classifyBubble(Mat& det_img_gray, Point bubble_locati
 	Mat query_pixels;
 
     #ifdef USE_GET_RECT_SUB_PIX
-	getRectSubPix(det_img_gray, Size(EXAMPLE_WIDTH, EXAMPLE_HEIGHT), bubble_location, query_pixels);
+	getRectSubPix(det_img_gray, Size(exampleSize.width, exampleSize.height), bubble_location, query_pixels);
 	#else
-	query_pixels = det_img_gray(Rect(bubble_location-Point(EXAMPLE_WIDTH/2, EXAMPLE_HEIGHT/2), Size(EXAMPLE_WIDTH, EXAMPLE_HEIGHT)));
+	query_pixels = det_img_gray(Rect(bubble_location-Point(exampleSize.width/2, exampleSize.height/2), Size(exampleSize.width, exampleSize.height)));
 	#endif
 	
 	#ifdef OUTPUT_BUBBLE_IMAGES
