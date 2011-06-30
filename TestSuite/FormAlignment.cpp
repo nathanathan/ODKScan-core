@@ -10,7 +10,7 @@
 #include "highgui.h"
 #endif
 
-#define DEBUG_ALIGN_IMAGE 0
+#define DEBUG_ALIGN_IMAGE 1
 
 #if DEBUG_ALIGN_IMAGE > 0
 #include "NameGenerator.h"
@@ -25,6 +25,8 @@ NameGenerator alignmentNamer("debug_segment_images/");
 //image_align constants
 #define THRESH_OFFSET_LB -.3
 #define THRESH_DECR_SIZE .05
+
+#define EXPANSION_PERCENTAGE 0
 
 using namespace cv;
 
@@ -94,6 +96,7 @@ void find_bounding_lines(Mat& img, int* upper, int* lower, bool vertical) {
 	*upper = min_location_top.y;
 	*lower = min_location_bottom.y + out.rows/2 + center_size;
 }
+/*
 //Find the largest simplified contour
 float findRectContour(Mat& img, vector<Point>& maxRect){
 	vector < vector<Point> > contours;
@@ -119,7 +122,7 @@ float findRectContour(Mat& img, vector<Point>& maxRect){
 		}
 	}
 	return maxContourArea;
-}
+}*/
 
 // Try to find the maximum quad (4 point contour) in a convex contour of many points.
 // if none is found maxQuad will not be altered.
@@ -137,7 +140,7 @@ float findMaxQuad(vector <Point>& contour, vector<Point>& maxQuad, float current
 			maxQuad = approx;
 			prev_area = area;
 			area = fabs(contourArea(Mat(approx)));
-			if( area < prev_area ) {
+			if( area <= prev_area ) {
 				break;
 			}
 		}
@@ -174,19 +177,21 @@ Mat getMyTransform(vector<Point>& foundCorners, Size init_image_sz, Size out_ima
 							Point2f(out_image_sz.width, out_image_sz.height)};
 
 	configCornerArray(foundCorners, corners_a);
-	expandCorners(corners_a, .01);
+	expandCorners(corners_a, EXPANSION_PERCENTAGE);
 	return getPerspectiveTransform(corners_a, out_corners);
 }
 // This function looks for a large rectangle in img.
 // If it finds one it transforms that rectangle so that it fits into aligned_image.
-void align_image(Mat& img, Mat& aligned_image, Size aligned_image_sz){
+//TODO: The blurSize param is sort of a hacky solution to the problem of contours being too large
+//		in certain cases. It fixes the problem on some form images because they can be blurred a lot
+//		and produce good results for contour finding. This is not the case with segments.
+//		I think a better solution might be to alter maxQuad somehow... I haven't figured out how though.
+//TODO: I'm going to need to do some prototyping with this code, and I think it will help to have separate
+//		functions for aligning segments and forms even if they are just wrappers for the same function.
+void align_image(Mat& img, Mat& aligned_image, Size aligned_image_sz, int blurSize){
 	Mat imgThresh, temp_img, temp_img2;
 	
-	//Make a smaller image to find contours in because we don't need to be
-	//very accurate at this stage.
-	//TODO: carefully examine this. There seems to be a tendancy to cut off the bottom right
-	//		corner and I think it might have something to do with the scaling of the contours.
-	int multiple = img.cols / 256;	
+	int multiple = img.cols / 256;
 	if(multiple > 1){
 		resize(img, temp_img, Size(img.cols/multiple, img.rows/multiple));
 	}
@@ -195,19 +200,41 @@ void align_image(Mat& img, Mat& aligned_image, Size aligned_image_sz){
 		img.copyTo(temp_img);
 	}
 	
+	float actual_width_multiple = float(img.rows) / temp_img.rows;
+	float actual_height_multiple = float(img.cols) / temp_img.cols;
+	
 	temp_img.copyTo(temp_img2);
-	blur(temp_img2, temp_img, Size(5, 5));
+	blur(temp_img2, temp_img, Size(2*blurSize+1, 2*blurSize+1));
+	//This threshold might be tweakable
 	imgThresh = temp_img2 - temp_img > 0;
+	
+	#if DEBUG_ALIGN_IMAGE > 0
+	Mat dbg_out;
+	imgThresh.copyTo(dbg_out);
+	string segfilename = alignmentNamer.get_unique_name("alignment_debug_");
+	segfilename.append(".jpg");
+	imwrite(segfilename, dbg_out);
+	#endif
 	
 	vector<Point> maxRect;
 	findRectContour(imgThresh, maxRect, 0);
 	imgThresh.release();
+	
 	//Resize the contours for the full size image:
 	for(size_t i = 0; i<maxRect.size(); i++){
-		maxRect[i] *= multiple;
+		maxRect[i] = Point(actual_width_multiple * maxRect[i].x, actual_height_multiple * maxRect[i].y);
 	}
 	
 	if ( maxRect.size() == 4 && isContourConvex(Mat(maxRect)) ){
+		#if DEBUG_ALIGN_IMAGE > 0
+		cvtColor(img, dbg_out, CV_GRAY2RGB);
+		const Point* p = &maxRect[0];
+		int n = (int) maxRect.size();
+		polylines(dbg_out, &p, &n, 1, true, 200, 2, CV_AA);
+		string segfilename = alignmentNamer.get_unique_name("alignment_debug_");
+		segfilename.append(".jpg");
+		imwrite(segfilename, dbg_out);
+		#endif
 		Mat H = getMyTransform(maxRect, img.size(), aligned_image_sz);
 		warpPerspective(img, aligned_image, H, aligned_image_sz);
 	}
@@ -247,6 +274,23 @@ void align_image(Mat& img, Mat& aligned_image, Size aligned_image_sz){
 		}
 	}
 }
+//Aligns a image of a form.
+void alignFormImage(Mat& img, Mat& aligned_image, Size aligned_image_sz, int blurSize){
+	align_image(img, aligned_image, aligned_image_sz, blurSize);
+	//Find where the content begins:
+	//Add a parameters to set the expected locations and search radius
+	//Also consider weighting this...
+	//find_bounding_lines(Mat& img, int* upper, int* lower, bool vertical);
+	//Once you have the content rectangle crop. Possibly resize (which will hurt performance)
+	//It might help to have a content rectangle in the JSON (which should indicate where the ink starts).
+}
+//Aligns a region bounded by black lines (i.e. a bubble segment)
+//It might be necessiary for some of the black lines to touch the edge of the image...
+//TODO: see if that's the case, and try to do something about it if it is.
+void alignBoundedRegion(Mat& img, Mat& aligned_image, Size aligned_image_sz){
+	return;
+}
+
 //DEPRECATED
 //A form straitening method based on finding the corners of the sheet of form paper.
 //The form will be resized to the size of output_image.

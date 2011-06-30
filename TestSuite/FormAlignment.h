@@ -9,7 +9,7 @@
 #include "cv.h"
 #endif
 
-void align_image(cv::Mat& img, cv::Mat& aligned_image, cv::Size aligned_image_sz);
+void align_image(cv::Mat& img, cv::Mat& aligned_image, cv::Size aligned_image_sz, int blurSize = 2);
 void straightenImage(const cv::Mat& input_image, cv::Mat& output_image);
 
 #endif
