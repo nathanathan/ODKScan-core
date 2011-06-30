@@ -1,0 +1,6 @@
+This is a testing suite for the form scanning procedure.
+You will need to provide your own form images in a "form_images" folder.
+In order to generate plots you will have to install [R] the statisical programming language.
+The formAlignment PCA_classifier and nameGenerator files can be swapped with those in the jni directory (so long as their header remains intact.)
+
+More to come as the suite develops...
