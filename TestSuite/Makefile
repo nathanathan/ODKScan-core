@@ -7,7 +7,7 @@ JSON_PARSER_OBJS := ${JSON_PARSER_SRCS:.cpp=.o}
 INCLUDES := `pkg-config opencv --cflags --libs` -I../jsoncpp-src-0.5.0/include
 
 run: suite $(SRCS) NameGenerator.h configuration.h
-	#In the future this directory stuff should be done in code.
+#In the future this directory stuff should be done in code.
 	@rm -rf debug_segment_images
 	@mkdir debug_segment_images
 	@rm -rf bubble_images
