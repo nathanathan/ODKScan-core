@@ -1,13 +1,25 @@
+#ifdef USE_ANDROID_HEADERS_AND_IO
+// Some of the headers probably aren't needed:
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui_c.h>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc_c.h>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/legacy/compat.hpp>
+const char* const alignedImageOutputPath = "/sdcard/mScan/preview.jpg";
+#else
 #include "cv.h"
 #include "highgui.h"
 #include <json/json.h>
+const char* const alignedImageOutputPath = "last_straightened_form.jpg";
+#endif
 
 #include <vector>
 #include <string>
 #include <iostream>
 #include <fstream>
 
-#include "ImageProcessing.h"
+#include "Processor.h"
 #include "PCA_classifier.h"
 #include "FormAlignment.h"
 
@@ -29,7 +41,9 @@
 // TODO: This should probably be put into a separate program eventually
 //#define OUTPUT_MINIMAL_TEMPLATE
 
-#define DEBUG 1
+#define DEBUG 0
+
+#define OUTPUT_SEGMENT_IMAGES
 
 #ifdef OUTPUT_MINIMAL_TEMPLATE
 Json::Value outRoot;
@@ -50,7 +64,7 @@ Json::Value classifySegment(const Json::Value &bubbleLocations, Mat &segment){
 	cout << "finding bubbles" << endl;
 	#endif
 	
-	#if DEBUG > 0
+	#ifdef OUTPUT_SEGMENT_IMAGES
 	//TODO: This should become perminant functionality.
 	//		My idea is to have Java code that displays segment images as the form is being processed.
 	Mat dbg_out;
@@ -65,7 +79,7 @@ Json::Value classifySegment(const Json::Value &bubbleLocations, Mat &segment){
 		bubble_val current_bubble = classifier.classifyBubble(segment, refined_location);
 		bubble_vals.append(Json::Value(current_bubble > NUM_BUBBLE_VALS/2));
 		
-		#if DEBUG > 0
+		#ifdef OUTPUT_SEGMENT_IMAGES
 		Scalar color(0, 0, 0);
 		switch(current_bubble) {
 			case EMPTY_BUBBLE:
@@ -86,7 +100,7 @@ Json::Value classifySegment(const Json::Value &bubbleLocations, Mat &segment){
 		#endif
 	}
 
-	#if DEBUG > 0
+	#ifdef OUTPUT_SEGMENT_IMAGES
 	string segfilename = namer.get_unique_name("marked_");
 	segfilename.append(".jpg");
 	imwrite(segfilename, dbg_out);
@@ -114,7 +128,7 @@ void getAlignedSegment(const Json::Value &segmentTemplate, Mat &alignedSegment) 
 	Mat segment_img = formImage(Rect(SCALEPARAM * (seg_loc - SEGMENT_BUFFER * Point(seg_width, seg_height)),
 										Size(SCALEPARAM * seg_width * (SEGMENT_BUFFER * 2 + 1),
 											 SCALEPARAM * seg_height * (SEGMENT_BUFFER * 2 + 1))));
-	alignedSegment = Mat(1, 1, CV_8U);
+	alignedSegment = Mat(0, 0, CV_8U);
 	align_image(segment_img, alignedSegment, Size(SCALEPARAM * seg_width, SCALEPARAM *  seg_height));
 }
 
@@ -177,15 +191,13 @@ bool Processor::alignForm(){
 	#if DEBUG > 0
 	cout << "straightening image" << endl;
 	#endif
-	Mat straightenedImage(1, 1, CV_8U); //Can this be 0,0?
+	Mat straightenedImage(0, 0, CV_8U);
 
 	align_image(formImage, straightenedImage, Size(form_width * SCALEPARAM, form_height * SCALEPARAM), 12);
 	formImage = straightenedImage;
-	#if DEBUG > 0
-	cout << "writing to output image" << endl;
-	imwrite( "last_straightened_form.jpg", formImage);
-	#endif
-	return true;
+	
+	
+	return imwrite(alignedImageOutputPath, formImage);
 }
 
 bool Processor::processForm(string &outputPath) {
@@ -203,11 +215,11 @@ bool Processor::processForm(string &outputPath) {
 		
 		segmentJsonOut["key"] = segmentTemplate.get("key", -1);
 		
-		
+		Json::Value bubbleLocations = segmentTemplate["bubble_locations"];
+		/*
 		//TODO: The following section is kind of an auxiliry thing reading in templates in unusual ways.
 		//		It should probably be somewhere else and it probably won't be used much eventually.
 		//		I think that eventually I will make a tool to generating/cleaning templates and this will be a part of that.
-		Json::Value bubbleLocations = segmentTemplate["bubble_locations"];
 		if(!bubbleLocations){		
 			string line;
 			float bubx, buby;
@@ -229,7 +241,7 @@ bool Processor::processForm(string &outputPath) {
 					}
 				}
 			}
-		}/*
+		}
 		else{
 			for (size_t i = 0; i < bubbleLocations.size(); i++) {
 				Point bubbleLocation(bubbleLocations[i][0u].asInt() * SCALEPARAM * 68 / 200,
