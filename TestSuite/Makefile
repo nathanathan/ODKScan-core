@@ -1,5 +1,5 @@
 #A very helpful source: http://stackoverflow.com/questions/5799820/makefile-and-c-project
-MY_SRCS := test_ImageProcessing.cpp ImageProcessing.cpp PCA_classifier.cpp FormAlignment.cpp FileUtils.cpp
+MY_SRCS := test_ImageProcessing.cpp Processor.cpp PCA_classifier.cpp FormAlignment.cpp FileUtils.cpp
 MY_OBJS := ${MY_SRCS:.cpp=.o}
 JSON_PARSER_SRCS := $(wildcard ../jsoncpp-src-0.5.0/src/lib_json/*.cpp)
 JSON_PARSER_OBJS := ${JSON_PARSER_SRCS:.cpp=.o}
