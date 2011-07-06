@@ -21,9 +21,7 @@ public class DisplayProcessedForm extends Activity {
 	TextView text;
 	Button data;
 	Bitmap bm;
-	String dir = "/sdcard/BubbleBot/processedImages/";
-	
-	//TODO: Find a way to get the relevant filename
+	String dir = "/sdcard/mScan/";
 	String filename = "";
 	
 	// Set up the UI and load the processed image
@@ -42,16 +40,18 @@ public class DisplayProcessedForm extends Activity {
        text.setText("Displaying " + dir + filename);
        
        image = (ImageView) findViewById(R.id.image);
-       bm = BitmapFactory.decodeFile(dir + filename);
-       image.setImageBitmap(bm);
+       
+       //TODO: Show something impressive here.
+       //bm = BitmapFactory.decodeFile(dir + filename);
+       //image.setImageBitmap(bm);
        
        data = (Button) findViewById(R.id.button);
        data.setOnClickListener(new View.OnClickListener() {
 	       public void onClick(View v) {
 	    	   //Find a way to pass in the relevant filename - displaying a set image for now
 	    	   Intent intent = new Intent(getApplication(), DisplayProcessedData.class);
-	    	   String fname = (filename.substring(0,filename.length()-4));
-	    	   intent.putExtra("file", fname);
+	    	   //String fname = (filename.substring(0,filename.length()-4));
+	    	   //intent.putExtra("file", fname);
    			   startActivity(intent); 
 	       }
 	    });

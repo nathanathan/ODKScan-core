@@ -103,13 +103,15 @@ public class BubbleCollect extends Activity implements SensorEventListener,
 	// This is a callback function that is called by the NativePreviewer component when
 	// the JPEG image of the photo is saved
 	public void OnPictureSaved(String filename) {
+		//Can I add something here that will stop the
+		//native previewer exactly when the picture is taken?
 		double timeTaken = (double) (new Date().getTime() - mTakePictureTime) / 1000;
 		Log.i("BubbleCollect",
 				"Take photo elapsed time:" + String.format("%.2f", timeTaken));
 		// Start activity to handle actions after taking photo
 		Intent intent = new Intent(getApplication(), AfterPhotoTaken.class);
 		intent.putExtra("file", filename);
-		Log.i("BubbleCollect", "Starting AfterPhotoTaken activity with "
+		Log.i("BubbleCollect", "Starting BubbleProcess activity with "
 				+ filename + "...");
 		startActivity(intent);
 		finish();

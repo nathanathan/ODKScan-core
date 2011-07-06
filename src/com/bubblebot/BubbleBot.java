@@ -1,10 +1,15 @@
 package com.bubblebot;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 
@@ -22,13 +27,16 @@ public class BubbleBot extends Activity {
        setContentView(R.layout.bubble_bot); // Setup the UI
        
        // Set up directories if they do not exist
-       File dir = new File("/sdcard/BubbleBot/capturedImages");
+       File dir = new File("/sdcard/mScan");
        dir.mkdirs();
-       dir = new File("/sdcard/BubbleBot/processedImages");
-       dir.mkdirs();
-       dir = new File("/sdcard/BubbleBot/processedText");
-       dir.mkdirs();
-
+	   try {
+		//extractAssets("", "/sdcard/mScan/");
+		extractAssets("form_templates", "/sdcard/mScan/form_templates");
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			Log.i("Nathan", "ERROR");
+		}
        
        // Hook up handler for scan form button
        Button scanForm = (Button) findViewById(R.id.ScanButton);
@@ -57,7 +65,55 @@ public class BubbleBot extends Activity {
            }
        });
 	}
-
+	/*
+	protected void extractAssets(String assetsBaseDir, String outputPath) throws IOException{
+		String[] assets = getAssets().list(assetsBaseDir);
+		Log.i("Nathan", assetsBaseDir);
+		Log.i("Nathan", outputPath);
+		for(int i = 0; i < assets.length; i++){
+			File localCopy = new File(outputPath + assets[i]);
+			File assetCopy = new File("file:///android_asset/" + assetsBaseDir + assets[i]);
+			Log.i("Nathan", ""+ getAssets().list(assetsBaseDir + assets[i]).length);
+			Log.i("Nathan", "test: " + assetCopy.isDirectory());
+			if(!assetCopy.isDirectory()){
+				//Log.i("Nathan", assetsBaseDir + assets[i]);
+				//Log.i("Nathan", "" + getAssets().list(assetsBaseDir + assets[i]).length);
+				if(!localCopy.exists()) {
+					copyAsset(assetsBaseDir + assets[i], outputPath + assets[i]);
+				}
+			}
+			else{
+				 localCopy.mkdirs();
+				 extractAssets(assetsBaseDir + assets[i] + "/", outputPath + assets[i] + "/");
+			}
+		}
+	}*/
+	protected void extractAssets(String assetsDir, String outputPath) throws IOException{
+		String[] assets = getAssets().list(assetsDir);
+		for(int i = 0; i < assets.length; i++){
+			if(getAssets().list(assetsDir + "/" + assets[i]).length == 0){
+				copyAsset(assetsDir + "/" + assets[i], outputPath + "/" + assets[i]);
+			}
+		}
+	}
+	protected void copyAsset(String assetLoc, String outputLoc) throws IOException{
+		//Log.i("Nathan", "copy from " + assetLoc + " to " + outputLoc);
+		InputStream fis = getAssets().open(assetLoc);
+		File trainingExampleFile = new File(outputLoc);
+		trainingExampleFile.createNewFile();
+		FileOutputStream fos = new FileOutputStream(trainingExampleFile);
+		
+		// Transfer bytes from in to out
+		byte[] buf = new byte[1024];
+		int len;
+		while ((len = fis.read(buf)) > 0) {
+		    fos.write(buf, 0, len);
+		}
+		
+		fos.close();
+		fis.close();
+	}
+	
 	@Override
 	protected void onPause() {
 		super.onPause();

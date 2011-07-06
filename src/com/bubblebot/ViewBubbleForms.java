@@ -26,7 +26,7 @@ public class ViewBubbleForms extends Activity {
 		setContentView(R.layout.view_bubble_forms);
 		LinearLayout layout = (LinearLayout) findViewById(R.id.ViewFormsLayout);
 		
-		File dir = new File("/sdcard/BubbleBot/capturedImages");		
+		File dir = new File("/sdcard/mScan");		
 		final String [] filenames = dir.list(new FilenameFilter() {
 			public boolean accept (File dir, String name) {
 				if (new File(dir,name).isDirectory())

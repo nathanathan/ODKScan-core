@@ -8,16 +8,14 @@ import com.bubblebot.jni.Processor;
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
 import android.widget.Button;
-import android.widget.ImageView;
 import android.widget.TextView;
-
 
 /* AfterPhotoTaken activity
  * 
@@ -25,15 +23,19 @@ import android.widget.TextView;
  * let the user decides whether to retake the photo or process the form.
  */
 public class AfterPhotoTaken extends Activity {
+	boolean debugMode;
 	TextView text;
 	Button retake;
 	Button process;
-	String capturedDir = "/sdcard/BubbleBot/capturedImages/";
-	String processedDir = "/sdcard/BubbleBot/processedImages/";
-	String tempjpg = "/sdcard/BubbleBot/preview.jpg";
+	//This is hard coded into the native previewer.
+	//Ideally this string should be defined once in the strings xml file 
+	String capturedDir;
+	String alignmentOutputImage;
+	String processedDir = "/sdcard/mScan/processedImages/";
 	String photoFilename = "";
-
-	private final Processor mProcessor = new Processor();
+	
+	private final Processor mProcessor = new Processor("/sdcard/mScan/form_templates/unbounded_form_shreddr_w_fields.json");
+	
 	private DetectOutlineTask task;
 
 	/* DetectOutlineTask is an async task that displays a progress
@@ -80,10 +82,26 @@ public class AfterPhotoTaken extends Activity {
 					"Detect outline elapsed time:"
 							+ String.format("%.2f", timeTaken));
 			dialog.dismiss();
-			if (detectResult) {
-				ImageView image = (ImageView)parent.findViewById(R.id.image);
-				Bitmap bm = BitmapFactory.decodeFile(tempjpg);
-				image.setImageBitmap(bm);
+			
+			if ( detectResult) {
+				// Using WebView to display the straightened form image.
+				WebView myWebView = (WebView)findViewById(R.id.webview);
+				//full.getSettings().setCacheMode(WebSettings.LOAD_NO_CACHE);
+				myWebView.getSettings().setBuiltInZoomControls(true);
+				myWebView.setVerticalScrollbarOverlay(false);
+				
+				// HTML is used to display the image.
+				// Appending the time stamp to the filename is a hack
+				// to prevent caching.
+				String html = new String();
+				html = ( "<body bgcolor=\"Black\"><center>" +
+							"<img src=\"file:///" + alignmentOutputImage + "?" + new Date().getTime() + "\" width=\"200\" >" +
+						"</center></body>");
+				       
+				// Finally, display the content using WebView
+				myWebView.loadDataWithBaseURL("file:////sdcard/BubbleBot/",
+										 html, "text/html", "utf-8", "");
+				
 				Button btProcess = (Button)parent.findViewById(R.id.process_button);
 				btProcess.setEnabled(true);
 			}
@@ -91,13 +109,21 @@ public class AfterPhotoTaken extends Activity {
 			{
 				text.setText(R.string.DetectFormFailed);
 			}
+			
 			text.setVisibility(TextView.VISIBLE);
 		}
 
 		// Run the C++ code that detects the form in the photo
 		@Override
 		protected Void doInBackground(Void... arg) {
-			detectResult = mProcessor.DetectOutline(imageFilename);
+			Log.i("Nathan","Loading: " + capturedDir + imageFilename + ".jpg");
+			if(mProcessor.loadForm(capturedDir + imageFilename + ".jpg")){
+				detectResult = mProcessor.alignForm(alignmentOutputImage);
+				Log.i("Nathan","aligned");
+			}
+			else{
+				Log.i("Nathan","FAILED TO LOAD IMAGE.");
+			}
 			return null;
 		}
 	}
@@ -111,11 +137,19 @@ public class AfterPhotoTaken extends Activity {
 		Bundle extras = getIntent().getExtras();
 		if (extras != null) {
 			photoFilename = extras.getString("file");
+			debugMode = extras.getBoolean("debugMode");
 		}
+
+		//Watch out, the string resource does not update unless the project is cleaned.
+		capturedDir = getResources().getString(R.string.app_folder) + "capturedImages/";
+		alignmentOutputImage = getResources().getString(R.string.app_folder) + "preview.jpg";
+		
+		Log.i("Nathan", capturedDir + "\n" + alignmentOutputImage);
 
 		text = (TextView) findViewById(R.id.text);
 		text.setText(getResources().getString(R.string.VerifyForm, capturedDir + photoFilename));
 		text.setVisibility(TextView.INVISIBLE);
+
 		
 		// Create an async task for detecting the form in the photo
 		task = new DetectOutlineTask(this, photoFilename);
@@ -141,7 +175,8 @@ public class AfterPhotoTaken extends Activity {
 				// Start process form algorithm
 				Intent intent = new Intent(getApplication(),
 						BubbleProcess.class);
-				intent.putExtra("file", photoFilename);
+				intent.putExtra("file", "/sdcard/BubbleBot/preview.jpg");
+				//intent.putExtra("processor", mProcessor);
 				startActivity(intent);
 				finish();
 			}
@@ -154,7 +189,9 @@ public class AfterPhotoTaken extends Activity {
 	@Override
 	public void onBackPressed() {
 		super.onBackPressed();
-		deletePhotoAndDataFile();
+		if(!debugMode){
+			deletePhotoAndDataFile();
+		}
 	}
 
 	@Override

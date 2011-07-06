@@ -43,8 +43,12 @@ public class BubbleProcess extends Activity  {
             dialog.setIndeterminate(true);
             dialog.setCancelable(false);
             dialog.show();
-        }
-
+        }/*
+        @Override
+        protected void onProgressUpdate(Integer... progress){
+        	Log.i("Nathan", progress.toString());
+        }*/
+        
         // When the task completes, remove the progress dialog
         @Override
         protected void onPostExecute(Void result) {
@@ -59,14 +63,16 @@ public class BubbleProcess extends Activity  {
             // Lanuch the DisplayProcessedForm activity to display the processed form
             Intent intent = new Intent(getApplication(), DisplayProcessedForm.class);
             intent.putExtra("file", filename);
-            startActivity(intent); 
+            startActivity(intent);
         }
 
         // Run the C++ code that process the form in the photo
 		@Override
 		protected Void doInBackground(Void... arg) {
-			filename = mProcessor.ProcessForm(pictureName);
-			filename = filename + ".jpg";
+			Log.d("Nathan","PICTURE NAME: " + pictureName);
+			mProcessor.trainClassifier();
+			mProcessor.loadForm(pictureName);
+			mProcessor.processForm("sdcard/BubbleBot/output.json");
 			return null;
 		}
     }
@@ -75,7 +81,9 @@ public class BubbleProcess extends Activity  {
     private String pictureName;
     
     // The image processor (C++ component)
-	private final Processor mProcessor = new Processor();
+    // It might or might not be a good idea to pass the processor
+    // from AfterPhotoTaken to this class.
+	private final Processor mProcessor = new Processor("/sdcard/mScan/form_templates/unbounded_form_shreddr_w_fields.json");
 	
 	// An instance of the process form task
 	private ProcessFormTask mTask = null;
@@ -90,7 +98,7 @@ public class BubbleProcess extends Activity  {
 		if(extras !=null)
 	    {
 	   	   pictureName = extras.getString("file");
-	   	   pictureName = (pictureName.substring(0,pictureName.length()-4));
+	   	   //pictureName = (pictureName.substring(0,pictureName.length()-4));
 	    }
 		
 		// Create an async task for processing the form
