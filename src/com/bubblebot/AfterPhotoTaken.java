@@ -15,7 +15,7 @@ import android.view.View;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.widget.Button;
-import android.widget.TextView;
+import android.widget.Toast;
 
 /* AfterPhotoTaken activity
  * 
@@ -24,11 +24,9 @@ import android.widget.TextView;
  */
 public class AfterPhotoTaken extends Activity {
 	boolean debugMode;
-	TextView text;
 	Button retake;
 	Button process;
-	//This is hard coded into the native previewer.
-	//Ideally this string should be defined once in the strings xml file 
+	
 	String capturedDir;
 	String alignmentOutputImage;
 	String processedDir = "/sdcard/mScan/processedImages/";
@@ -83,34 +81,37 @@ public class AfterPhotoTaken extends Activity {
 							+ String.format("%.2f", timeTaken));
 			dialog.dismiss();
 			
+			CharSequence toastMessage;
 			if ( detectResult) {
 				// Using WebView to display the straightened form image.
 				WebView myWebView = (WebView)findViewById(R.id.webview);
-				//full.getSettings().setCacheMode(WebSettings.LOAD_NO_CACHE);
+				//myWebView.getSettings().setCacheMode(WebSettings.LOAD_NO_CACHE);
 				myWebView.getSettings().setBuiltInZoomControls(true);
-				myWebView.setVerticalScrollbarOverlay(false);
+				myWebView.getSettings().setDefaultZoom(WebSettings.ZoomDensity.FAR);
+				//myWebView.setVerticalScrollbarOverlay(false);
 				
 				// HTML is used to display the image.
 				// Appending the time stamp to the filename is a hack
 				// to prevent caching.
 				String html = new String();
 				html = ( "<body bgcolor=\"Black\"><center>" +
-							"<img src=\"file:///" + alignmentOutputImage + "?" + new Date().getTime() + "\" width=\"200\" >" +
+							"<img src=\"file:///" + alignmentOutputImage + "?" + new Date().getTime() + "\" width=\"500\" >" +
 						"</center></body>");
 				       
-				// Finally, display the content using WebView
 				myWebView.loadDataWithBaseURL("file:////sdcard/BubbleBot/",
 										 html, "text/html", "utf-8", "");
 				
 				Button btProcess = (Button)parent.findViewById(R.id.process_button);
 				btProcess.setEnabled(true);
+				toastMessage = getResources().getString(R.string.VerifyForm, capturedDir + photoFilename);
 			}
 			else
 			{
-				text.setText(R.string.DetectFormFailed);
+				//Untested:
+				toastMessage = getResources().getString(R.string.DetectFormFailed);
 			}
-			
-			text.setVisibility(TextView.VISIBLE);
+			Toast.makeText(getApplicationContext(), toastMessage,
+					Toast.LENGTH_SHORT).show();
 		}
 
 		// Run the C++ code that detects the form in the photo
@@ -141,14 +142,10 @@ public class AfterPhotoTaken extends Activity {
 		}
 
 		//Watch out, the string resource does not update unless the project is cleaned.
+		//Also note that the app_folder is hard coded in the Native Previewer so if the
+		//resource changes that needs to change too.
 		capturedDir = getResources().getString(R.string.app_folder) + "capturedImages/";
 		alignmentOutputImage = getResources().getString(R.string.app_folder) + "preview.jpg";
-		
-		Log.i("Nathan", capturedDir + "\n" + alignmentOutputImage);
-
-		text = (TextView) findViewById(R.id.text);
-		text.setText(getResources().getString(R.string.VerifyForm, capturedDir + photoFilename));
-		text.setVisibility(TextView.INVISIBLE);
 
 		
 		// Create an async task for detecting the form in the photo

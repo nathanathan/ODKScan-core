@@ -30,7 +30,7 @@ public class BubbleBot extends Activity {
        File dir = new File("/sdcard/mScan");
        dir.mkdirs();
 	   try {
-		//extractAssets("", "/sdcard/mScan/");
+	    extractAssets("training_examples", "/sdcard/mScan/training_examples");
 		extractAssets("form_templates", "/sdcard/mScan/form_templates");
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -65,29 +65,8 @@ public class BubbleBot extends Activity {
            }
        });
 	}
-	/*
-	protected void extractAssets(String assetsBaseDir, String outputPath) throws IOException{
-		String[] assets = getAssets().list(assetsBaseDir);
-		Log.i("Nathan", assetsBaseDir);
-		Log.i("Nathan", outputPath);
-		for(int i = 0; i < assets.length; i++){
-			File localCopy = new File(outputPath + assets[i]);
-			File assetCopy = new File("file:///android_asset/" + assetsBaseDir + assets[i]);
-			Log.i("Nathan", ""+ getAssets().list(assetsBaseDir + assets[i]).length);
-			Log.i("Nathan", "test: " + assetCopy.isDirectory());
-			if(!assetCopy.isDirectory()){
-				//Log.i("Nathan", assetsBaseDir + assets[i]);
-				//Log.i("Nathan", "" + getAssets().list(assetsBaseDir + assets[i]).length);
-				if(!localCopy.exists()) {
-					copyAsset(assetsBaseDir + assets[i], outputPath + assets[i]);
-				}
-			}
-			else{
-				 localCopy.mkdirs();
-				 extractAssets(assetsBaseDir + assets[i] + "/", outputPath + assets[i] + "/");
-			}
-		}
-	}*/
+	// This method copies the files within a given directory (with path relative to the assets folder).
+	// This does not recursively descend into subdirectories, and it might try to copy empty subdirectories.
 	protected void extractAssets(String assetsDir, String outputPath) throws IOException{
 		String[] assets = getAssets().list(assetsDir);
 		for(int i = 0; i < assets.length; i++){
