@@ -3,6 +3,7 @@
  */
 %{
 #include "Processor.h"
+
 using namespace cv;
 %}
 
@@ -19,14 +20,22 @@ import com.opencv.jni.Mat;
 /** Processor - for processing images that are stored in an image pool
 */"
 
-class Processor {
-public:
-	Processor();
-	virtual ~Processor();
-
-  	char* ProcessForm(char* filename); 
-	bool DetectOutline(char* filename, bool fIgnoreDatFile = false);
-  	void warpImage(IplImage* img, IplImage* warpImg, CvPoint * cornerPoints);
-	std::vector<cv::Point> findBubbles(IplImage* pImage);
-  	CvPoint * findLineValues(IplImage* img);
+class Processor{
+	Json::Value root;
+	cv::Mat formImage;
+	PCA_classifier classifier;
+	public:
+		Processor(const char* templatePath);
+		virtual ~Processor();
+		
+		//These two probably don't need to be exposed except for in the testing suite
+		bool trainClassifier();
+		void setClassifierWeight(float weight);
+		
+		bool loadForm(const char* imagePath);
+		bool alignForm(const char* alignedImageOutputPath);
+		bool processForm(const char* outPath);
+	private:
+		Json::Value classifySegment(const Json::Value &bubbleLocations, cv::Mat &segment);
+	 	void getAlignedSegment(const Json::Value &segmentTemplate, cv::Mat &alignedSegment);
 };
