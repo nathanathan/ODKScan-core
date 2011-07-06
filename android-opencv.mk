@@ -4,7 +4,7 @@
 #this points to the root of the opencv trunk - where the original opencv 
 #sources are - with modules 3rparty ...
 ifndef OPENCV_ROOT
-OPENCV_ROOT := /Users/nixdell/Desktop/BubbleBot/opencv
+OPENCV_ROOT := opencv
 endif
 
 #you may override this same as above
