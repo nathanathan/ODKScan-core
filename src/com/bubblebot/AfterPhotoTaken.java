@@ -111,7 +111,7 @@ public class AfterPhotoTaken extends Activity {
 				toastMessage = getResources().getString(R.string.DetectFormFailed);
 			}
 			Toast.makeText(getApplicationContext(), toastMessage,
-					Toast.LENGTH_SHORT).show();
+					Toast.LENGTH_LONG).show();
 		}
 
 		// Run the C++ code that detects the form in the photo

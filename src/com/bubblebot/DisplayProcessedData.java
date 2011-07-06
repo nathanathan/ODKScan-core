@@ -30,26 +30,14 @@ import org.json.JSONObject;
  */
 public class DisplayProcessedData  extends ListActivity {
 
-	TextView data;
-	Button button;
-	File dir = new File("/sdcard/mScan/");
-
-	String filename = "";
-
 	// Set up the UI
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
-		//
 
 		super.onCreate(savedInstanceState);
 
-		
-
 
 		/*
-       super.onCreate(savedInstanceState);
-       setContentView(R.layout.processed_data);
-
        Bundle extras = getIntent().getExtras(); 
        if(extras !=null)
        {
@@ -60,10 +48,13 @@ public class DisplayProcessedData  extends ListActivity {
 
 
 		try {
-
-			String[] bubbleCounts = getBubbleCounts("sdcard/BubbleBot/output.json");
-
-			setListAdapter(new ArrayAdapter<String>(this, R.layout.list_item, bubbleCounts));
+			
+			JSONArray bubbleVals = parseFileToJSONArray("sdcard/BubbleBot/output.json");
+			//TODO: replace this with some kind of expanding menu thing so that clicking on a field
+			//		allows users to see things broken down by segment.
+			Integer[] fieldCounts = getSegmentCounts(bubbleVals.getJSONObject(0));
+			
+			setListAdapter(new ArrayAdapter<Integer>(this, R.layout.list_item, fieldCounts));
 
 			ListView lv = getListView();
 			lv.setTextFilterEnabled(true);
@@ -72,7 +63,7 @@ public class DisplayProcessedData  extends ListActivity {
 				public void onItemClick(AdapterView<?> parent, View view,
 						int position, long id) {
 					// When clicked, show a toast with the TextView text
-					Toast.makeText(getApplicationContext(), ((TextView) view).getText(),
+					Toast.makeText(getApplicationContext(), ""+id,
 							Toast.LENGTH_SHORT).show();
 				}
 			});
@@ -87,22 +78,9 @@ public class DisplayProcessedData  extends ListActivity {
 	    	Log.i("Nathan", "IO problems.");
 			e.printStackTrace();
 		}
-		/*
-		data = (TextView) findViewById(R.id.text);
-		data.setText(outtext);
-		
-       button = (Button) findViewById(R.id.button);
-       button.setOnClickListener(new View.OnClickListener() {  
-	       public void onClick(View v) {
-	    	   //Back to the menu
-	    	   Intent intent = new Intent(getApplication(), BubbleBot.class);
-	    	   intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-   			   startActivity(intent); 
-	       }
-	    });*/ 
 	}
 
-	private String[] getBubbleCounts(String bvFilename) throws JSONException, IOException {
+	private JSONArray parseFileToJSONArray(String bvFilename) throws JSONException, IOException {
 		File jsonFile = new File(bvFilename);
 
 		//Read text from file
@@ -116,10 +94,27 @@ public class DisplayProcessedData  extends ListActivity {
 			text.append('\n');
 		}
 
+		return new JSONArray(text.toString());
+	}
+	private Integer sum(Integer[] integerArray){
+		int sum = 0;
+		for(int i = 0; i < integerArray.length; i++){
+			sum += integerArray[i];
+		}
+		return sum;
+	}
+	private Integer[] getFieldCounts(JSONArray bubbleVals) throws JSONException {
+		Integer[] fieldCounts = new Integer[bubbleVals.length()];
+		for(int i = 0; i < bubbleVals.length(); i++){
+			Integer[] segmentCounts = getSegmentCounts(bubbleVals.getJSONObject(i));
+			fieldCounts[i] = sum(segmentCounts);
+		}
+		return fieldCounts;
+	}
+	private Integer[] getSegmentCounts(JSONObject field) throws JSONException {
 
-		JSONArray jArray1 = new JSONArray(text.toString());
-		JSONArray jArray = jArray1.getJSONObject(0).getJSONArray("segments");
-		String[] bubbleCounts = new String[jArray.length()];
+		JSONArray jArray = field.getJSONArray("segments");
+		Integer[] bubbleCounts = new Integer[jArray.length()];
 
 		for (int i = 0; i < jArray.length(); i++) {
 			JSONArray bubbleValArray = jArray.getJSONObject(i).getJSONArray("bubble_vals");
@@ -129,9 +124,8 @@ public class DisplayProcessedData  extends ListActivity {
 					numFilled++;
 				}
 			}
-			bubbleCounts[i] = "Filled Bubbles: " + numFilled;
+			bubbleCounts[i] = numFilled;
 		}
-
 		return bubbleCounts;
 	}
 }
