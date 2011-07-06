@@ -3,7 +3,7 @@
 
 #include "configuration.h"
 
-#ifndef TEST_SUITE_H
+#ifdef USE_ANDROID_HEADERS_AND_IO
 #include <opencv2/core/core.hpp>
 #else
 #include "cv.h"

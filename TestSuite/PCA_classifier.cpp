@@ -46,7 +46,7 @@
 
 #endif
 
-
+using namespace std;
 using namespace cv;
 
 void PCA_classifier::update_gaussian_weights(){

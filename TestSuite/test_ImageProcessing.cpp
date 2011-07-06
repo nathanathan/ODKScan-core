@@ -5,7 +5,7 @@ Description of what's being tested
 #include <iostream>
 #include <string>
 
-#include "ImageProcessing.h"
+#include "Processor.h"
 
 using namespace std;
 
@@ -17,11 +17,11 @@ int main(int argc, char *argv[]) {
 	// TODO: This (or a variant of it) should eventually use FileUtils and a predicate to specify multiple images.
 	string imagePath("form_images/unbounded_form/A0.jpg");
 	// Template to use:
-	string templatePath("form_templates/unbounded_form_shreddr_cleaned.json");
+	string templatePath("form_templates/unbounded_form_shreddr_w_fields.json");
 	// Location to output results:
 	string outputPath("unbounded_form_A0_vals.json");
 
-	Processor myProcessor(templatePath);
+	Processor myProcessor(templatePath.c_str());
 	myProcessor.trainClassifier();
 
 	float i;
@@ -32,8 +32,8 @@ int main(int argc, char *argv[]) {
 	for (i = 0.0; i <= 1.0; i += 0.05) {
 	#endif
 		myProcessor.setClassifierWeight(i);
-		myProcessor.loadForm(imagePath);
+		myProcessor.loadForm(imagePath.c_str());
 		myProcessor.alignForm();
-		myProcessor.processForm(outputPath);
+		myProcessor.processForm(outputPath.c_str());
 	}
 }

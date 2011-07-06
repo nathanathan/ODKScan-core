@@ -1,7 +1,7 @@
 #include "configuration.h"
 #include "FormAlignment.h"
 
-#ifndef TEST_SUITE_H
+#ifdef USE_ANDROID_HEADERS_AND_IO
 #include <opencv2/highgui/highgui_c.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc_c.h>
@@ -10,7 +10,10 @@
 #include "highgui.h"
 #endif
 
-#define DEBUG_ALIGN_IMAGE 1
+//TODO: I think we should avoid this in favor of recording bubble locations in
+//		the bubble-vals files and then creating a separate function for drawing all
+//		the bubble makers.
+#define DEBUG_ALIGN_IMAGE 0
 
 #if DEBUG_ALIGN_IMAGE > 0
 #include "NameGenerator.h"
