@@ -1,17 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-<string name="app_name">BubbleBot</string>
+<string name="app_folder">/sdcard/BubbleBot/</string>
+<string name="app_name">mScan</string>
 <string name="app_description">Scan and process bubble forms</string>
 <string name="bubblebot_activity">BubbleBot</string>
 <string name="bubble_process_activity">Processing Scanned Form</string>
-<string name="view_bubble_forms_activity">View Scanned Forms</string>
-<string name="bubble_instructions_activity">BubbleBot Instructions</string>
+<string name="view_bubble_forms_activity">View Images</string>
+<string name="bubble_instructions_activity">Instructions</string>
 <string name="display_processed_form_activity">Display Processed Form</string>
 <string name="display_processed_data_activity">Display Processed Data</string>
 <string name="after_photo_taken_activity">Captured Image</string>
 <string name="WelcomeScreen">To begin, select an option below:</string>
 <string name="ScanButton">Scan New Form</string>
-<string name="ViewFormsButton">View Scanned Forms</string>
+<string name="ViewFormsButton">View Images</string>
 <string name="InstructionsButton">Instructions</string>
 <string name="ProcessButton">ProcessForm</string>
 <string name="ProcessForm">Processing form...</string>
