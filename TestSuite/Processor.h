@@ -32,9 +32,12 @@ class Processor{
 		//for finding and displaying the contour.
 		bool alignForm(const char* alignedImageOutputPath);
 		bool processForm(const char* outPath);
+		bool markupForm(const char* bvPath, const char* outputPath);
+		bool writeFormImage(const char* outputPath);
+		
 	private:
-		Json::Value classifySegment(const Json::Value &bubbleLocations, cv::Mat &segment);
-	 	void getAlignedSegment(const Json::Value &segmentTemplate, cv::Mat &alignedSegment);
+		Json::Value classifySegment(const Json::Value &bubbleLocations, cv::Mat &segment, cv::Mat &transformation, cv::Point offset);
+	 	Json::Value getAlignedSegment(const Json::Value &segmentTemplate, cv::Mat &alignedSegment, cv::Mat &transformation, cv::Point& offset);
 };
 
 

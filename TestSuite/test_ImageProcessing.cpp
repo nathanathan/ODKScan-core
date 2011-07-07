@@ -22,6 +22,8 @@ int main(int argc, char *argv[]) {
 	string outputPath("unbounded_form_A0_vals.json");
 	// Location to write the aligned form to:
 	string alignedFormOutfile("last_straightened_form.jpg");
+	
+	string markedupFormOutfile("last_markedup_form.jpg");
 
 	Processor myProcessor(templatePath.c_str());
 	myProcessor.trainClassifier();
@@ -34,17 +36,20 @@ int main(int argc, char *argv[]) {
 	for (i = 0.0; i <= 1.0; i += 0.05) {
 	#endif
 		myProcessor.setClassifierWeight(i);
-		if(!myProcessor.loadForm(imagePath.c_str())){
+		if( !myProcessor.loadForm(imagePath.c_str()) ) {
 			cout << "Could not load. Arg: " << imagePath << endl;
 			return 0;
 		}
-		if(!myProcessor.alignForm(alignedFormOutfile.c_str())){
+		if( !myProcessor.alignForm(alignedFormOutfile.c_str()) ) {
 			cout << "Could not align. Arg: " << alignedFormOutfile << endl;
 			return 0;
 		}
-		if(!myProcessor.processForm(outputPath.c_str())){
+		if( !myProcessor.processForm(outputPath.c_str()) ) {
 			cout << "Could not process. Arg: " << outputPath << endl;
 			return 0;
+		}
+		if( !myProcessor.markupForm(outputPath.c_str(), markedupFormOutfile.c_str()) ) {
+			cout << "Could not markup. Arg: " << markedupFormOutfile << endl;
 		}
 	}
 }
