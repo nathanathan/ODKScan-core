@@ -135,7 +135,7 @@ void PCA_classifier::PCA_set_add(Mat& PCA_set, string& filename) {
 }
 //This trains the PCA classifer by query.
 //A predicate can be supplied for filtering out undesireable filenames
-void PCA_classifier::train_PCA_classifier(Size myExampleSize, bool (*pred)(string&)) {
+bool PCA_classifier::train_PCA_classifier(Size myExampleSize, bool (*pred)(string&)) {
 	//TODO: Put this in an initializer
 	exampleSize = myExampleSize;
 	search_window = Point(myExampleSize.width, myExampleSize.height);
@@ -152,8 +152,12 @@ void PCA_classifier::train_PCA_classifier(Size myExampleSize, bool (*pred)(strin
 			PCA_set_add(PCA_set, (*it));
 		}
 	}
+	if(PCA_set.rows < 3){
+		return false;
+	}
 	my_PCA = PCA(PCA_set, Mat(), CV_PCA_DATA_AS_ROW, EIGENBUBBLES);
 	comparison_vectors = my_PCA.project(PCA_set);
+	return true;
 }
 //Rate a location on how likely it is to be a bubble.
 //The rating is the SSD of the queried pixels and their PCA back projection,

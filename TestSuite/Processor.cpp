@@ -42,7 +42,7 @@
 
 #define DEBUG 0
 
-//#define OUTPUT_SEGMENT_IMAGES
+#define OUTPUT_SEGMENT_IMAGES
 
 #ifdef OUTPUT_SEGMENT_IMAGES
 #include "NameGenerator.h"
@@ -146,15 +146,13 @@ Processor::Processor(const char* templatePath){
 }
 Processor::~Processor() {
 }
-//TODO: Make it so this and load form and align form return meaningful bools for success
 bool Processor::trainClassifier(){
 	Json::Value defaultSize;
 	defaultSize.append(5);
 	defaultSize.append(8);
 	Json::Value bubbleSize = root.get("bubble_size", defaultSize);
-	classifier.train_PCA_classifier(Size(bubbleSize[0u].asInt(),
-										 bubbleSize[1u].asInt()));
-	return true;
+	return classifier.train_PCA_classifier(Size(bubbleSize[0u].asInt(),
+												bubbleSize[1u].asInt()));
 }
 void Processor::setClassifierWeight(float weight){
 	classifier.set_weight(FILLED_BUBBLE, weight);
@@ -170,7 +168,6 @@ bool Processor::alignForm(const char* alignedImageOutputPath){
 	int form_width = root.get("width", 0).asInt() * SCALE_TEMPLATE;
 	int form_height = root.get("height", 0).asInt() * SCALE_TEMPLATE;
 	if( form_width <= 0 || form_height <= 0){
-		//LOGI("Couldn't read template");
 		return false;
 	}
 	
@@ -180,12 +177,11 @@ bool Processor::alignForm(const char* alignedImageOutputPath){
 	Mat straightenedImage(0,0, CV_8U);
 	
 	//TODO: figure out the best place to do this...
+	#ifdef USE_ANDROID_HEADERS_AND_IO
 	Mat temp;
     transpose(formImage, temp);
     flip(temp,formImage, 1); //This might vary by phone... Current setting is for Nexus.
-    if(form_width == 0 || form_height == 0){
-    	return false;
-    }
+    #endif
     
 	align_image(formImage, straightenedImage, Size(form_width * SCALEPARAM, form_height * SCALEPARAM), 12);
 	formImage = straightenedImage;
