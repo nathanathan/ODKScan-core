@@ -4,7 +4,7 @@
 %{
 #include "Processor.h"
 
-using namespace cv;
+//using namespace cv;
 %}
 
 //import the android-cv.i file so that swig is aware of all that has been previous defined
@@ -15,27 +15,25 @@ using namespace cv;
 //referenced by the Processor java generated
 //class
 %typemap(javaimports) Processor "
-import com.opencv.jni.Mat;
+//import com.opencv.jni.Mat;
 
 /** Processor - for processing images that are stored in an image pool
 */"
-
 class Processor{
-	Json::Value root;
-	cv::Mat formImage;
-	PCA_classifier classifier;
+	//TODO: Modify this class to use pimpl idiom as advised in effective c++
+
 	public:
 		Processor(const char* templatePath);
-		virtual ~Processor();
-		
-		//These two probably don't need to be exposed except for in the testing suite
 		bool trainClassifier();
 		void setClassifierWeight(float weight);
 		
 		bool loadForm(const char* imagePath);
 		bool alignForm(const char* alignedImageOutputPath);
 		bool processForm(const char* outPath);
+		bool markupForm(const char* bvPath, const char* outputPath);
+		bool writeFormImage(const char* outputPath);
+		
 	private:
-		Json::Value classifySegment(const Json::Value &bubbleLocations, cv::Mat &segment);
-	 	void getAlignedSegment(const Json::Value &segmentTemplate, cv::Mat &alignedSegment);
+		class ProcessorImpl;
+    	std::tr1::shared_ptr<ProcessorImpl> processorImpl;
 };

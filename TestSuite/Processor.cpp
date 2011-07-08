@@ -52,7 +52,12 @@ NameGenerator namer("debug_segment_images/");
 using namespace std;
 using namespace cv;
 
-Json::Value Processor::classifySegment(const Json::Value &bubbleLocations, Mat &segment, Mat &transformation, Point offset){
+class Processor::ProcessorImpl {
+Json::Value root;
+Mat formImage;
+PCA_classifier classifier;
+public:
+Json::Value classifySegment(const Json::Value &bubbleLocations, Mat &segment, Mat &transformation, Point offset){
 	Json::Value bubbles;
 	#if DEBUG > 0
 	cout << "finding bubbles" << endl;
@@ -131,7 +136,7 @@ vector<Point> jsonArrayToQuad(const Json::Value& quadJson){
 	return out;
 }
 //TODO: this really needs to be cleaned up
-Json::Value Processor::getAlignedSegment(const Json::Value &segmentTemplate, Mat &alignedSegment, Mat& transformation, Point& actualLoc) {
+Json::Value getAlignedSegment(const Json::Value &segmentTemplate, Mat &alignedSegment, Mat& transformation, Point& actualLoc) {
 
 	#if DEBUG > 0
 	cout << "aligning segment" << endl;
@@ -176,7 +181,7 @@ bool parseJsonFromFile(const char* filePath, Json::Value& myRoot){
 	
 	JSONin.close();
 }
-Processor::Processor(const char* templatePath){
+ProcessorImpl(const char* templatePath){
 
 	parseJsonFromFile(templatePath, root);
 	
@@ -185,9 +190,9 @@ Processor::Processor(const char* templatePath){
 	cout << form_name << endl;
 	#endif
 }
-Processor::~Processor() {
+~ProcessorImpl() {
 }
-bool Processor::trainClassifier(){
+bool trainClassifier(){
 	Json::Value defaultSize;
 	defaultSize.append(5);
 	defaultSize.append(8);
@@ -195,17 +200,17 @@ bool Processor::trainClassifier(){
 	return classifier.train_PCA_classifier(Size(bubbleSize[0u].asInt(),
 												bubbleSize[1u].asInt()));
 }
-void Processor::setClassifierWeight(float weight){
+void setClassifierWeight(float weight){
 	classifier.set_weight(FILLED_BUBBLE, weight);
 	classifier.set_weight(PARTIAL_BUBBLE, 1-weight);
 	classifier.set_weight(EMPTY_BUBBLE, 1-weight);
 }
-bool Processor::loadForm(const char* imagePath){
+bool loadForm(const char* imagePath){
 	// Read the input image
 	formImage = imread(imagePath, 0);
 	return formImage.data != NULL;
 }
-bool Processor::alignForm(const char* alignedImageOutputPath){
+bool alignForm(const char* alignedImageOutputPath){
 	int form_width = root.get("width", 0).asInt() * SCALE_TEMPLATE;
 	int form_height = root.get("height", 0).asInt() * SCALE_TEMPLATE;
 	if( form_width <= 0 || form_height <= 0){
@@ -235,7 +240,7 @@ bool Processor::alignForm(const char* alignedImageOutputPath){
 	}
 }
 
-bool Processor::processForm(const char* outputPath) {
+bool processForm(const char* outputPath) {
 	#if DEBUG > 0
 	cout << "debug level is: " << DEBUG << endl;
 	#endif
@@ -286,7 +291,7 @@ bool Processor::processForm(const char* outputPath) {
 }
 //Marks up formImage based on the specifications of a bubble-vals JSON file at the given path.
 //Then output the form to the given locaiton
-bool Processor::markupForm(const char* bvPath, const char* outputPath) {
+bool markupForm(const char* bvPath, const char* outputPath) {
 	Json::Value bvRoot;
 	Mat markupImage;
 	cvtColor(formImage, markupImage, CV_GRAY2RGB);
@@ -325,6 +330,31 @@ bool Processor::markupForm(const char* bvPath, const char* outputPath) {
 	}
 }
 //Writes the form image to a file.
-bool Processor::writeFormImage(const char* outputPath){
+bool writeFormImage(const char* outputPath){
 	return imwrite(outputPath, formImage);
+}
+};
+
+//Hook the processor class up to the implementation:
+Processor::Processor(const char* templatePath) : processorImpl(new ProcessorImpl(templatePath)){}
+bool Processor::trainClassifier(){
+	return processorImpl->trainClassifier();
+}
+void Processor::setClassifierWeight(float weight){
+	processorImpl->setClassifierWeight(weight);
+}
+bool Processor::loadForm(const char* imagePath){
+	return processorImpl->loadForm(imagePath);
+}
+bool Processor::alignForm(const char* alignedImageOutputPath){
+	return processorImpl->alignForm(alignedImageOutputPath);
+}
+bool Processor::processForm(const char* outPath){
+	return processorImpl->processForm(outPath);
+}
+bool Processor::markupForm(const char* bvPath, const char* outputPath){
+	return processorImpl->markupForm(bvPath, outputPath);
+}
+bool Processor::writeFormImage(const char* outputPath){
+	return processorImpl->writeFormImage(outputPath);
 }

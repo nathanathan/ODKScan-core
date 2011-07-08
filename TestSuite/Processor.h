@@ -5,23 +5,15 @@ Header file for image processing functions.
 #define IMAGEPROCESSING_H
 #include "configuration.h"
 
-#ifdef USE_ANDROID_HEADERS_AND_IO
-#include <opencv2/core/core.hpp>
-#else
-#include "cv.h"
-#endif
-
 #include <json/value.h>
-#include "PCA_classifier.h"
+#include <tr1/memory>
 
 class Processor{
 	//TODO: Modify this class to use pimpl idiom as advised in effective c++
-	Json::Value root;
-	cv::Mat formImage;
-	PCA_classifier classifier;
+
 	public:
 		Processor(const char* templatePath);
-		virtual ~Processor();
+		//virtual ~Processor();
 		
 		//These two probably don't need to be exposed except for in the testing suite
 		bool trainClassifier();
@@ -36,8 +28,13 @@ class Processor{
 		bool writeFormImage(const char* outputPath);
 		
 	private:
-		Json::Value classifySegment(const Json::Value &bubbleLocations, cv::Mat &segment, cv::Mat &transformation, cv::Point offset);
-	 	Json::Value getAlignedSegment(const Json::Value &segmentTemplate, cv::Mat &alignedSegment, cv::Mat &transformation, cv::Point& offset);
+		class ProcessorImpl;
+    	std::tr1::shared_ptr<ProcessorImpl> processorImpl;
+		//Json::Value root;
+		//cv::Mat formImage;
+		//PCA_classifier classifier;
+		//Json::Value classifySegment(const Json::Value &bubbleLocations, cv::Mat &segment, cv::Mat &transformation, cv::Point offset);
+	 	//Json::Value getAlignedSegment(const Json::Value &segmentTemplate, cv::Mat &alignedSegment, cv::Mat &transformation, cv::Point& offset);
 };
 
 
