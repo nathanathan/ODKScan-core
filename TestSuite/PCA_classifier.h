@@ -44,7 +44,7 @@ class PCA_classifier
 	std::vector <bubble_val> training_bubble_values;
 	cv::PCA my_PCA;
 	
-	cv::Point search_window;
+	cv::Size search_window;
 
 	//A matrix for precomputing gaussian weights for the search window
 	cv::Mat gaussian_weights;
@@ -56,7 +56,7 @@ class PCA_classifier
 		cv::Size exampleSize;
 		PCA_classifier();
 		void set_weight(bubble_val classification, float weight);
-		void set_search_window(cv::Point sw);
+		void set_search_window(cv::Size sw);
 		double rateBubble(cv::Mat& det_img_gray, cv::Point bubble_location);
 		bool train_PCA_classifier(cv::Size myExampleSize = cv::Size(14,18), bool (*pred)(std::string& filename) = &returnTrue);
 		cv::Point bubble_align(cv::Mat& det_img_gray, cv::Point bubble_location);
