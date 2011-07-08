@@ -23,24 +23,22 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+
 #include "Processor.h"
 #include "PCA_classifier.h"
 #include "FormAlignment.h"
 
-#if 0
-#define SCALEPARAM 1.1
+#if 1
+#define SCALEPARAM 1.0
 #else
-#define SCALEPARAM 0.55
+#define SCALEPARAM 0.5
 #endif
-
-//I might not need this...
-#define SCALE_TEMPLATE 2.0
 
 // Creates a buffer around segments porpotional to their size.
 // I think .5 is the largest value that won't cause ambiguous cases.
 #define SEGMENT_BUFFER .5
 
-#define DEBUG 0
+#define DEBUG 1
 
 #define OUTPUT_SEGMENT_IMAGES
 
@@ -52,16 +50,20 @@ NameGenerator namer("debug_segment_images/");
 using namespace std;
 using namespace cv;
 
+//TODO: Some of the code could be simplified by adding some utility functions for working with certian types.
+//		Json Value constructors for Points and sizes.
+//		Ability to do multiplication on Size types.
+
 class Processor::ProcessorImpl {
+
+private:
 Json::Value root;
 Mat formImage;
 PCA_classifier classifier;
+
 public:
 Json::Value classifySegment(const Json::Value &bubbleLocations, Mat &segment, Mat &transformation, Point offset){
 	Json::Value bubbles;
-	#if DEBUG > 0
-	cout << "finding bubbles" << endl;
-	#endif
 	
 	#ifdef OUTPUT_SEGMENT_IMAGES
 	//TODO: This should become perminant functionality.
@@ -70,9 +72,8 @@ Json::Value classifySegment(const Json::Value &bubbleLocations, Mat &segment, Ma
 	cvtColor(segment, dbg_out, CV_GRAY2RGB);
 	dbg_out.copyTo(dbg_out);
 	#endif
-
 	for (size_t i = 0; i < bubbleLocations.size(); i++) {
-		Point bubbleLocation(bubbleLocations[i][0u].asInt() * SCALE_TEMPLATE, bubbleLocations[i][1u].asInt() * SCALE_TEMPLATE);
+		Point bubbleLocation((2.0 / 1.1) * SCALEPARAM * bubbleLocations[i][0u].asInt(), (2.0 / 1.1) * SCALEPARAM * bubbleLocations[i][1u].asInt());
 		//Maybe make a define for bubble alignment. It can be controlled by shrinking the search window as well though...
 		Point refined_location = classifier.bubble_align(segment, bubbleLocation);
 		bubble_val current_bubble = classifier.classifyBubble(segment, refined_location);
@@ -141,10 +142,10 @@ Json::Value getAlignedSegment(const Json::Value &segmentTemplate, Mat &alignedSe
 	#if DEBUG > 0
 	cout << "aligning segment" << endl;
 	#endif
-	Point seg_loc(segmentTemplate.get("x", -1).asInt() * SCALE_TEMPLATE,
-				  segmentTemplate.get("y", -1).asInt() * SCALE_TEMPLATE);
-	int seg_width = segmentTemplate.get("width", -1).asInt() * SCALE_TEMPLATE;
-	int seg_height = segmentTemplate.get("height", -1).asInt() * SCALE_TEMPLATE;
+	Point seg_loc(segmentTemplate.get("x", -1).asInt(),
+				  segmentTemplate.get("y", -1).asInt());
+	int seg_width = segmentTemplate.get("width", -1).asInt();
+	int seg_height = segmentTemplate.get("height", -1).asInt();
 
 	//Ensure that the segment with the buffer added on doesn't go off the form
 	//and that everything is positive.
@@ -193,12 +194,22 @@ ProcessorImpl(const char* templatePath){
 ~ProcessorImpl() {
 }
 bool trainClassifier(){
+	#if DEBUG > 0
+	cout << "training classifier..." << endl;
+	#endif
 	Json::Value defaultSize;
 	defaultSize.append(5);
 	defaultSize.append(8);
 	Json::Value bubbleSize = root.get("bubble_size", defaultSize);
-	return classifier.train_PCA_classifier(Size(bubbleSize[0u].asInt(),
-												bubbleSize[1u].asInt()));
+	if( !classifier.train_PCA_classifier(Size(SCALEPARAM * bubbleSize[0u].asInt(),
+											  SCALEPARAM * bubbleSize[1u].asInt())) ){
+		return false;
+	}
+	#if DEBUG > 0
+	cout << "trained" << endl;
+	#endif
+	classifier.set_search_window(Size(0,0));
+	return true;
 }
 void setClassifierWeight(float weight){
 	classifier.set_weight(FILLED_BUBBLE, weight);
@@ -206,13 +217,15 @@ void setClassifierWeight(float weight){
 	classifier.set_weight(EMPTY_BUBBLE, 1-weight);
 }
 bool loadForm(const char* imagePath){
-	// Read the input image
+	#if DEBUG > 0
+	cout << "loading form image..." << endl;
+	#endif
 	formImage = imread(imagePath, 0);
 	return formImage.data != NULL;
 }
 bool alignForm(const char* alignedImageOutputPath){
-	int form_width = root.get("width", 0).asInt() * SCALE_TEMPLATE;
-	int form_height = root.get("height", 0).asInt() * SCALE_TEMPLATE;
+	int form_width = root.get("width", 0).asInt();
+	int form_height = root.get("height", 0).asInt();
 	if( form_width <= 0 || form_height <= 0){
 		return false;
 	}
@@ -335,7 +348,8 @@ bool writeFormImage(const char* outputPath){
 }
 };
 
-//Hook the processor class up to the implementation:
+
+/* This hooks the Processor class up to the implementation: */
 Processor::Processor(const char* templatePath) : processorImpl(new ProcessorImpl(templatePath)){}
 bool Processor::trainClassifier(){
 	return processorImpl->trainClassifier();
