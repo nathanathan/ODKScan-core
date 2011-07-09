@@ -25,6 +25,7 @@
 
 	#include <opencv2/highgui/highgui.hpp>
 	//I suspect the following path will need to change
+	//TODO: This should probably be an arg passed in from javaland.
 	#define TRAINING_EXAMPLE_DIRECTORY "/sdcard/mScan/training_examples"
 
 #else //If we are compiling for the test suite
@@ -51,8 +52,12 @@ using namespace cv;
 
 void PCA_classifier::update_gaussian_weights(){
 	//This precomputes the gaussian for subbbubble alignment.
-	int height = 2*search_window.y + 1;
-	int width = 2*search_window.x + 1;
+	int height = search_window.height;
+	int width = search_window.width;
+	if(height == 0 || width == 0){
+		gaussian_weights.release();
+		return;
+	}
 	Mat v_gauss = getGaussianKernel(height, float(height)*.5, CV_32F);
 	Mat h_gauss;
 	transpose(getGaussianKernel(width, float(width)*.5, CV_32F), h_gauss);
@@ -70,7 +75,7 @@ PCA_classifier::PCA_classifier() {
 void PCA_classifier::set_weight(bubble_val classification, float weight) {
 	weights.at<float>((int)classification, 0) = weight;
 }
-void PCA_classifier::set_search_window(Point sw) {
+void PCA_classifier::set_search_window(Size sw) {
 	search_window = sw;
 	update_gaussian_weights();
 }
@@ -135,10 +140,10 @@ void PCA_classifier::PCA_set_add(Mat& PCA_set, string& filename) {
 }
 //This trains the PCA classifer by query.
 //A predicate can be supplied for filtering out undesireable filenames
-void PCA_classifier::train_PCA_classifier(Size myExampleSize, bool (*pred)(string&)) {
-	//TODO: Put this in an initializer
+bool PCA_classifier::train_PCA_classifier(Size myExampleSize, bool (*pred)(string&)) {
+	//Maybe put this in the initializer?
 	exampleSize = myExampleSize;
-	search_window = Point(myExampleSize.width, myExampleSize.height);
+	search_window = myExampleSize;
 	update_gaussian_weights();
 	
 	vector<string> filenames;
@@ -152,8 +157,12 @@ void PCA_classifier::train_PCA_classifier(Size myExampleSize, bool (*pred)(strin
 			PCA_set_add(PCA_set, (*it));
 		}
 	}
+	if(PCA_set.rows < 3){
+		return false;
+	}
 	my_PCA = PCA(PCA_set, Mat(), CV_PCA_DATA_AS_ROW, EIGENBUBBLES);
 	comparison_vectors = my_PCA.project(PCA_set);
+	return true;
 }
 //Rate a location on how likely it is to be a bubble.
 //The rating is the SSD of the queried pixels and their PCA back projection,
@@ -181,18 +190,22 @@ double PCA_classifier::rateBubble(Mat& det_img_gray, Point bubble_location) {
 //This section probably slows things down by quite a bit and it might not provide significant
 //improvement to accuracy. We will need to run some tests to find out if it's worth keeping.
 Point PCA_classifier::bubble_align(Mat& det_img_gray, Point bubble_location) {
-	Mat out = Mat::zeros(Size(search_window.x*2 + 1, search_window.y*2 + 1) , CV_32F);
-	Point offset = Point(bubble_location.x - search_window.x, bubble_location.y - search_window.y);
+	if(search_window.width == 0 || search_window.height == 0){
+		return bubble_location;
+	}
 	
-	for(size_t i = 0; i <= search_window.x*2; i+=1) {
-		for(size_t j = 0; j <= search_window.y*2; j+=1) {
+	Mat out = Mat::zeros(search_window, CV_32F);
+	Point offset = Point(bubble_location.x - search_window.width/2, bubble_location.y - search_window.height/2);
+	
+	for(size_t i = 0; i < search_window.width; i+=1) {
+		for(size_t j = 0; j < search_window.height; j+=1) {
 			out.col(i).row(j) += rateBubble(det_img_gray, Point(i,j) + offset);
 		}
 	}
 	out = out.mul(gaussian_weights);
-	
 	Point min_location;
 	minMaxLoc(out, NULL,NULL, &min_location);
+	
 	return min_location + offset;
 }
 //Compare the specified bubble with all the training bubbles via PCA.
@@ -236,4 +249,7 @@ bubble_val PCA_classifier::classifyBubble(Mat& det_img_gray, Point bubble_locati
 	Point max_location;
 	minMaxLoc(Mat(max_responces).mul(weights), NULL, NULL, NULL, &max_location);
 	return (bubble_val) max_location.y;
+}
+bool PCA_classifier::trained(){
+	return my_PCA.mean.data != NULL;
 }

@@ -9,7 +9,14 @@
 #include "cv.h"
 #endif
 
-void align_image(cv::Mat& img, cv::Mat& aligned_image, cv::Size aligned_image_sz, int blurSize = 2);
+void alignImage(cv::Mat& img, cv::Mat& aligned_image, std::vector<cv::Point>& maxRect, cv::Size aligned_image_sz);
+
+cv::Mat getMyTransform(std::vector<cv::Point>& foundCorners, cv::Size init_image_sz, cv::Size out_image_sz, bool reverse = false);
+
+std::vector<cv::Point> findFormQuad(cv::Mat& img);
+std::vector<cv::Point> findBoundedRegionQuad(cv::Mat& img);
+
+//DEPRECATED
 void straightenImage(const cv::Mat& input_image, cv::Mat& output_image);
 
 #endif

@@ -16,7 +16,7 @@ LOCAL_MODULE    := bubblebot
 LOCAL_C_INCLUDES += jsoncpp-src-0.5.0/include
 STUFF_FROM_JSON_PARSER := $(subst jsoncpp, ../jsoncpp,$(wildcard jsoncpp-src-0.5.0/src/lib_json/*.cpp))
 
-LOCAL_SRC_FILES := Feedback.cpp Processor.cpp gen/bubblebot.cpp FormAlignment.cpp PCA_classifier.cpp FileUtils.cpp $(STUFF_FROM_JSON_PARSER)
+LOCAL_SRC_FILES := Feedback.cpp Processor.cpp gen/bubblebot.cpp FormAlignment.cpp PCA_classifier.cpp FileUtils.cpp Addons.cpp $(STUFF_FROM_JSON_PARSER)
 
 include $(BUILD_SHARED_LIBRARY)
 

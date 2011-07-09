@@ -10,10 +10,7 @@
 #include "highgui.h"
 #endif
 
-//TODO: I think we should avoid this in favor of recording bubble locations in
-//		the bubble-vals files and then creating a separate function for drawing all
-//		the bubble makers.
-#define DEBUG_ALIGN_IMAGE 0
+#define DEBUG_ALIGN_IMAGE 1
 
 #if DEBUG_ALIGN_IMAGE > 0
 #include "NameGenerator.h"
@@ -99,37 +96,11 @@ void find_bounding_lines(Mat& img, int* upper, int* lower, bool vertical) {
 	*upper = min_location_top.y;
 	*lower = min_location_bottom.y + out.rows/2 + center_size;
 }
-/*
-//Find the largest simplified contour
-float findRectContour(Mat& img, vector<Point>& maxRect){
-	vector < vector<Point> > contours;
-	vector < Point > approx;
-	// Need this to prevent find contours from destroying the image.
-	Mat img2;
-	img.copyTo(img2);
-	// Find all external contours of the image
-	findContours(img2, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
 
-	float maxContourArea = 0;
-	// Iterate through all detected contours
-	for (size_t i = 0; i < contours.size(); ++i) {
-		// reduce the number of points in the contour
-		approxPolyDP(Mat(contours[i]), approx,
-				     arcLength(Mat(contours[i]), true) * 0.1, true);
-
-		float area = fabs(contourArea(Mat(approx)));
-
-		if (area > maxContourArea) {
-			maxRect = approx;
-			maxContourArea = area;
-		}
-	}
-	return maxContourArea;
-}*/
-
-// Try to find the maximum quad (4 point contour) in a convex contour of many points.
+// Try to distil the maximum quad (4 point contour) from a convex contour of many points.
 // if none is found maxQuad will not be altered.
-float findMaxQuad(vector <Point>& contour, vector<Point>& maxQuad, float current_approx_p){
+// TODO: Find out what happens when you try to simplify a contour that already has just 4 points.
+float maxQuadSimplify(vector <Point>& contour, vector<Point>& maxQuad, float current_approx_p){
 	
 	float area = 0;
 	float prev_area = 0;
@@ -154,7 +125,8 @@ float findMaxQuad(vector <Point>& contour, vector<Point>& maxQuad, float current
 
 //Find the largest quad contour in img
 //Warning: destroys img
-float findRectContour(Mat& img, vector<Point>& maxRect, float approx_p_seed = 0){
+vector<Point> findMaxQuad(Mat& img, float approx_p_seed = 0){
+	vector<Point> maxRect;
 	vector < vector<Point> > contours;
 	// Find all external contours of the image
 	findContours(img, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
@@ -164,36 +136,25 @@ float findRectContour(Mat& img, vector<Point>& maxRect, float approx_p_seed = 0)
 	for (size_t i = 0; i < contours.size(); ++i) {
 		vector<Point> contour, quad;
 		convexHull(Mat(contours[i]), contour);
-		float area = findMaxQuad(contour, quad, approx_p_seed);
+		float area = maxQuadSimplify(contour, quad, approx_p_seed);
 
 		if (area > maxContourArea) {
 			maxRect = quad;
 			maxContourArea = area;
 		}
 	}
-	return maxContourArea;
+	return maxRect;
 }
-Mat getMyTransform(vector<Point>& foundCorners, Size init_image_sz, Size out_image_sz){
-	Point2f corners_a[4] = {Point2f(0, 0), Point2f(init_image_sz.width, 0), Point2f(0, init_image_sz.height),
-							Point2f(init_image_sz.width, init_image_sz.height)};
-	Point2f out_corners[4] = {Point2f(0, 0),Point2f(out_image_sz.width, 0), Point2f(0, out_image_sz.height),
-							Point2f(out_image_sz.width, out_image_sz.height)};
 
-	configCornerArray(foundCorners, corners_a);
-	expandCorners(corners_a, EXPANSION_PERCENTAGE);
-	return getPerspectiveTransform(corners_a, out_corners);
-}
-// This function looks for a large rectangle in img.
-// If it finds one it transforms that rectangle so that it fits into aligned_image.
 //TODO: The blurSize param is sort of a hacky solution to the problem of contours being too large
 //		in certain cases. It fixes the problem on some form images because they can be blurred a lot
 //		and produce good results for contour finding. This is not the case with segments.
 //		I think a better solution might be to alter maxQuad somehow... I haven't figured out how though.
-//TODO: I'm going to need to do some prototyping with this code, and I think it will help to have separate
-//		functions for aligning segments and forms even if they are just wrappers for the same function.
-void align_image(Mat& img, Mat& aligned_image, Size aligned_image_sz, int blurSize){
+vector<Point> findQuad(Mat& img, int blurSize){
 	Mat imgThresh, temp_img, temp_img2;
 	
+	//Shrink the image down for efficiency
+	//and so we don't have to worry about filters behaving differently on large images
 	int multiple = img.cols / 256;
 	if(multiple > 1){
 		resize(img, temp_img, Size(img.cols/multiple, img.rows/multiple));
@@ -219,17 +180,40 @@ void align_image(Mat& img, Mat& aligned_image, Size aligned_image_sz, int blurSi
 	imwrite(segfilename, dbg_out);
 	#endif
 	
-	vector<Point> maxRect;
-	findRectContour(imgThresh, maxRect, 0);
+	vector<Point> quad = findMaxQuad(imgThresh, 0);
+	
 	imgThresh.release();
 	
 	//Resize the contours for the full size image:
-	for(size_t i = 0; i<maxRect.size(); i++){
-		maxRect[i] = Point(actual_width_multiple * maxRect[i].x, actual_height_multiple * maxRect[i].y);
+	for(size_t i = 0; i<quad.size(); i++){
+		quad[i] = Point(actual_width_multiple * quad[i].x, actual_height_multiple * quad[i].y);
 	}
 	
+	return quad;
+}
+Mat getMyTransform(vector<Point>& foundCorners, Size init_image_sz, Size out_image_sz, bool reverse){
+	Point2f corners_a[4] = {Point2f(0, 0), Point2f(init_image_sz.width, 0), Point2f(0, init_image_sz.height),
+							Point2f(init_image_sz.width, init_image_sz.height)};
+	Point2f out_corners[4] = {Point2f(0, 0),Point2f(out_image_sz.width, 0), Point2f(0, out_image_sz.height),
+							Point2f(out_image_sz.width, out_image_sz.height)};
+
+	configCornerArray(foundCorners, corners_a);
+	//TODO: Think about this.
+	expandCorners(corners_a, EXPANSION_PERCENTAGE);
+	if(reverse){
+		return getPerspectiveTransform(out_corners, corners_a);
+	}
+	else{
+		return getPerspectiveTransform(corners_a, out_corners);
+	}
+}
+//TODO: Refactor this so that it only does the alignment. The else stuff can be added to quad finding,
+//		however I'm not sure it's going to be worth keeping at all.
+void alignImage(Mat& img, Mat& aligned_image, vector<Point>& maxRect, Size aligned_image_sz){
+	
 	if ( maxRect.size() == 4 && isContourConvex(Mat(maxRect)) ){
-		#if DEBUG_ALIGN_IMAGE > 0
+		#if DEBUG_ALIGN_IMAGE > 4
+		//TODO:Possibly remove this
 		cvtColor(img, dbg_out, CV_GRAY2RGB);
 		const Point* p = &maxRect[0];
 		int n = (int) maxRect.size();
@@ -246,7 +230,7 @@ void align_image(Mat& img, Mat& aligned_image, Size aligned_image_sz, int blurSi
 		find_bounding_lines(img, &top, &bottom, false);
 		find_bounding_lines(img, &left, &right, true);
 
-		#if DEBUG_ALIGN_IMAGE > 0
+		#if DEBUG_ALIGN_IMAGE > 5
 		img.copyTo(dbg_out);
 		const Point* p = &maxRect[0];
 		int n = (int) maxRect.size();
@@ -279,7 +263,7 @@ void align_image(Mat& img, Mat& aligned_image, Size aligned_image_sz, int blurSi
 }
 //Aligns a image of a form.
 void alignFormImage(Mat& img, Mat& aligned_image, Size aligned_image_sz, int blurSize){
-	align_image(img, aligned_image, aligned_image_sz, blurSize);
+	//Align paper
 	//Find where the content begins:
 	//Add a parameters to set the expected locations and search radius
 	//Also consider weighting this...
@@ -293,6 +277,15 @@ void alignFormImage(Mat& img, Mat& aligned_image, Size aligned_image_sz, int blu
 void alignBoundedRegion(Mat& img, Mat& aligned_image, Size aligned_image_sz){
 	return;
 }
+
+
+vector<Point> findFormQuad(Mat& img){
+	return findQuad(img, 12);
+}
+vector<Point> findBoundedRegionQuad(Mat& img){
+	return findQuad(img, 2);
+}
+
 
 //DEPRECATED
 //A form straitening method based on finding the corners of the sheet of form paper.

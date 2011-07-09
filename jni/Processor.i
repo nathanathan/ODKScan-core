@@ -3,8 +3,6 @@
  */
 %{
 #include "Processor.h"
-
-//using namespace cv;
 %}
 
 //import the android-cv.i file so that swig is aware of all that has been previous defined
@@ -15,13 +13,10 @@
 //referenced by the Processor java generated
 //class
 %typemap(javaimports) Processor "
-//import com.opencv.jni.Mat;
 
 /** Processor - for processing images that are stored in an image pool
 */"
 class Processor{
-	//TODO: Modify this class to use pimpl idiom as advised in effective c++
-
 	public:
 		Processor(const char* templatePath);
 		bool trainClassifier();
