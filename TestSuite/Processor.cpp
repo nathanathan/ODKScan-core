@@ -19,8 +19,6 @@
 
 #include <json/json.h>
 
-#include <vector>
-#include <string>
 #include <iostream>
 #include <fstream>
 
@@ -167,7 +165,7 @@ ProcessorImpl(const char* templatePath){
 }
 bool trainClassifier(){
 	#if DEBUG > 0
-	cout << "training classifier..." << endl;
+	cout << "training classifier...";
 	#endif
 	Json::Value defaultSize;
 	defaultSize.append(5);
@@ -177,10 +175,10 @@ bool trainClassifier(){
 											  SCALEPARAM * bubbleSize[1u].asInt())) ){
 		return false;
 	}
+	classifier.set_search_window(Size(0,0));
 	#if DEBUG > 0
 	cout << "trained" << endl;
 	#endif
-	classifier.set_search_window(Size(0,0));
 	return true;
 }
 void setClassifierWeight(float weight){
@@ -230,7 +228,7 @@ bool processForm(const char* outputPath) {
 	cout << "debug level is: " << DEBUG << endl;
 	#endif
 	
-	if( root == NULL ){ // || !formImage || !classifier){
+	if( root == NULL || formImage.data == NULL || !classifier.trained()){
 		cout << "Unable to process form" << endl;
 		return false;
 	}

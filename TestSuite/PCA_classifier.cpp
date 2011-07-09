@@ -25,6 +25,7 @@
 
 	#include <opencv2/highgui/highgui.hpp>
 	//I suspect the following path will need to change
+	//TODO: This should probably be an arg passed in from javaland.
 	#define TRAINING_EXAMPLE_DIRECTORY "/sdcard/mScan/training_examples"
 
 #else //If we are compiling for the test suite
@@ -248,4 +249,7 @@ bubble_val PCA_classifier::classifyBubble(Mat& det_img_gray, Point bubble_locati
 	Point max_location;
 	minMaxLoc(Mat(max_responces).mul(weights), NULL, NULL, NULL, &max_location);
 	return (bubble_val) max_location.y;
+}
+bool PCA_classifier::trained(){
+	return my_PCA.mean.data != NULL;
 }

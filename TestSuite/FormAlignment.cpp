@@ -10,10 +10,7 @@
 #include "highgui.h"
 #endif
 
-//TODO: I think we should avoid this in favor of recording bubble locations in
-//		the bubble-vals files and then creating a separate function for drawing all
-//		the bubble makers.
-#define DEBUG_ALIGN_IMAGE 0
+#define DEBUG_ALIGN_IMAGE 1
 
 #if DEBUG_ALIGN_IMAGE > 0
 #include "NameGenerator.h"
@@ -215,7 +212,8 @@ Mat getMyTransform(vector<Point>& foundCorners, Size init_image_sz, Size out_ima
 void alignImage(Mat& img, Mat& aligned_image, vector<Point>& maxRect, Size aligned_image_sz){
 	
 	if ( maxRect.size() == 4 && isContourConvex(Mat(maxRect)) ){
-		#if DEBUG_ALIGN_IMAGE > 0
+		#if DEBUG_ALIGN_IMAGE > 4
+		//TODO:Possibly remove this
 		cvtColor(img, dbg_out, CV_GRAY2RGB);
 		const Point* p = &maxRect[0];
 		int n = (int) maxRect.size();
@@ -232,7 +230,7 @@ void alignImage(Mat& img, Mat& aligned_image, vector<Point>& maxRect, Size align
 		find_bounding_lines(img, &top, &bottom, false);
 		find_bounding_lines(img, &left, &right, true);
 
-		#if DEBUG_ALIGN_IMAGE > 0
+		#if DEBUG_ALIGN_IMAGE > 5
 		img.copyTo(dbg_out);
 		const Point* p = &maxRect[0];
 		int n = (int) maxRect.size();
