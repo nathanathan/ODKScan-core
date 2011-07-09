@@ -9,9 +9,9 @@ Rect operator * (float lhs, Rect rhs) {
 	return Rect(lhs*rhs.tl(), lhs*rhs.size());
 }
 Rect expandRect(const Rect& r, const float expansionPercentage){
-	Point center = (r.tl() + r.br()) * .5;
-	return Rect(expansionPercentage * (r.tl() - center) + r.tl(), 
-				expansionPercentage * (r.br() - center) + r.br());
+	Point diag = r.tl() - r.br();
+	return Rect(expansionPercentage * diag + r.tl(), 
+				-expansionPercentage * diag + r.br());
 }
 
 Json::Value pointToJson(const Point p){

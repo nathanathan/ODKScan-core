@@ -19,4 +19,9 @@ Json::Value pointToJson(const cv::Point p);
 cv::Point jsonToPoint(const Json::Value& jPoint);
 Json::Value quadToJsonArray(std::vector<cv::Point>& quad, cv::Point offset);
 std::vector<cv::Point> jsonArrayToQuad(const Json::Value& quadJson);
+//Misc
+template <class Tp>
+bool returnTrue(Tp& anything){
+	return true;
+}
 #endif
