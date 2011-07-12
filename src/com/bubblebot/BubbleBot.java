@@ -68,6 +68,8 @@ public class BubbleBot extends Activity {
 	// This method copies the files within a given directory (with path relative to the assets folder).
 	// This does not recursively descend into subdirectories, and it might try to copy empty subdirectories.
 	protected void extractAssets(String assetsDir, String outputPath) throws IOException{
+		File dir = new File(outputPath);
+		dir.mkdirs();
 		String[] assets = getAssets().list(assetsDir);
 		for(int i = 0; i < assets.length; i++){
 			if(getAssets().list(assetsDir + "/" + assets[i]).length == 0){
