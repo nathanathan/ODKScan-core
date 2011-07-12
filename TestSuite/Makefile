@@ -1,23 +1,29 @@
 #A very helpful source: http://stackoverflow.com/questions/5799820/makefile-and-c-project
-MY_SRCS := test_ImageProcessing.cpp Processor.cpp PCA_classifier.cpp FormAlignment.cpp FileUtils.cpp Addons.cpp
+#TEST_SRCS := $(addsuffix .cpp, $(addprefix tests/, $(TESTS)))
+MY_SRCS := Processor.cpp PCA_classifier.cpp FormAlignment.cpp FileUtils.cpp Addons.cpp
 MY_OBJS := ${MY_SRCS:.cpp=.o}
 MY_HEADERS := ${MY_SRCS:.cpp=.h}
 JSON_PARSER_SRCS := $(wildcard ../jsoncpp-src-0.5.0/src/lib_json/*.cpp)
 JSON_PARSER_OBJS := ${JSON_PARSER_SRCS:.cpp=.o}
+INCLUDES := `pkg-config opencv --cflags --libs` -I../jsoncpp-src-0.5.0/include -I./
 
-INCLUDES := `pkg-config opencv --cflags --libs` -I../jsoncpp-src-0.5.0/include
-
-run: suite $(SRCS) NameGenerator.h configuration.h
-#In the future this directory stuff should be done in code.
+ImageProcessTest: tests/ImageProcessTest.test $(MY_SRCS) NameGenerator.h configuration.h
 	@rm -rf debug_segment_images
 	@mkdir debug_segment_images
 	@rm -rf bubble_images
 	@mkdir bubble_images
-	./suite
+	./tests/$@.test
+	
+FormAlignmentTest: tests/FormAlignmentTest.test $(MY_SRCS) NameGenerator.h configuration.h
+	@rm -rf aligned_forms
+	@cp -rL form_images aligned_forms
+	./tests/$@.test
 
-suite: $(SRCS) $(MY_OBJS) $(JSON_PARSER_OBJS)
-	g++ -g -o suite $(MY_OBJS) $(JSON_PARSER_OBJS) $(INCLUDES)
+#does linking
+%.test: %.cpp $(MY_SRCS) $(MY_OBJS) $(JSON_PARSER_OBJS)
+	g++ -g -o $@ $< $(MY_OBJS) $(JSON_PARSER_OBJS) $(INCLUDES)
 
+#does compiling
 %.o: %.cpp
 	g++ -c $< -o $@ $(INCLUDES)
 	
