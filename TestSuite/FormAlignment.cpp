@@ -10,17 +10,15 @@
 #include "highgui.h"
 #endif
 
+#include <fstream>
+#include "Addons.h"
+
 #define DEBUG_ALIGN_IMAGE 1
 
 #if DEBUG_ALIGN_IMAGE > 0
 #include "NameGenerator.h"
 NameGenerator alignmentNamer("debug_segment_images/");
 #endif
-
-//Image straightening constants
-#define DILATION 6
-#define BLOCK_SIZE 3
-#define DIST_PARAM 500
 
 //image_align constants
 #define THRESH_OFFSET_LB -.3
@@ -261,15 +259,180 @@ void alignImage(Mat& img, Mat& aligned_image, vector<Point>& maxRect, Size align
 		}
 	}
 }
+
+void crossCheckMatching( Ptr<DescriptorMatcher>& descriptorMatcher,
+                         const Mat& descriptors1, const Mat& descriptors2,
+                         vector<DMatch>& filteredMatches12, int knn=1 )
+{
+    filteredMatches12.clear();
+    vector<vector<DMatch> > matches12, matches21;
+    descriptorMatcher->knnMatch( descriptors1, descriptors2, matches12, knn );
+    descriptorMatcher->knnMatch( descriptors2, descriptors1, matches21, knn );
+    for( size_t m = 0; m < matches12.size(); m++ )
+    {
+        bool findCrossCheck = false;
+        for( size_t fk = 0; fk < matches12[m].size(); fk++ )
+        {
+            DMatch forward = matches12[m][fk];
+
+            for( size_t bk = 0; bk < matches21[forward.trainIdx].size(); bk++ )
+            {
+                DMatch backward = matches21[forward.trainIdx][bk];
+                if( backward.trainIdx == forward.queryIdx )
+                {
+                    filteredMatches12.push_back(forward);
+                    findCrossCheck = true;
+                    break;
+                }
+            }
+            if( findCrossCheck ) break;
+        }
+    }
+}
+bool fileexists(const string& filename){
+  ifstream ifile(filename.c_str());
+  return ifile;
+}
+//Tries to read feature data (presumably for the template) from featureDataPath + ".yml" .
+//If none is found it is generated for the image featureDataPath + ".jpg"
+bool loadFeatureData(const string& featureDataPath, Ptr<FeatureDetector>& detector,
+					Ptr<DescriptorExtractor>& descriptorExtractor, vector<KeyPoint>& templKeypoints,
+					Mat& templDescriptors, Size& templImageSize) {
+	
+	if( fileexists(featureDataPath + ".yml") ) {
+		try
+		{
+			FileStorage fs(featureDataPath + ".yml", FileStorage::READ);
+			if( !fs["fdtype"].empty () && !fs["detype"].empty() && !fs["detector"].empty() && 
+				!fs["descriptorExtractor"].empty() && !fs["templKeypoints"].empty() && !fs["templDescriptors"].empty() ){
+			
+				detector = FeatureDetector::create( fs["fdtype"] );
+				descriptorExtractor = DescriptorExtractor::create( fs["detype"] );
+				
+				detector->read(fs["detector"]);
+				descriptorExtractor->read(fs["descriptorExtractor"]);
+				
+				fs["templwidth"] >> templImageSize.width;
+				fs["templheight"] >> templImageSize.height; 
+
+				read(fs["templKeypoints"], templKeypoints);
+				fs["templDescriptors"] >> templDescriptors;
+			}
+		}
+		catch( cv::Exception& e )
+		{
+			const char* err_msg = e.what();
+		}
+	}
+	if( detector.empty() || descriptorExtractor.empty() || templKeypoints.empty() || templDescriptors.empty()){
+		//if there is no file to read descriptors and keypoints from make one.
+		//cout << featureDataPath + ".yml " << fileexists(featureDataPath + ".yml") << endl;
+		
+		string fdtype = "SURF";
+		string detype = fdtype;
+		
+		detector = FeatureDetector::create( fdtype );
+		descriptorExtractor = DescriptorExtractor::create( detype );
+		
+		Mat templImage, temp;
+		templImage = imread( featureDataPath + ".jpg", 0 );
+		resize(templImage, temp, templImage.size(), 0, 0, INTER_AREA);
+		templImage  = temp;
+		templImageSize = templImage.size();
+
+		cout << endl << "< Extracting keypoints from template image..." << endl;
+		detector->detect( templImage, templKeypoints );
+		cout << templKeypoints.size() << " points" << endl << ">" << endl;
+
+		cout << "< Computing descriptors for keypoints from template image..." << endl;
+		descriptorExtractor->compute( templImage, templKeypoints, templDescriptors );
+		cout << ">" << endl;
+		
+		// write feature data to a file.
+		FileStorage fs(featureDataPath + ".yml", FileStorage::WRITE);
+		fs << "fdtype" << fdtype; 
+		fs << "detector" << "{:"; detector->write(fs); fs << "}";
+		fs << "detype" << detype; 
+		fs << "descriptorExtractor" << "{:"; descriptorExtractor->write(fs); fs << "}";
+		
+		fs << "templwidth" << templImageSize.width;
+		fs << "templheight" << templImageSize.height;
+		
+		write(fs, "templKeypoints", templKeypoints);
+		fs << "templDescriptors" << templDescriptors;
+		
+		imwrite("t2.jpg", templImage);
+	}
+	if( detector.empty() || descriptorExtractor.empty() )
+	{
+		cout << "Can not create/load detector or descriptor exstractor" << endl;
+		return false;
+	}	
+	
+	return true;
+}
 //Aligns a image of a form.
-void alignFormImage(Mat& img, Mat& aligned_image, Size aligned_image_sz, int blurSize){
-	//Align paper
-	//Find where the content begins:
-	//Add a parameters to set the expected locations and search radius
-	//Also consider weighting this...
-	//find_bounding_lines(Mat& img, int* upper, int* lower, bool vertical);
-	//Once you have the content rectangle crop. Possibly resize (which will hurt performance)
-	//It might help to have a content rectangle in the JSON (which should indicate where the ink starts).
+bool alignFormImage(Mat& img, Mat& aligned_img, const string& featureDataPath, 
+					const Size& aligned_img_sz, float efficiencyScale ){
+					
+	Ptr<FeatureDetector> detector;
+	Ptr<DescriptorExtractor> descriptorExtractor;
+	
+	vector<KeyPoint> templKeypoints;
+	Mat templDescriptors;
+	
+	Size templImageSize;
+	
+	bool success = loadFeatureData(featureDataPath, detector, descriptorExtractor,
+									templKeypoints, templDescriptors, templImageSize);
+	if(!success) return false;
+	
+	// Be careful when resizing, aliasing can completely break this function.
+	Mat img_resized;
+	resize(img, img_resized, efficiencyScale*img.size(), 0, 0, INTER_AREA);
+	Point3d trueEfficiencyScale(double(img_resized.cols) / img.cols, double(img_resized.rows) / img.rows, 1);
+	//cvtColor(temp, img1, CV_GRAY2RGB);
+	//GaussianBlur(temp, img1, Size(1, 1), 1.0);
+	
+	imwrite("t1.jpg", img_resized);
+
+	cout << endl << "< Extracting keypoints from first image..." << endl;
+	vector<KeyPoint> keypoints1;
+	detector->detect( img_resized, keypoints1 );
+	cout << keypoints1.size() << " points" << endl << ">" << endl;
+
+	cout << "< Computing descriptors for keypoints from first image..." << endl;
+	Mat descriptors1;
+	descriptorExtractor->compute( img_resized, keypoints1, descriptors1 );
+	cout << ">" << endl;
+
+	cout << "< Matching descriptors..." << endl;
+	Ptr<DescriptorMatcher> descriptorMatcher = DescriptorMatcher::create( "BruteForce" );
+	if( descriptorMatcher.empty()  ) {
+		cout << "Can not create descriptor matcher of given type" << endl;
+		return false;
+	}
+	vector<DMatch> filteredMatches;
+	crossCheckMatching( descriptorMatcher, descriptors1, templDescriptors, filteredMatches, 1 );
+	cout << ">" << endl;
+
+	vector<int> queryIdxs( filteredMatches.size() ), trainIdxs( filteredMatches.size() );
+	for( size_t i = 0; i < filteredMatches.size(); i++ )
+	{
+		queryIdxs[i] = filteredMatches[i].queryIdx;
+		trainIdxs[i] = filteredMatches[i].trainIdx;
+	}
+
+	vector<Point2f> points1; KeyPoint::convert(keypoints1, points1, queryIdxs);
+	vector<Point2f> points2; KeyPoint::convert(templKeypoints, points2, trainIdxs);
+	
+	Point3d sc = Point3d( double(aligned_img_sz.width) / templImageSize.width,
+						  double(aligned_img_sz.height) / templImageSize.height,
+						  1);
+	Mat H = findHomography( Mat(points1), Mat(points2), CV_RANSAC, 5.0 ) *
+			(Mat::diag(Mat(trueEfficiencyScale)) * Mat::diag(Mat(sc)));
+	
+	warpPerspective( img, aligned_img, H, aligned_img_sz );
 }
 //Aligns a region bounded by black lines (i.e. a bubble segment)
 //It might be necessiary for some of the black lines to touch the edge of the image...
@@ -277,8 +440,6 @@ void alignFormImage(Mat& img, Mat& aligned_image, Size aligned_image_sz, int blu
 void alignBoundedRegion(Mat& img, Mat& aligned_image, Size aligned_image_sz){
 	return;
 }
-
-
 vector<Point> findFormQuad(Mat& img){
 	return findQuad(img, 12);
 }
@@ -286,12 +447,17 @@ vector<Point> findBoundedRegionQuad(Mat& img){
 	return findQuad(img, 2);
 }
 
-
 //DEPRECATED
 //A form straitening method based on finding the corners of the sheet of form paper.
 //The form will be resized to the size of output_image.
 //It might save some memory to specify a Size object instead of a preallocated Mat.
 void straightenImage(const Mat& input_image, Mat& output_image) {
+
+//Image straightening constants
+#define DILATION 6
+#define BLOCK_SIZE 3
+#define DIST_PARAM 500
+
 	Point2f orig_corners[4];
 	Point2f corners_a[4];
 	vector < Point2f > corners;

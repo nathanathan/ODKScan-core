@@ -28,7 +28,7 @@
 #include "Addons.h"
 
 #if 1
-#define SCALEPARAM 2.0
+#define SCALEPARAM 1.0
 #else
 #define SCALEPARAM 0.5
 #endif
@@ -194,9 +194,8 @@ bool loadForm(const char* imagePath){
 	return formImage.data != NULL;
 }
 bool alignForm(const char* alignedImageOutputPath){
-	int form_width = root.get("width", 0).asInt();
-	int form_height = root.get("height", 0).asInt();
-	if( form_width <= 0 || form_height <= 0){
+	Size form_sz(root.get("width", 0).asInt(), root.get("height", 0).asInt());
+	if( form_sz.width <= 0 || form_sz.height <= 0){
 		return false;
 	}
 	
@@ -210,11 +209,20 @@ bool alignForm(const char* alignedImageOutputPath){
 	#if DEBUG > 0
 	cout << "straightening image" << endl;
 	#endif
+	
+	//templDir will contain JSON templates, form images, and yml? feature data for each form.
+	String templDir("");
+	Mat straightenedImage(0,0, CV_8U);
+	alignFormImage(formImage, straightenedImage, templDir+root.get("form_name", "default").asString(),
+					SCALEPARAM * form_sz, .25);
+					
+	/*
 	vector<Point> quad = findFormQuad(formImage);
 	Mat straightenedImage(0,0, CV_8U);
-	alignImage(formImage, straightenedImage, quad, Size(form_width * SCALEPARAM, form_height * SCALEPARAM));
+	alignImage(formImage, straightenedImage, quad,  SCALEPARAM * form_sz);
+	*/
 	
-	if(straightenedImage.data == NULL){
+	if(straightenedImage.data == NULL) {
 		return false;
 	}
 	else{
