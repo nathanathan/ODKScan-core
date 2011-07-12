@@ -73,6 +73,8 @@ public class BubbleProcess extends Activity  {
 			mProcessor.trainClassifier();
 			mProcessor.loadForm(pictureName);
 			mProcessor.processForm("sdcard/BubbleBot/output.json");
+			//This would probably make more sense as separate function.
+			mProcessor.markupForm("sdcard/BubbleBot/output.json", "sdcard/BubbleBot/markedup.jpg");
 			return null;
 		}
     }

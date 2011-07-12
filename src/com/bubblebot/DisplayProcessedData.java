@@ -117,10 +117,10 @@ public class DisplayProcessedData  extends ListActivity {
 		Integer[] bubbleCounts = new Integer[jArray.length()];
 
 		for (int i = 0; i < jArray.length(); i++) {
-			JSONArray bubbleValArray = jArray.getJSONObject(i).getJSONArray("bubble_vals");
+			JSONArray bubbleValArray = jArray.getJSONObject(i).getJSONArray("bubbles");
 			int numFilled = 0;
 			for (int j = 0; j < bubbleValArray.length(); j++) {
-				if(bubbleValArray.getBoolean(j)){
+				if( bubbleValArray.getJSONObject(j).getBoolean("value") ){
 					numFilled++;
 				}
 			}
