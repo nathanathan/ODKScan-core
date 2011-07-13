@@ -2,10 +2,11 @@
 Description of what's being tested
 */
 
+#include "Processor.h"
+#include "TestTools.h"
+
 #include <iostream>
 #include <string>
-
-#include "Processor.h"
 
 using namespace std;
 
@@ -51,5 +52,12 @@ int main(int argc, char *argv[]) {
 		if( !myProcessor.markupForm(outputPath.c_str(), markedupFormOutfile.c_str()) ) {
 			cout << "Could not markup. Arg: " << markedupFormOutfile << endl;
 		}
+		
+		int tp=0, fp=0, tn=0, fn=0;
+		compareFiles(outputPath, outputPath, tp, fp, tn, fn);
+		cout << "True positives: "<< tp << endl;
+		cout << "False positives: " << fp << endl;
+		cout << "True negatives: "<< tn << endl;
+		cout << "False negatives: " << fn << endl;
 	}
 }
