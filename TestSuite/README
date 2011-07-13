@@ -2,5 +2,8 @@ This is a testing suite for the form scanning procedure.
 You will need to provide your own form images in a "form_images" folder.
 In order to generate plots you will have to install [R] the statisical programming language.
 The formAlignment PCA_classifier and nameGenerator files can be swapped with those in the jni directory (so long as their header remains intact.)
-
+The command "make jni-transfer" will do this swapping for you.
+The tests folder contains the actual test code.
+Each cpp file in there should have a make corresponding make target you can use.
+If you should decide to modify any of that code with changes to I/O it's important to note that it all gets run from the TestSuite directory.
 More to come as the suite develops...
