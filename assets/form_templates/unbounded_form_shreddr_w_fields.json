@@ -1,5 +1,6 @@
 {
-	"bubble_size" : [ 5, 8 ],
+	"bubble_size" : [ 8, 12 ],
+	"feature_data_path" : "A0_from_booklet",
 	"fields" :
 	[
 	{
