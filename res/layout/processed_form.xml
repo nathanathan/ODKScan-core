@@ -7,5 +7,10 @@
 
 <TextView android:id="@+id/text" android:layout_width="fill_parent" android:layout_height="wrap_content" android:gravity="center" android:padding="10dp" android:text="Filename"/>
 <Button android:layout_width="fill_parent" android:layout_height="wrap_content" android:id="@+id/button" android:text="View Captured Data" android:gravity="center" android:padding="20dp" />
-<ImageView android:id="@+id/image" android:layout_width="fill_parent" android:layout_height="wrap_content" android:gravity="center" android:padding="10dp" />
+<WebView  xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/webview2"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:background="#000000"
+android:scrollbars="none"/>
 </LinearLayout>
