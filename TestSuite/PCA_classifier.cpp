@@ -9,7 +9,7 @@
 
 //Normalizing everything that goes into the PCA *might* help with lighting problems
 //But so far just seems to hurt accuracy.
-//#define NORMALIZE
+#define NORMALIZE
 
 //getRectSubPix might slow things down, but provides 2 advanges over the roi method
 //1. If the example images have an odd dimension it will linearly interpolate the
@@ -18,7 +18,7 @@
 //   it won't give an error.
 #define USE_GET_RECT_SUB_PIX
 
-#define FLIP_EXAMPLES
+//#define FLIP_EXAMPLES
 
 //TestSuite.h will be the file that defines this:
 #ifdef USE_ANDROID_HEADERS_AND_IO
@@ -118,7 +118,7 @@ void PCA_classifier::PCA_set_add(Mat& PCA_set, string& filename) {
         return;
     }
     Mat aptly_sized_example;
-	resize(example, aptly_sized_example, Size(exampleSize.width, exampleSize.height), INTER_CUBIC);
+	resize(example, aptly_sized_example, Size(exampleSize.width, exampleSize.height), 0, 0, INTER_AREA);
 
 	#ifdef OUTPUT_EXAMPLES
 	string outfilename = exampleNamer.get_unique_name("bubble_");
@@ -174,7 +174,8 @@ double PCA_classifier::rateBubble(Mat& det_img_gray, Point bubble_location) {
 	getRectSubPix(det_img_gray, Size(exampleSize.width, exampleSize.height), bubble_location, query_pixels);
 	query_pixels.reshape(0,1).convertTo(query_pixels, CV_32F);
 	#else
-	det_img_gray(Rect(bubble_location-Point(exampleSize.width/2, exampleSize.height/2), Size(exampleSize.width, exampleSize.height))).convertTo(query_pixels, CV_32F);
+	det_img_gray(Rect(bubble_location-Point(exampleSize.width/2, exampleSize.height/2),
+					  Size(exampleSize.width, exampleSize.height))).convertTo(query_pixels, CV_32F);
 	query_pixels = query_pixels.reshape(0,1);
 	#endif
 	
@@ -215,7 +216,8 @@ bubble_val PCA_classifier::classifyBubble(Mat& det_img_gray, Point bubble_locati
     #ifdef USE_GET_RECT_SUB_PIX
 	getRectSubPix(det_img_gray, Size(exampleSize.width, exampleSize.height), bubble_location, query_pixels);
 	#else
-	query_pixels = det_img_gray(Rect(bubble_location-Point(exampleSize.width/2, exampleSize.height/2), Size(exampleSize.width, exampleSize.height)));
+	query_pixels = det_img_gray(Rect(bubble_location-Point(exampleSize.width/2, exampleSize.height/2),
+									 Size(exampleSize.width, exampleSize.height)));
 	#endif
 	
 	#ifdef OUTPUT_BUBBLE_IMAGES

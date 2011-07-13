@@ -10,6 +10,7 @@
 #include "highgui.h"
 #endif
 
+#include <iostream>
 #include <fstream>
 #include "Addons.h"
 
@@ -24,7 +25,8 @@ NameGenerator alignmentNamer("debug_segment_images/");
 #define THRESH_OFFSET_LB -.3
 #define THRESH_DECR_SIZE .05
 
-#define EXPANSION_PERCENTAGE 0
+#define EXPANSION_PERCENTAGE .03
+
 
 using namespace cv;
 
@@ -54,17 +56,21 @@ void configCornerArray(vector<Tp>& found_corners, Point2f* dest_corners) {
 		corners.erase(corners.begin()+min_idx);
 	}
 }
-void expandCorners(Point2f* corners, double expansionPercent){
-	Point2f center(0,0);
-	for(size_t i = 0; i < 4; i++){
+//Creates a new vector with all the points expanded about the average of the first vector.
+vector<Point> expandCorners(const vector<Point>& corners, double expansionPercent){
+	Point center(0,0);
+	for(size_t i = 0; i < corners.size(); i++){
 		center += corners[i];
 	}
-	center *= .25;
-	for(size_t i = 0; i < 4; i++){
-		corners[i] += expansionPercent * (corners[i] - center);
+	
+	center *= 1.f / corners.size();
+	vector<Point> out(corners.begin(), corners.end());
+	
+	for(size_t i = 0; i < out.size(); i++){
+		out[i] += expansionPercent * (corners[i] - center);
 	}
+	return out;
 }
-
 //Finds two vertical or horizontal lines that have the minimal gradient sum.
 void find_bounding_lines(Mat& img, int* upper, int* lower, bool vertical) {
 	Mat grad_img, out;
@@ -94,33 +100,26 @@ void find_bounding_lines(Mat& img, int* upper, int* lower, bool vertical) {
 	*upper = min_location_top.y;
 	*lower = min_location_bottom.y + out.rows/2 + center_size;
 }
-
 // Try to distil the maximum quad (4 point contour) from a convex contour of many points.
 // if none is found maxQuad will not be altered.
 // TODO: Find out what happens when you try to simplify a contour that already has just 4 points.
 float maxQuadSimplify(vector <Point>& contour, vector<Point>& maxQuad, float current_approx_p){
 	
 	float area = 0;
-	float prev_area = 0;
-
-	vector <Point> approx;
 	
 	float arc_len = arcLength(Mat(contour), true);
 	while (current_approx_p < 1) {
+		vector <Point> approx;
 		approxPolyDP(Mat(contour), approx, arc_len * current_approx_p, true);
 		if (approx.size() == 4){
 			maxQuad = approx;
-			prev_area = area;
 			area = fabs(contourArea(Mat(approx)));
-			if( area <= prev_area ) {
-				break;
-			}
+			break;
 		}
 		current_approx_p += .01;
 	}
-	return prev_area;
+	return area;
 }
-
 //Find the largest quad contour in img
 //Warning: destroys img
 vector<Point> findMaxQuad(Mat& img, float approx_p_seed = 0){
@@ -187,7 +186,7 @@ vector<Point> findQuad(Mat& img, int blurSize){
 		quad[i] = Point(actual_width_multiple * quad[i].x, actual_height_multiple * quad[i].y);
 	}
 	
-	return quad;
+	return expandCorners(quad, EXPANSION_PERCENTAGE);
 }
 Mat getMyTransform(vector<Point>& foundCorners, Size init_image_sz, Size out_image_sz, bool reverse){
 	Point2f corners_a[4] = {Point2f(0, 0), Point2f(init_image_sz.width, 0), Point2f(0, init_image_sz.height),
@@ -196,8 +195,7 @@ Mat getMyTransform(vector<Point>& foundCorners, Size init_image_sz, Size out_ima
 							Point2f(out_image_sz.width, out_image_sz.height)};
 
 	configCornerArray(foundCorners, corners_a);
-	//TODO: Think about this.
-	expandCorners(corners_a, EXPANSION_PERCENTAGE);
+	
 	if(reverse){
 		return getPerspectiveTransform(out_corners, corners_a);
 	}
@@ -303,9 +301,9 @@ bool loadFeatureData(const string& featureDataPath, Ptr<FeatureDetector>& detect
 		try
 		{
 			FileStorage fs(featureDataPath + ".yml", FileStorage::READ);
-			if( !fs["fdtype"].empty () && !fs["detype"].empty() && !fs["detector"].empty() && 
+			/*if( !fs["fdtype"].empty () && !fs["detype"].empty() && !fs["detector"].empty() && 
 				!fs["descriptorExtractor"].empty() && !fs["templKeypoints"].empty() && !fs["templDescriptors"].empty() ){
-			
+			*/
 				detector = FeatureDetector::create( fs["fdtype"] );
 				descriptorExtractor = DescriptorExtractor::create( fs["detype"] );
 				
@@ -317,7 +315,7 @@ bool loadFeatureData(const string& featureDataPath, Ptr<FeatureDetector>& detect
 
 				read(fs["templKeypoints"], templKeypoints);
 				fs["templDescriptors"] >> templDescriptors;
-			}
+			//}
 		}
 		catch( cv::Exception& e )
 		{
