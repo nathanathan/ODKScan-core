@@ -1,4 +1,7 @@
 #include "Addons.h"
+#include <json/json.h>
+#include <fstream>
+
 using namespace std;
 using namespace cv;
 
@@ -37,4 +40,14 @@ vector<Point> jsonArrayToQuad(const Json::Value& quadJson){
 		out.push_back(jsonToPoint(quadJson[i]));
 	}
 	return out;
+}
+
+bool parseJsonFromFile(const char* filePath, Json::Value& myRoot){
+	ifstream JSONin;
+	Json::Reader reader;
+	
+	JSONin.open(filePath, ifstream::in);
+	bool parse_successful = reader.parse( JSONin, myRoot );
+	
+	JSONin.close();
 }
