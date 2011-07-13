@@ -15,6 +15,11 @@
 #else
 #include "cv.h"
 #include "highgui.h"
+
+#define DEBUG 1
+
+#define OUTPUT_SEGMENT_IMAGES
+
 #endif
 
 #include <json/json.h>
@@ -35,11 +40,7 @@
 
 // Creates a buffer around segments porpotional to their size.
 // I think .5 is the largest value that won't cause ambiguous cases.
-#define SEGMENT_BUFFER .5
-
-#define DEBUG 1
-
-#define OUTPUT_SEGMENT_IMAGES
+#define SEGMENT_BUFFER .25
 
 #ifdef OUTPUT_SEGMENT_IMAGES
 #include "NameGenerator.h"
@@ -56,6 +57,7 @@ private:
 Json::Value root;
 Mat formImage;
 PCA_classifier classifier;
+string templDir;
 
 public:
 
@@ -70,6 +72,10 @@ Json::Value classifyBubbles(Mat& segment, const Json::Value& bubbleLocations, Ma
 	Json::Value bubblesJsonOut;
 	for (size_t i = 0; i < bubbleLocations.size(); i++) {
 		Point bubbleLocation = (2.0 / 1.1) * SCALEPARAM * jsonToPoint(bubbleLocations[i]);
+		if(bubbleLocation.x > segment.cols || bubbleLocation.y > segment.rows ||
+									bubbleLocation.x < 0 || bubbleLocation.y < 0){
+			continue; //Skip out of bounds bubbles
+		}
 		Point refined_location = classifier.bubble_align(segment, bubbleLocation);
 		bubble_val current_bubble = classifier.classifyBubble(segment, refined_location);
 		
@@ -138,25 +144,17 @@ Json::Value processSegment(const Json::Value &segmentTemplate){
 	Json::Value segmentJsonOut;
 	segmentJsonOut["key"] = segmentTemplate.get("key", -1);
 	segmentJsonOut["quad"] = quadToJsonArray(quad, expandedRect.tl());
-	segmentJsonOut["bubbles"] = classifyBubbles(alignedSegment, segmentTemplate["bubble_locations"], transformation, expandedRect.tl());
+	segmentJsonOut["bubbles"] = classifyBubbles(alignedSegment, segmentTemplate["bubble_locations"],
+												transformation, expandedRect.tl());
 	
 	return segmentJsonOut;
 }
-bool parseJsonFromFile(const char* filePath, Json::Value& myRoot){
-	#if DEBUG > 0
-	cout << "Parsing JSON" << endl;
-	#endif
-	ifstream JSONin;
-	Json::Reader reader;
-	
-	JSONin.open(filePath, ifstream::in);
-	bool parse_successful = reader.parse( JSONin, myRoot );
-	
-	JSONin.close();
-}
 ProcessorImpl(const char* templatePath){
-
 	parseJsonFromFile(templatePath, root);
+	
+	//templDir will contain JSON templates, form images, and yml? feature data for each form.
+	templDir = string(templatePath);
+	templDir = templDir.substr(0, templDir.find_last_of("/") + 1);
 	
 	#if DEBUG > 0
 	string form_name = root.get("name", "no_name").asString();
@@ -175,7 +173,7 @@ bool trainClassifier(){
 											  SCALEPARAM * bubbleSize[1u].asInt())) ){
 		return false;
 	}
-	classifier.set_search_window(Size(0,0));
+	//classifier.set_search_window(Size(0,0));
 	#if DEBUG > 0
 	cout << "trained" << endl;
 	#endif
@@ -210,10 +208,10 @@ bool alignForm(const char* alignedImageOutputPath){
 	cout << "straightening image" << endl;
 	#endif
 	
-	//templDir will contain JSON templates, form images, and yml? feature data for each form.
-	String templDir("");
+	cout << templDir+root.get("feature_data_path", "default").asString() << endl;
+	
 	Mat straightenedImage(0,0, CV_8U);
-	alignFormImage(formImage, straightenedImage, templDir+root.get("form_name", "default").asString(),
+	alignFormImage(formImage, straightenedImage, templDir+root.get("feature_data_path", "default").asString(),
 					SCALEPARAM * form_sz, .25);
 					
 	/*
@@ -275,7 +273,8 @@ bool processForm(const char* outputPath) {
 	return true;
 }
 //Marks up formImage based on the specifications of a bubble-vals JSON file at the given path.
-//Then output the form to the given locaiton
+//Then output the form to the given locaiton.
+//TODO: This doesn't need to be part of this class.
 bool markupForm(const char* bvPath, const char* outputPath) {
 	Json::Value bvRoot;
 	Mat markupImage;
@@ -290,7 +289,7 @@ bool markupForm(const char* bvPath, const char* outputPath) {
 				vector<Point> quad = jsonArrayToQuad(segment["quad"]);
 				const Point* p = &quad[0];
 				int n = (int) quad.size();
-				polylines(markupImage, &p, &n, 1, true, 200, 2, CV_AA);
+				polylines(markupImage, &p, &n, 1, true, Scalar(10, 255, 10), 2, CV_AA);
 				const Json::Value bubbles = segment["bubbles"];
 				for ( size_t k = 0; k < bubbles.size(); k++ ) {
 					const Json::Value bubble = bubbles[k];
@@ -303,7 +302,6 @@ bool markupForm(const char* bvPath, const char* outputPath) {
 					else{
 						color = Scalar(0, 0, 255);
 					}
-									   
 					circle(markupImage, bubbleLocation, 1, color, -1);
 				}
 			}
