@@ -2,7 +2,29 @@
 #include "PCA_classifier.h"
 #include "FileUtils.h"
 #include "NameGenerator.h"
+
+#include <opencv2/highgui/highgui.hpp>
+
 #include <iostream>
+
+#ifdef USE_ANDROID_HEADERS_AND_IO
+
+	//Might need to put something here eventually
+
+#else
+	
+	#define OUTPUT_BUBBLE_IMAGES
+	#define OUTPUT_EXAMPLES
+
+	#ifdef OUTPUT_BUBBLE_IMAGES
+	NameGenerator classifierNamer("bubble_images/");
+	#endif
+
+	#ifdef OUTPUT_EXAMPLES
+	NameGenerator exampleNamer("example_images_used/");
+	#endif
+
+#endif
 
 //Number of eigenvalues to generate for the PCA
 #define EIGENBUBBLES 5
@@ -18,34 +40,7 @@
 //   it won't give an error.
 #define USE_GET_RECT_SUB_PIX
 
-//#define FLIP_EXAMPLES
-
-//TestSuite.h will be the file that defines this:
-#ifdef USE_ANDROID_HEADERS_AND_IO
-
-	#include <opencv2/highgui/highgui.hpp>
-	//I suspect the following path will need to change
-	//TODO: This should probably be an arg passed in from javaland.
-	#define TRAINING_EXAMPLE_DIRECTORY "/sdcard/mScan/training_examples"
-
-#else //If we are compiling for the test suite
-	
-	#include "highgui.h"
-
-	#define TRAINING_EXAMPLE_DIRECTORY "training_examples"
-
-	#define OUTPUT_BUBBLE_IMAGES
-	#define OUTPUT_EXAMPLES
-
-	#ifdef OUTPUT_BUBBLE_IMAGES
-	NameGenerator classifierNamer("bubble_images/");
-	#endif
-
-	#ifdef OUTPUT_EXAMPLES
-	NameGenerator exampleNamer("example_images_used/");
-	#endif
-
-#endif
+#define FLIP_EXAMPLES
 
 using namespace std;
 using namespace cv;
@@ -140,15 +135,14 @@ void PCA_classifier::PCA_set_add(Mat& PCA_set, string& filename) {
 }
 //This trains the PCA classifer by query.
 //A predicate can be supplied for filtering out undesireable filenames
-bool PCA_classifier::train_PCA_classifier(Size myExampleSize, bool (*pred)(string&)) {
+bool PCA_classifier::train_PCA_classifier(const string& dirPath, Size myExampleSize, bool (*pred)(string&)) {
 	//Maybe put this in the initializer?
 	exampleSize = myExampleSize;
 	search_window = myExampleSize;
 	update_gaussian_weights();
 	
 	vector<string> filenames;
-	string training_examples(TRAINING_EXAMPLE_DIRECTORY);
-	CrawlFileTree(training_examples, filenames);
+	CrawlFileTree(dirPath, filenames);
 
 	Mat PCA_set;
 	vector<string>::iterator it;
@@ -157,9 +151,9 @@ bool PCA_classifier::train_PCA_classifier(Size myExampleSize, bool (*pred)(strin
 			PCA_set_add(PCA_set, (*it));
 		}
 	}
-	if(PCA_set.rows < 3){
-		return false;
-	}
+	
+	if(PCA_set.rows < EIGENBUBBLES) return false;//Not completely sure about this...
+
 	my_PCA = PCA(PCA_set, Mat(), CV_PCA_DATA_AS_ROW, EIGENBUBBLES);
 	comparison_vectors = my_PCA.project(PCA_set);
 	return true;

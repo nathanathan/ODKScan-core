@@ -13,7 +13,7 @@ class Processor{
 		Processor(const char* templatePath);
 		
 		//These two probably don't need to be exposed except for in the testing suite
-		bool trainClassifier();
+		bool trainClassifier(const char* trainingImageDir);
 		void setClassifierWeight(float weight);
 		
 		bool loadForm(const char* imagePath);

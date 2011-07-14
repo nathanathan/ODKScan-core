@@ -1,26 +1,22 @@
 #include "configuration.h"
 #ifdef USE_ANDROID_HEADERS_AND_IO
-// Some of the headers probably aren't needed:
+	#include <sys/stat.h>
+	#include "log.h"
+	#define LOG_COMPONENT "Nathan"
+	//Note: LOGI doesn't yet transfer to the test suite
+	//		Can I make it work like cout and use defines to switch between them?
+	//Maybe instead of using conditionals I should just move all this stuff to configuration.h
+#else
+
+	#define DEBUG 1
+	#define OUTPUT_SEGMENT_IMAGES
+
+#endif
+
 #include <opencv2/core/core.hpp>
-#include <opencv2/highgui/highgui_c.h>
-#include <opencv2/imgproc/imgproc_c.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/legacy/compat.hpp>
-#include <sys/stat.h>
-#include "log.h"
-#define LOG_COMPONENT "Nathan"
-//Note: LOGI doesn't yet transfer to the test suite
-//		Can I make it work like cout and use defines to switch between them?
-#else
-#include "cv.h"
-#include "highgui.h"
-
-#define DEBUG 1
-
-#define OUTPUT_SEGMENT_IMAGES
-
-#endif
 
 #include <json/json.h>
 
@@ -161,7 +157,7 @@ ProcessorImpl(const char* templatePath){
 	cout << form_name << endl;
 	#endif
 }
-bool trainClassifier(){
+bool trainClassifier(const char* trainingImageDir){
 	#if DEBUG > 0
 	cout << "training classifier...";
 	#endif
@@ -169,10 +165,11 @@ bool trainClassifier(){
 	defaultSize.append(5);
 	defaultSize.append(8);
 	Json::Value bubbleSize = root.get("bubble_size", defaultSize);
-	if( !classifier.train_PCA_classifier(Size(SCALEPARAM * bubbleSize[0u].asInt(),
-											  SCALEPARAM * bubbleSize[1u].asInt())) ){
-		return false;
-	}
+	bool success = classifier.train_PCA_classifier(string(trainingImageDir), 
+													Size(SCALEPARAM * bubbleSize[0u].asInt(),
+													SCALEPARAM * bubbleSize[1u].asInt()));
+	if (!success) return false;
+	
 	//classifier.set_search_window(Size(0,0));
 	#if DEBUG > 0
 	cout << "trained" << endl;
@@ -234,7 +231,7 @@ bool processForm(const char* outputPath) {
 	cout << "debug level is: " << DEBUG << endl;
 	#endif
 	
-	if( root == NULL || formImage.data == NULL || !classifier.trained()){
+	if( !root || !formImage.data || !classifier.trained()){
 		cout << "Unable to process form" << endl;
 		return false;
 	}
@@ -287,9 +284,12 @@ bool markupForm(const char* bvPath, const char* outputPath) {
 			for ( size_t j = 0; j < segments.size(); j++ ) {
 				const Json::Value segment = segments[j];
 				vector<Point> quad = jsonArrayToQuad(segment["quad"]);
+				
+				//Draw segment rectangles:
 				const Point* p = &quad[0];
 				int n = (int) quad.size();
 				polylines(markupImage, &p, &n, 1, true, Scalar(10, 255, 10), 2, CV_AA);
+				
 				const Json::Value bubbles = segment["bubbles"];
 				for ( size_t k = 0; k < bubbles.size(); k++ ) {
 					const Json::Value bubble = bubbles[k];
@@ -323,8 +323,8 @@ bool writeFormImage(const char* outputPath){
 
 /* This stuff hooks the Processor class up to the implementation class: */
 Processor::Processor(const char* templatePath) : processorImpl(new ProcessorImpl(templatePath)){}
-bool Processor::trainClassifier(){
-	return processorImpl->trainClassifier();
+bool Processor::trainClassifier(const char* trainingImageDir){
+	return processorImpl->trainClassifier(trainingImageDir);
 }
 void Processor::setClassifierWeight(float weight){
 	processorImpl->setClassifierWeight(weight);

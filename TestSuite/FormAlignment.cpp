@@ -2,21 +2,21 @@
 #include "FormAlignment.h"
 
 #ifdef USE_ANDROID_HEADERS_AND_IO
-#include <opencv2/highgui/highgui_c.h>
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/imgproc/imgproc_c.h>
-#include <opencv2/imgproc/imgproc.hpp>
+	//Might need to put something here eventually...
 #else
-#include "highgui.h"
+	#define DEBUG_ALIGN_IMAGE
 #endif
+
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/features2d/features2d.hpp>
+#include <opencv2/calib3d/calib3d.hpp>
 
 #include <iostream>
 #include <fstream>
 #include "Addons.h"
 
-#define DEBUG_ALIGN_IMAGE 1
-
-#if DEBUG_ALIGN_IMAGE > 0
+#ifdef DEBUG_ALIGN_IMAGE
 #include "NameGenerator.h"
 NameGenerator alignmentNamer("debug_segment_images/");
 #endif
@@ -169,7 +169,7 @@ vector<Point> findQuad(Mat& img, int blurSize){
 	//This threshold might be tweakable
 	imgThresh = temp_img2 - temp_img > 0;
 	
-	#if DEBUG_ALIGN_IMAGE > 0
+	#ifdef DEBUG_ALIGN_IMAGE
 	Mat dbg_out;
 	imgThresh.copyTo(dbg_out);
 	string segfilename = alignmentNamer.get_unique_name("alignment_debug_");
@@ -208,7 +208,7 @@ Mat getMyTransform(vector<Point>& foundCorners, Size init_image_sz, Size out_ima
 void alignImage(Mat& img, Mat& aligned_image, vector<Point>& maxRect, Size aligned_image_sz){
 	
 	if ( maxRect.size() == 4 && isContourConvex(Mat(maxRect)) ){
-		#if DEBUG_ALIGN_IMAGE > 4
+		/*
 		//TODO:Possibly remove this
 		cvtColor(img, dbg_out, CV_GRAY2RGB);
 		const Point* p = &maxRect[0];
@@ -217,7 +217,7 @@ void alignImage(Mat& img, Mat& aligned_image, vector<Point>& maxRect, Size align
 		string segfilename = alignmentNamer.get_unique_name("alignment_debug_");
 		segfilename.append(".jpg");
 		imwrite(segfilename, dbg_out);
-		#endif
+		*/
 		Mat H = getMyTransform(maxRect, img.size(), aligned_image_sz);
 		warpPerspective(img, aligned_image, H, aligned_image_sz);
 	}
@@ -226,7 +226,7 @@ void alignImage(Mat& img, Mat& aligned_image, vector<Point>& maxRect, Size align
 		find_bounding_lines(img, &top, &bottom, false);
 		find_bounding_lines(img, &left, &right, true);
 
-		#if DEBUG_ALIGN_IMAGE > 5
+		/*
 		img.copyTo(dbg_out);
 		const Point* p = &maxRect[0];
 		int n = (int) maxRect.size();
@@ -239,7 +239,7 @@ void alignImage(Mat& img, Mat& aligned_image, vector<Point>& maxRect, Size align
 		string segfilename = alignmentNamer.get_unique_name("alignment_debug_");
 		segfilename.append(".jpg");
 		imwrite(segfilename, dbg_out);
-		#endif
+		*/
 		
 		float bounding_lines_threshold = .2;
 		if ((abs((bottom - top) - aligned_image.rows) < bounding_lines_threshold * aligned_image.rows) &&

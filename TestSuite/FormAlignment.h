@@ -1,13 +1,7 @@
 #ifndef FORM_ALIGNMENT_H
 #define FORM_ALIGNMENT_H
 
-#include "configuration.h"
-
-#ifdef USE_ANDROID_HEADERS_AND_IO
 #include <opencv2/core/core.hpp>
-#else
-#include "cv.h"
-#endif
 
 void alignImage(cv::Mat& img, cv::Mat& aligned_image, std::vector<cv::Point>& maxRect, cv::Size aligned_image_sz);
 
