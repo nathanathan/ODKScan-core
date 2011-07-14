@@ -27,7 +27,7 @@ NameGenerator alignmentNamer("debug_segment_images/");
 
 #define EXPANSION_PERCENTAGE .03
 
-
+using namespace std;
 using namespace cv;
 
 //Takes a vector of found corners, and an array of destination corners they should map to
@@ -188,6 +188,7 @@ vector<Point> findQuad(Mat& img, int blurSize){
 	
 	return expandCorners(quad, EXPANSION_PERCENTAGE);
 }
+//TODO: Add a quad to transformation routine?
 Mat getMyTransform(vector<Point>& foundCorners, Size init_image_sz, Size out_image_sz, bool reverse){
 	Point2f corners_a[4] = {Point2f(0, 0), Point2f(init_image_sz.width, 0), Point2f(0, init_image_sz.height),
 							Point2f(init_image_sz.width, init_image_sz.height)};
@@ -202,6 +203,27 @@ Mat getMyTransform(vector<Point>& foundCorners, Size init_image_sz, Size out_ima
 	else{
 		return getPerspectiveTransform(corners_a, out_corners);
 	}
+}
+vector<Point> transformationToQuad(const Mat& H, const Size& out_image_sz){
+										
+	Mat img_rect = (Mat_<double>(3,4) << 0, out_image_sz.width, (double)out_image_sz.width,	 0,
+										 0, 0,					(double)out_image_sz.height, out_image_sz.height,
+										 1,	1,					1, 					 1);
+	//cout << img_rect.at<double>(3, 0) <<", " << img_rect.at<double>(3, 1) << endl;
+	//cout << img_rect << endl;
+
+	Mat out_img_rect =  H.inv() * img_rect;
+
+	//cout << img_rect << endl;
+	
+	vector<Point> quad;
+	for(size_t i = 0; i < 4; i++){
+		double sc = 1. / out_img_rect.at<double>(2, i);
+		quad.push_back( sc * Point(out_img_rect.at<double>(0, i), out_img_rect.at<double>(1, i)) );
+		//cout << out_img_rect.at<double>(0, i) <<", " << out_img_rect.at<double>(1, i) << endl;
+		//cout << out_img_rect.at<double>(2, i) << endl;
+	}
+	return quad;
 }
 //TODO: Refactor this so that it only does the alignment. The else stuff can be added to quad finding,
 //		however I'm not sure it's going to be worth keeping at all.
@@ -296,6 +318,10 @@ bool fileexists(const string& filename){
 bool loadFeatureData(const string& featureDataPath, Ptr<FeatureDetector>& detector,
 					Ptr<DescriptorExtractor>& descriptorExtractor, vector<KeyPoint>& templKeypoints,
 					Mat& templDescriptors, Size& templImageSize) {
+			
+	//detector = Ptr<FeatureDetector>(new SurfFeatureDetector(300));
+	detector = FeatureDetectorr::create( "SURF" );
+	descriptorExtractor = DescriptorExtractor::create( "SURF" );
 	
 	if( fileexists(featureDataPath + ".yml") ) {
 		try
@@ -304,9 +330,6 @@ bool loadFeatureData(const string& featureDataPath, Ptr<FeatureDetector>& detect
 			/*if( !fs["fdtype"].empty () && !fs["detype"].empty() && !fs["detector"].empty() && 
 				!fs["descriptorExtractor"].empty() && !fs["templKeypoints"].empty() && !fs["templDescriptors"].empty() ){
 			*/
-				detector = FeatureDetector::create( fs["fdtype"] );
-				descriptorExtractor = DescriptorExtractor::create( fs["detype"] );
-				
 				detector->read(fs["detector"]);
 				descriptorExtractor->read(fs["descriptorExtractor"]);
 				
@@ -320,17 +343,12 @@ bool loadFeatureData(const string& featureDataPath, Ptr<FeatureDetector>& detect
 		catch( cv::Exception& e )
 		{
 			const char* err_msg = e.what();
+			cout << err_msg << endl;
 		}
 	}
 	if( detector.empty() || descriptorExtractor.empty() || templKeypoints.empty() || templDescriptors.empty()){
 		//if there is no file to read descriptors and keypoints from make one.
 		//cout << featureDataPath + ".yml " << fileexists(featureDataPath + ".yml") << endl;
-		
-		string fdtype = "SURF";
-		string detype = fdtype;
-		
-		detector = FeatureDetector::create( fdtype );
-		descriptorExtractor = DescriptorExtractor::create( detype );
 		
 		Mat templImage, temp;
 		templImage = imread( featureDataPath + ".jpg", 0 );
@@ -348,9 +366,7 @@ bool loadFeatureData(const string& featureDataPath, Ptr<FeatureDetector>& detect
 		
 		// write feature data to a file.
 		FileStorage fs(featureDataPath + ".yml", FileStorage::WRITE);
-		fs << "fdtype" << fdtype; 
 		fs << "detector" << "{:"; detector->write(fs); fs << "}";
-		fs << "detype" << detype; 
 		fs << "descriptorExtractor" << "{:"; descriptorExtractor->write(fs); fs << "}";
 		
 		fs << "templwidth" << templImageSize.width;
@@ -363,7 +379,7 @@ bool loadFeatureData(const string& featureDataPath, Ptr<FeatureDetector>& detect
 	}
 	if( detector.empty() || descriptorExtractor.empty() )
 	{
-		cout << "Can not create/load detector or descriptor exstractor" << endl;
+		cout << "Can not create/load detector or descriptor extractor" << endl;
 		return false;
 	}	
 	
@@ -427,10 +443,18 @@ bool alignFormImage(Mat& img, Mat& aligned_img, const string& featureDataPath,
 	Point3d sc = Point3d( double(aligned_img_sz.width) / templImageSize.width,
 						  double(aligned_img_sz.height) / templImageSize.height,
 						  1);
-	Mat H = findHomography( Mat(points1), Mat(points2), CV_RANSAC, 5.0 ) *
-			(Mat::diag(Mat(trueEfficiencyScale)) * Mat::diag(Mat(sc)));
+	Mat H = findHomography( Mat(points1), Mat(points2), CV_RANSAC, 5.0 );
+	Mat ScalingMat = (Mat::diag(Mat(trueEfficiencyScale)) * Mat::diag(Mat(sc)));
 	
-	warpPerspective( img, aligned_img, H, aligned_img_sz );
+	warpPerspective( img, aligned_img, H*ScalingMat, aligned_img_sz );
+	//warpPerspective( aligned_img, img, (H*ScalingMat).inv(), img.size());
+	
+	vector<Point> quad = transformationToQuad(H*ScalingMat, aligned_img_sz);
+	
+	const Point* p = &quad[0];
+	int n = (int) quad.size();
+	polylines(img, &p, &n, 1, true, 250, 4, CV_AA);
+	imwrite("test_t2q.jpg", img);
 }
 //Aligns a region bounded by black lines (i.e. a bubble segment)
 //It might be necessiary for some of the black lines to touch the edge of the image...
@@ -442,7 +466,7 @@ vector<Point> findFormQuad(Mat& img){
 	return findQuad(img, 12);
 }
 vector<Point> findBoundedRegionQuad(Mat& img){
-	return findQuad(img, 2);
+	return findQuad(img, 4);
 }
 
 //DEPRECATED
