@@ -20,14 +20,15 @@ int main(int argc, char *argv[]) {
 	// Template to use:
 	string templatePath("form_templates/unbounded_form_shreddr_w_fields.json");
 	// Location to output results:
-	string outputPath("unbounded_form_A0_vals.json");
-	// Location to write the aligned form to:
-	string alignedFormOutfile("last_straightened_form.jpg");
+	string outputName("output/unbounded_form_A0");
 	
-	string markedupFormOutfile("last_markedup_form.jpg");
+	string jsonOutfile(outputName+"_vals.json");
+	// Location to write the aligned form to:
+	string alignedFormOutfile(outputName+"_straightened.jpg");
+	string markedupFormOutfile(outputName+"_markedup.jpg");
 
 	Processor myProcessor(templatePath.c_str());
-	myProcessor.trainClassifier();
+	myProcessor.trainClassifier("training_examples/groupA");
 
 	float i;
 	// testing loop, currently iterates over weight_param
@@ -36,6 +37,7 @@ int main(int argc, char *argv[]) {
 	#else
 	for (i = 0.0; i <= 1.0; i += 0.05) {
 	#endif
+		
 		myProcessor.setClassifierWeight(i);
 		if( !myProcessor.loadForm(imagePath.c_str()) ) {
 			cout << "Could not load. Arg: " << imagePath << endl;
@@ -45,16 +47,16 @@ int main(int argc, char *argv[]) {
 			cout << "Could not align. Arg: " << alignedFormOutfile << endl;
 			return 0;
 		}
-		if( !myProcessor.processForm(outputPath.c_str()) ) {
-			cout << "Could not process. Arg: " << outputPath << endl;
+		if( !myProcessor.processForm(jsonOutfile.c_str()) ) {
+			cout << "Could not process. Arg: " << jsonOutfile << endl;
 			return 0;
 		}
-		if( !myProcessor.markupForm(outputPath.c_str(), markedupFormOutfile.c_str()) ) {
+		if( !myProcessor.markupForm(jsonOutfile.c_str(), markedupFormOutfile.c_str()) ) {
 			cout << "Could not markup. Arg: " << markedupFormOutfile << endl;
 		}
 		
 		int tp=0, fp=0, tn=0, fn=0;
-		compareFiles(outputPath, outputPath, tp, fp, tn, fn);
+		compareFiles(jsonOutfile, jsonOutfile, tp, fp, tn, fn);
 		cout << "True positives: "<< tp << endl;
 		cout << "False positives: " << fp << endl;
 		cout << "True negatives: "<< tn << endl;
