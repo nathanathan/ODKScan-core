@@ -19,6 +19,7 @@
 #ifdef DEBUG_ALIGN_IMAGE
 #include "NameGenerator.h"
 NameGenerator alignmentNamer("debug_segment_images/");
+NameGenerator dbgNamer("afi/");
 #endif
 
 //image_align constants
@@ -188,7 +189,9 @@ vector<Point> findQuad(Mat& img, int blurSize){
 	
 	return expandCorners(quad, EXPANSION_PERCENTAGE);
 }
-//TODO: Add a quad to transformation routine?
+//TODO: This routine could be "simplified" by taking out init_image_sz and using angle from center to order vertices.
+//		Reverse is probably also unnecessiary since it can probably be accomplished with inversion.
+//		And quadToTransformation might then be a more consistent name.
 Mat getMyTransform(vector<Point>& foundCorners, Size init_image_sz, Size out_image_sz, bool reverse){
 	Point2f corners_a[4] = {Point2f(0, 0), Point2f(init_image_sz.width, 0), Point2f(0, init_image_sz.height),
 							Point2f(init_image_sz.width, init_image_sz.height)};
@@ -320,7 +323,7 @@ bool loadFeatureData(const string& featureDataPath, Ptr<FeatureDetector>& detect
 					Mat& templDescriptors, Size& templImageSize) {
 			
 	//detector = Ptr<FeatureDetector>(new SurfFeatureDetector(300));
-	detector = FeatureDetectorr::create( "SURF" );
+	detector = FeatureDetector::create( "SURF" );
 	descriptorExtractor = DescriptorExtractor::create( "SURF" );
 	
 	if( fileexists(featureDataPath + ".yml") ) {
@@ -385,6 +388,37 @@ bool loadFeatureData(const string& featureDataPath, Ptr<FeatureDetector>& detect
 	
 	return true;
 }
+//Check if the contour has four points, does not self-intersect and is convex.
+bool testQuad(const vector<Point>& quad){
+
+	if(quad.size() != 4) return false;
+	
+	Mat quadMat;
+	for(size_t i = 0; i < 4; i++){
+		Mat Z = (Mat_<double>(1,3) << quad[i].x, quad[i].y, 0 );
+		if(quadMat.empty()){
+			quadMat = Z;
+		}
+		else{
+			quadMat.push_back( Z );
+		}
+	}
+	
+	Mat A = quadMat.row(0)-quadMat.row(1);
+	Mat B = quadMat.row(2)-quadMat.row(1);
+	Mat C = quadMat.row(0)-quadMat.row(2);
+	Mat D = quadMat.row(3)-quadMat.row(2);
+	Mat E = quadMat.row(3)-quadMat.row(1);
+	
+	int sign = -1;
+	if(A.cross(B).at<double>(0, 2) > 0){
+		sign = 1;
+	}
+	
+	return	sign*E.cross(B).at<double>(0, 2) > 0 &&
+			sign*C.cross(D).at<double>(0, 2) > 0 &&
+			sign*A.cross(E).at<double>(0, 2) > 0;
+}
 //Aligns a image of a form.
 bool alignFormImage(Mat& img, Mat& aligned_img, const string& featureDataPath, 
 					const Size& aligned_img_sz, float efficiencyScale ){
@@ -447,14 +481,32 @@ bool alignFormImage(Mat& img, Mat& aligned_img, const string& featureDataPath,
 	Mat ScalingMat = (Mat::diag(Mat(trueEfficiencyScale)) * Mat::diag(Mat(sc)));
 	
 	warpPerspective( img, aligned_img, H*ScalingMat, aligned_img_sz );
-	//warpPerspective( aligned_img, img, (H*ScalingMat).inv(), img.size());
 	
+	#ifdef DEBUG_ALIGN_IMAGE
 	vector<Point> quad = transformationToQuad(H*ScalingMat, aligned_img_sz);
 	
+	bool alignSuccess = false;
+	if( testQuad(quad) ){ 
+		float area = contourArea(Mat(quad));
+		float expected_area = .8 * img.size().area();
+		float tolerence = .2;
+		alignSuccess =  area > (1. - tolerence) * area &&
+						area < (1. + tolerence) * area;
+	}
+	
+	string qiname = dbgNamer.get_unique_name("alignment_debug_") + ".jpg";
 	const Point* p = &quad[0];
 	int n = (int) quad.size();
-	polylines(img, &p, &n, 1, true, 250, 4, CV_AA);
-	imwrite("test_t2q.jpg", img);
+	if( alignSuccess ){
+		polylines(img, &p, &n, 1, true, 250, 3, CV_AA);
+	}
+	else{
+		polylines(img, &p, &n, 1, true, 0, 5, CV_AA);
+		cout << "Form alignment failed" << endl;
+	}
+	imwrite(qiname, img);
+	#endif
+	return true;
 }
 //Aligns a region bounded by black lines (i.e. a bubble segment)
 //It might be necessiary for some of the black lines to touch the edge of the image...
