@@ -19,7 +19,7 @@
 #ifdef DEBUG_ALIGN_IMAGE
 #include "NameGenerator.h"
 NameGenerator alignmentNamer("debug_segment_images/");
-NameGenerator dbgNamer("afi/");
+NameGenerator dbgNamer("debug_form_images/", true);
 #endif
 
 //image_align constants
@@ -148,6 +148,8 @@ vector<Point> findMaxQuad(Mat& img, float approx_p_seed = 0){
 //		in certain cases. It fixes the problem on some form images because they can be blurred a lot
 //		and produce good results for contour finding. This is not the case with segments.
 //		I think a better solution might be to alter maxQuad somehow... I haven't figured out how though.
+//TODO: I'm considering an alternative implementation where I do segmentation seeded around the center of the image.
+//		then find a bounding rectangle.
 vector<Point> findQuad(Mat& img, int blurSize){
 	Mat imgThresh, temp_img, temp_img2;
 	
@@ -323,10 +325,11 @@ bool loadFeatureData(const string& featureDataPath, Ptr<FeatureDetector>& detect
 					Mat& templDescriptors, Size& templImageSize) {
 			
 	//detector = Ptr<FeatureDetector>(new SurfFeatureDetector(300));
-	detector = FeatureDetector::create( "SURF" );
+	//MSER is pretty fast. Grid seems to help limit number but messes up more.
+	detector = FeatureDetector::create( "SURF" ); 
 	descriptorExtractor = DescriptorExtractor::create( "SURF" );
 	
-	if( fileexists(featureDataPath + ".yml") ) {
+	if( false && fileexists(featureDataPath + ".yml") ) {
 		try
 		{
 			FileStorage fs(featureDataPath + ".yml", FileStorage::READ);
@@ -519,60 +522,4 @@ vector<Point> findFormQuad(Mat& img){
 }
 vector<Point> findBoundedRegionQuad(Mat& img){
 	return findQuad(img, 4);
-}
-
-//DEPRECATED
-//A form straitening method based on finding the corners of the sheet of form paper.
-//The form will be resized to the size of output_image.
-//It might save some memory to specify a Size object instead of a preallocated Mat.
-void straightenImage(const Mat& input_image, Mat& output_image) {
-
-//Image straightening constants
-#define DILATION 6
-#define BLOCK_SIZE 3
-#define DIST_PARAM 500
-
-	Point2f orig_corners[4];
-	Point2f corners_a[4];
-	vector < Point2f > corners;
-
-	Mat tmask, input_image_dilated;
-
-	// Create a mask that limits corner detection to the corners of the image.
-	tmask= Mat::zeros(input_image.rows, input_image.cols, CV_8U);
-	circle(tmask, Point(0,0), (tmask.cols+tmask.rows)/8, Scalar(255,255,255), -1);
-	circle(tmask, Point(0,tmask.rows), (tmask.cols+tmask.rows)/8, Scalar(255,255,255), -1);
-	circle(tmask, Point(tmask.cols,0), (tmask.cols+tmask.rows)/8, Scalar(255,255,255), -1);
-	circle(tmask, Point(tmask.cols,tmask.rows), (tmask.cols+tmask.rows)/8, Scalar(255,255,255), -1);
-
-	//orig_corners = {Point(0,0),Point(img.cols,0),Point(0,img.rows),Point(img.cols,img.rows)};
-	orig_corners[0] = Point(0,0);
-	orig_corners[1] = Point(output_image.cols,0);
-	orig_corners[2] = Point(0,output_image.rows);
-	orig_corners[3] = Point(output_image.cols,output_image.rows);
-
-	// Dilating reduces noise, thin lines and small marks.
-	dilate(input_image, input_image_dilated, Mat(), Point(-1, -1), DILATION);
-
-	/*
-	Params for goodFeaturesToTrack:
-	Source Mat, Dest Mat
-	Number of features/interest points to return
-	Minimum feature quality
-	Min distance between corners (Probably needs parameterization depending on im. res. and form)
-	Mask
-	Block Size (not totally sure but I think it's similar to aperture)
-	Use Harris detector (true) or cornerMinEigenVal() (false)
-	Free parameter of Harris detector
-	*/
-	goodFeaturesToTrack(input_image_dilated, corners, 4, 0.01, DIST_PARAM, tmask, BLOCK_SIZE, false, 0.04);
-
-	// Initialize the value of corners_a to that of orig_corners
-	memcpy(corners_a, orig_corners, sizeof(orig_corners));
-	configCornerArray(corners, corners_a);
-
-	Mat H = getPerspectiveTransform(corners_a, orig_corners);
-	
-	warpPerspective(input_image, output_image, H, output_image.size());
-
 }

@@ -14,7 +14,4 @@ bool alignFormImage(cv::Mat& img, cv::Mat& aligned_image, const std::string& dat
 std::vector<cv::Point> findFormQuad(cv::Mat& img);
 std::vector<cv::Point> findBoundedRegionQuad(cv::Mat& img);
 
-//DEPRECATED
-void straightenImage(const cv::Mat& input_image, cv::Mat& output_image);
-
 #endif
