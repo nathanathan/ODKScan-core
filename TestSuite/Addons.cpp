@@ -50,4 +50,5 @@ bool parseJsonFromFile(const char* filePath, Json::Value& myRoot){
 	bool parse_successful = reader.parse( JSONin, myRoot );
 	
 	JSONin.close();
+	return parse_successful;
 }
