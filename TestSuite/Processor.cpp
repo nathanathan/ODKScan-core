@@ -55,8 +55,6 @@ Mat formImage;
 PCA_classifier classifier;
 string templDir;
 
-public:
-
 Json::Value classifyBubbles(Mat& segment, const Json::Value& bubbleLocations, Mat& transformation, const Point& offset){
 	#ifdef OUTPUT_SEGMENT_IMAGES
 	//TODO: This should become perminant functionality.
@@ -67,7 +65,7 @@ Json::Value classifyBubbles(Mat& segment, const Json::Value& bubbleLocations, Ma
 	#endif
 	Json::Value bubblesJsonOut;
 	for (size_t i = 0; i < bubbleLocations.size(); i++) {
-		Point bubbleLocation = (2.0 / 1.1) * SCALEPARAM * jsonToPoint(bubbleLocations[i]);
+		Point bubbleLocation = SCALEPARAM * jsonToPoint(bubbleLocations[i]);
 		if(bubbleLocation.x > segment.cols || bubbleLocation.y > segment.rows ||
 									bubbleLocation.x < 0 || bubbleLocation.y < 0){
 			continue; //Skip out of bounds bubbles
@@ -95,6 +93,8 @@ Json::Value classifyBubbles(Mat& segment, const Json::Value& bubbleLocations, Ma
 			case FILLED_BUBBLE:
 				color = Scalar(0, 255, 255);
 				break;
+			default:
+				cout << "invalid bubble value" << endl;
 		}
 		rectangle(dbg_out, bubbleLocation-Point(classifier.exampleSize.width/2,classifier.exampleSize.height/2),
 						   bubbleLocation+Point(classifier.exampleSize.width/2,classifier.exampleSize.height/2),
@@ -145,6 +145,8 @@ Json::Value processSegment(const Json::Value &segmentTemplate){
 	
 	return segmentJsonOut;
 }
+public:
+//Constructor:
 ProcessorImpl(const char* templatePath){
 	parseJsonFromFile(templatePath, root);
 	
@@ -166,11 +168,10 @@ bool trainClassifier(const char* trainingImageDir){
 	defaultSize.append(8);
 	Json::Value bubbleSize = root.get("bubble_size", defaultSize);
 	bool success = classifier.train_PCA_classifier(string(trainingImageDir), 
-													Size(SCALEPARAM * bubbleSize[0u].asInt(),
-													SCALEPARAM * bubbleSize[1u].asInt()));
+													SCALEPARAM * Size(bubbleSize[0u].asInt(), bubbleSize[1u].asInt()));
 	if (!success) return false;
 	
-	//classifier.set_search_window(Size(0,0));
+	classifier.set_search_window(Size(0,0));
 	#if DEBUG > 0
 	cout << "trained" << endl;
 	#endif
@@ -217,37 +218,34 @@ bool alignForm(const char* alignedImageOutputPath){
 	alignImage(formImage, straightenedImage, quad,  SCALEPARAM * form_sz);
 	*/
 	
-	if(straightenedImage.data == NULL) {
-		return false;
-	}
-	else{
-		formImage = straightenedImage;
-		return writeFormImage(alignedImageOutputPath);
-	}
-}
+	if(straightenedImage.empty()) return false;
 
+	formImage = straightenedImage;
+	return writeFormImage(alignedImageOutputPath);
+}
 bool processForm(const char* outputPath) {
 	#if DEBUG > 0
 	cout << "debug level is: " << DEBUG << endl;
 	#endif
 	
-	if( !root || !formImage.data || !classifier.trained()){
-		cout << "Unable to process form" << endl;
+	if( !root || formImage.empty() || !classifier.trained()){
+		cout << "Unable to process form. Err code: " <<
+				(int)!root << (int)formImage.empty() << (int)!classifier.trained() << endl;
 		return false;
 	}
 	
 	const Json::Value fields = root["fields"];
 	Json::Value JsonOutputFields;
 	
-	for ( int i = 0; i < fields.size(); i++ ) {
+	for ( size_t i = 0; i < fields.size(); i++ ) {
 		const Json::Value field = fields[i];
 		const Json::Value segments = field["segments"];
 		
 		Json::Value fieldJsonOut;
 		fieldJsonOut["label"] = field.get("label", "unlabeled");
 		
-		for ( int index = 0; index < segments.size(); index++ ) {
-			const Json::Value segmentTemplate = segments[index];
+		for ( size_t j = 0; j < segments.size(); j++ ) {
+			const Json::Value segmentTemplate = segments[j];
 			Json::Value segmentJsonOut = processSegment(segmentTemplate);
 			fieldJsonOut["segments"].append(segmentJsonOut);
 		}
@@ -283,9 +281,9 @@ bool markupForm(const char* bvPath, const char* outputPath) {
 			const Json::Value segments = field["segments"];
 			for ( size_t j = 0; j < segments.size(); j++ ) {
 				const Json::Value segment = segments[j];
-				vector<Point> quad = jsonArrayToQuad(segment["quad"]);
 				
 				//Draw segment rectangles:
+				vector<Point> quad = jsonArrayToQuad(segment["quad"]);
 				const Point* p = &quad[0];
 				int n = (int) quad.size();
 				polylines(markupImage, &p, &n, 1, true, Scalar(10, 255, 10), 2, CV_AA);
@@ -293,14 +291,16 @@ bool markupForm(const char* bvPath, const char* outputPath) {
 				const Json::Value bubbles = segment["bubbles"];
 				for ( size_t k = 0; k < bubbles.size(); k++ ) {
 					const Json::Value bubble = bubbles[k];
+					
+					// Draw dots on bubbles colored blue if empty and red if filled
 					Point bubbleLocation(jsonToPoint(bubble["location"]));
 					//cout << bubble["location"][0u].asInt() << "," << bubble["location"][1u].asInt() << endl;
 					Scalar color(0, 0, 0);
 					if(bubble["value"].asBool()){
-						color = Scalar(255, 0, 0);
+						color = Scalar(20, 20, 255);
 					}
 					else{
-						color = Scalar(0, 0, 255);
+						color = Scalar(255, 20, 20);
 					}
 					circle(markupImage, bubbleLocation, 1, color, -1);
 				}
