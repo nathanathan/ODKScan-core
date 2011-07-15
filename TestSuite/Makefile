@@ -11,7 +11,6 @@ ALL_OBJS := $(MY_OBJS) $(JSON_PARSER_OBJS)
 
 INCLUDES := `pkg-config opencv --cflags --libs` -I../jsoncpp-src-0.5.0/include -I./
 
-# $(MY_SRCS) $(MY_HEADERS) configuration.h
 ImageProcessTest: tests/ImageProcessTest.test 
 	@rm -rf debug_segment_images
 	@mkdir debug_segment_images
@@ -23,6 +22,9 @@ FormAlignmentTest: tests/FormAlignmentTest.test
 	@rm -rf aligned_forms
 	@cp -rL form_images aligned_forms
 	./$<
+	
+TemplateEditor: TemplateEditor.test
+	./$<
 
 #does linking
 %.test: %.cpp $(MY_SRCS) $(ALL_OBJS) $(MY_HEADERS) configuration.h
@@ -31,7 +33,7 @@ FormAlignmentTest: tests/FormAlignmentTest.test
 #does compiling
 .PRECIOUS: %.o
 %.o: %.cpp
-	g++ -c $< -o $@ $(INCLUDES)
+	g++ -Wall -c $< -o $@ $(INCLUDES)
 	
 #This will move all the relevant files into the JNI folder.
 jni-transfer: $(filter-out Test%, $(MY_SRCS) $(MY_HEADERS))
@@ -42,5 +44,6 @@ clean:
 	rm -rf debug_segment_images
 	rm $(MY_OBJS)
 	rm tests/*.test
+	rm TemplateEditor.test
 	rm $(JSON_PARSER_OBJS)
 	rm jni-transfer
