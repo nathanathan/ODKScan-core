@@ -17,6 +17,7 @@ int main(int argc, char *argv[]) {
 	// Image to be processed:
 	// TODO: This (or a variant of it) should eventually use FileUtils and a predicate to specify multiple images.
 	string imagePath("form_images/unbounded_form/A0.jpg");
+	//string imagePath("form_images/initial_form/A0.jpg");
 	// Template to use:
 	string templatePath("form_templates/unbounded_form_shreddr_w_fields.json");
 	// Location to output results:
@@ -28,7 +29,7 @@ int main(int argc, char *argv[]) {
 	string markedupFormOutfile(outputName+"_markedup.jpg");
 
 	Processor myProcessor(templatePath.c_str());
-	myProcessor.trainClassifier("training_examples/groupA");
+	myProcessor.trainClassifier("training_examples/android_training_examples");
 
 	float i;
 	// testing loop, currently iterates over weight_param
