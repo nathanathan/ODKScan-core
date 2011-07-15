@@ -26,9 +26,6 @@
 
 #endif
 
-//Number of eigenvalues to generate for the PCA
-#define EIGENBUBBLES 5
-
 //Normalizing everything that goes into the PCA *might* help with lighting problems
 //But so far just seems to hurt accuracy.
 #define NORMALIZE
@@ -40,11 +37,15 @@
 //   it won't give an error.
 #define USE_GET_RECT_SUB_PIX
 
-#define FLIP_EXAMPLES
-
 using namespace std;
 using namespace cv;
 
+PCA_classifier::PCA_classifier():eigenvalues(4) {
+	weights = (Mat_<float>(3,1) << 1, 1, 1);
+}
+PCA_classifier::PCA_classifier(int eigenvalues):eigenvalues(eigenvalues) {
+	weights = (Mat_<float>(3,1) << 1, 1, 1);
+}
 void PCA_classifier::update_gaussian_weights(){
 	//This precomputes the gaussian for subbbubble alignment.
 	int height = search_window.height;
@@ -63,10 +64,6 @@ void PCA_classifier::update_gaussian_weights(){
 	minMaxLoc(temp, NULL, &temp_max);
 	gaussian_weights = temp_max - temp + .001;//.001 is to avoid roundoff problems, it might not be necessiary.
 }
-PCA_classifier::PCA_classifier() {
-	weights = (Mat_<float>(3,1) << 1, 1, 1);
-}
-
 void PCA_classifier::set_weight(bubble_val classification, float weight) {
 	weights.at<float>((int)classification, 0) = weight;
 }
@@ -91,7 +88,7 @@ void PCA_classifier::PCA_set_add(Mat& PCA_set, Mat& img) {
 }
 //Loads a image with the specified filename and adds it to the PCA set.
 //Classifications are inferred from the filename and added to training_bubble_values.
-void PCA_classifier::PCA_set_add(Mat& PCA_set, string& filename) {
+void PCA_classifier::PCA_set_add(Mat& PCA_set, string& filename, bool flipExamples) {
 	//Infer classification
 	bubble_val classification;
 	if( filename.find("filled") != string::npos ) {
@@ -124,18 +121,19 @@ void PCA_classifier::PCA_set_add(Mat& PCA_set, string& filename) {
 	PCA_set_add(PCA_set, aptly_sized_example);
 	training_bubble_values.push_back(classification);
 	
-	#ifdef FLIP_EXAMPLES
-	for(size_t i = 0; i < 4; i++){
-		Mat temp;
-		flip(aptly_sized_example, temp, i);
-		PCA_set_add(PCA_set, temp);
-		training_bubble_values.push_back(classification);
+	if(flipExamples){
+		for(int i = -1; i < 2; i++){
+			Mat temp;
+			flip(aptly_sized_example, temp, i);
+			PCA_set_add(PCA_set, temp);
+			training_bubble_values.push_back(classification);
+		}
 	}
-	#endif
 }
 //This trains the PCA classifer by query.
 //A predicate can be supplied for filtering out undesireable filenames
-bool PCA_classifier::train_PCA_classifier(const string& dirPath, Size myExampleSize, bool (*pred)(string&)) {
+bool PCA_classifier::train_PCA_classifier(const string& dirPath, Size myExampleSize,
+											bool flipExamples,  bool (*pred)(string&)) {
 	//Maybe put this in the initializer?
 	exampleSize = myExampleSize;
 	search_window = myExampleSize;
@@ -148,13 +146,13 @@ bool PCA_classifier::train_PCA_classifier(const string& dirPath, Size myExampleS
 	vector<string>::iterator it;
 	for(it = filenames.begin(); it != filenames.end(); it++) {
 		if( pred((*it)) ) {
-			PCA_set_add(PCA_set, (*it));
+			PCA_set_add(PCA_set, (*it), flipExamples);
 		}
 	}
 	
-	if(PCA_set.rows < EIGENBUBBLES) return false;//Not completely sure about this...
+	if(PCA_set.rows < eigenvalues) return false;//Not completely sure about this...
 
-	my_PCA = PCA(PCA_set, Mat(), CV_PCA_DATA_AS_ROW, EIGENBUBBLES);
+	my_PCA = PCA(PCA_set, Mat(), CV_PCA_DATA_AS_ROW, eigenvalues);
 	comparison_vectors = my_PCA.project(PCA_set);
 	return true;
 }
@@ -192,8 +190,8 @@ Point PCA_classifier::bubble_align(Mat& det_img_gray, Point bubble_location) {
 	Mat out = Mat::zeros(search_window, CV_32F);
 	Point offset = Point(bubble_location.x - search_window.width/2, bubble_location.y - search_window.height/2);
 	
-	for(size_t i = 0; i < search_window.width; i+=1) {
-		for(size_t j = 0; j < search_window.height; j+=1) {
+	for(size_t i = 0; int(i) < search_window.width; i+=1) {
+		for(size_t j = 0; int(j) < search_window.height; j+=1) {
 			out.col(i).row(j) += rateBubble(det_img_gray, Point(i,j) + offset);
 		}
 	}
