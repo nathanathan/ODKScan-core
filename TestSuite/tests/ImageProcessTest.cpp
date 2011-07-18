@@ -19,7 +19,7 @@ int main(int argc, char *argv[]) {
 	string imagePath("form_images/unbounded_form/A0.jpg");
 	//string imagePath("form_images/initial_form/A0.jpg");
 	// Template to use:
-	string templatePath("form_templates/unbounded_form_shreddr_w_fields.json");
+	string templatePath("form_templates/unbounded_form_refined.json");
 	// Location to output results:
 	string outputName("output/unbounded_form_A0");
 	

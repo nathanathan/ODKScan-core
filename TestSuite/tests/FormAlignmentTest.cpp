@@ -20,7 +20,7 @@ int main(int argc, char *argv[]) {
 	string inputDir("form_images/");
 	string outputDir("aligned_forms/");
 
-	string templatePath("form_templates/unbounded_form_shreddr_w_fields.json");
+	string templatePath("form_templates/unbounded_form_refined.json");
 	
 
 	Processor myProcessor(templatePath.c_str());
