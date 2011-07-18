@@ -24,6 +24,10 @@ FormAlignmentTest: tests/FormAlignmentTest.test
 	./$<
 	
 TemplateEditor: TemplateEditor.test
+	@rm -rf debug_segment_images
+	@mkdir debug_segment_images
+	@rm -rf bubble_images
+	@mkdir bubble_images
 	./$<
 
 #does linking
