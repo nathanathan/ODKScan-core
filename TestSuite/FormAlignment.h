@@ -7,6 +7,7 @@ void alignImage(cv::Mat& img, cv::Mat& aligned_image, std::vector<cv::Point>& ma
 
 cv::Mat getMyTransform(std::vector<cv::Point>& foundCorners, cv::Size init_image_sz,
 						cv::Size out_image_sz, bool reverse = false);
+std::vector<cv::Point> transformationToQuad(const cv::Mat& H, const cv::Size& out_image_sz);
 
 bool alignFormImage(cv::Mat& img, cv::Mat& aligned_image, const std::string& dataPath, 
 					const cv::Size& aligned_image_sz, float efficiencyScale = .25 );

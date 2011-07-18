@@ -26,7 +26,7 @@ NameGenerator dbgNamer("debug_form_images/", true);
 #define THRESH_OFFSET_LB -.3
 #define THRESH_DECR_SIZE .05
 
-#define EXPANSION_PERCENTAGE .03
+#define EXPANSION_PERCENTAGE .04
 
 using namespace std;
 using namespace cv;
@@ -41,12 +41,12 @@ void configCornerArray(vector<Tp>& found_corners, Point2f* dest_corners) {
 
 	vector<Point2f> corners;
 
-	for(int i = 0; i < found_corners.size(); i++ ){
+	for(size_t i = 0; i < found_corners.size(); i++ ){
 		corners.push_back(Point2f(float(found_corners[i].x), float(found_corners[i].y)));
 	}
-	for(int i = 0; i < 4; i++) {
+	for(size_t i = 0; i < 4; i++) {
 		min_dist = FLT_MAX;
-		for(int j = 0; j < corners.size(); j++ ){
+		for(size_t j = 0; j < corners.size(); j++ ){
 			dist = norm(corners[j]-dest_corners[i]);
 			if(dist < min_dist){
 				min_dist = dist;
@@ -188,6 +188,42 @@ vector<Point> findQuad(Mat& img, int blurSize){
 	for(size_t i = 0; i<quad.size(); i++){
 		quad[i] = Point(actual_width_multiple * quad[i].x, actual_height_multiple * quad[i].y);
 	}
+	/*
+	Moments m = moments(Mat(quad));
+	//Mat Z = (Mat_<double>(1,3) << m.m20, m.m02, 0 );
+	Point center(m.m10/m.m00, m.m01/m.m00);
+	vector<Point> quad2(4);
+	for(size_t i = 0; i<4; i++){
+		Point d = quad[i]-center;
+		if(d.y > 0){
+			if(d.x < 0){
+				quad2[0] = quad[i];
+			}
+			else{
+				quad2[1] = quad[i];
+			}
+		}
+		else{
+			if(d.x > 0){
+				quad2[2] = quad[i];
+			}
+			else{
+				quad2[3] = quad[i];
+			}
+		}
+		cout << d.x << endl;
+	}
+	quad = quad2; */
+	/*
+	Moments m = moments(Mat(quad));
+	//Point center(m.m10/m.m00, m.m01/m.m00);
+	Mat center = (Mat_<double>(1,3) << m.m10/m.m00, m.m01/m.m00, 0 );
+	Mat p0 = (Mat_<double>(1,3) << quad[0].x, quad[0].y, 0 );
+	Mat p1 = (Mat_<double>(1,3) << quad[1].x, quad[1].y, 0 );
+	if((center - p0).cross(p1 - p0).at<double>(0,2) > 0){
+		quad = vector<Point>(quad.rbegin(), quad.rend());
+	}
+	*/
 	
 	return expandCorners(quad, EXPANSION_PERCENTAGE);
 }
@@ -493,8 +529,8 @@ bool alignFormImage(Mat& img, Mat& aligned_img, const string& featureDataPath,
 		float area = contourArea(Mat(quad));
 		float expected_area = .8 * img.size().area();
 		float tolerence = .2;
-		alignSuccess =  area > (1. - tolerence) * area &&
-						area < (1. + tolerence) * area;
+		alignSuccess =  area > (1. - tolerence) * expected_area &&
+						area < (1. + tolerence) * expected_area;
 	}
 	
 	string qiname = dbgNamer.get_unique_name("alignment_debug_") + ".jpg";
