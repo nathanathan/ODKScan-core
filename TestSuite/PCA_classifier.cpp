@@ -190,8 +190,8 @@ Point PCA_classifier::bubble_align(Mat& det_img_gray, Point bubble_location) {
 	Mat out = Mat::zeros(search_window, CV_32F);
 	Point offset = Point(bubble_location.x - search_window.width/2, bubble_location.y - search_window.height/2);
 	
-	for(size_t i = 0; int(i) < search_window.width; i+=1) {
-		for(size_t j = 0; int(j) < search_window.height; j+=1) {
+	for(size_t i = 0; int(i) < search_window.width; i++) {
+		for(size_t j = 0; int(j) < search_window.height; j++) {
 			out.col(i).row(j) += rateBubble(det_img_gray, Point(i,j) + offset);
 		}
 	}

@@ -163,15 +163,13 @@ bool trainClassifier(const char* trainingImageDir){
 	#if DEBUG > 0
 	cout << "training classifier...";
 	#endif
-	Json::Value defaultSize;
-	defaultSize.append(5);
-	defaultSize.append(8);
+	const Json::Value defaultSize = pointToJson(Point(5,8));
 	Json::Value bubbleSize = root.get("bubble_size", defaultSize);
 	bool success = classifier.train_PCA_classifier(string(trainingImageDir), 
 													SCALEPARAM * Size(bubbleSize[0u].asInt(), bubbleSize[1u].asInt()));
 	if (!success) return false;
 	
-	classifier.set_search_window(Size(0,0));
+	//classifier.set_search_window(Size(3,3));
 	#if DEBUG > 0
 	cout << "trained" << endl;
 	#endif
