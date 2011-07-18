@@ -34,23 +34,87 @@ Mat formImage;
 PCA_classifier classifier;
 string templDir;
 
+//This function was one time use for a specific template, but might be modable to do something useful in the future.
 Json::Value groupSegmentsByY(const Json::Value& fields){
-	Json::Value outFields;
 	vector <int> ys;
+	vector <Json::Value> outFields0to11meses;
+	vector <Json::Value> outFields12to23meses;
+	vector <Json::Value> outFieldsFemininos;
+	vector <Json::Value> outFieldsMasculinos;
+	
 	for ( size_t i = 0; i < fields.size(); i++ ) {
-		const Json::Value field = fields[i];
-		outFields.append(field);
-		ys.push_back(field["segments"][0]["y"].asInt());
+		Json::Value field = fields[i];
+		int y = field["segments"][0u]["y"].asInt();
+		if (y < 200) continue;
+		ys.push_back(y);
+		field["segments"].clear();
+		
+		if (y < 900) {
+			Json::Value field1 = Json::Value(field);
+			field1["label"] = field1["label"].asString() + " 0 to 11 meses";
+			outFields0to11meses.push_back(field1);
+		
+			Json::Value field2 = Json::Value(field);
+			field2["label"] = field2["label"].asString() + " 12 to 23 meses";
+			outFields12to23meses.push_back(field2);
+		}
+		else{
+			Json::Value field1 = Json::Value(field);
+			field1["label"] = field1["label"].asString() + " femeninos";
+			outFieldsFemininos.push_back(field1);
+			
+			Json::Value field2 = Json::Value(field);
+			field2["label"] = field2["label"].asString() + " masculinos";
+			outFieldsMasculinos.push_back(field2);
+		}
 	}
 	for ( size_t i = 0; i < fields.size(); i++ ) {
 		const Json::Value segments = fields[i]["segments"];
 		for ( size_t j = 0; j < segments.size(); j++ ) {
-			const Json::Value field = fields[i];
-			
-		}	
-	}	
+			const Json::Value segment = segments[j];
+			int y = segment["y"].asInt();
+			int min_dist = INT_MAX;
+			size_t min_idx;
+			for(size_t k = 0; k < ys.size(); k++){
+				if(abs(y - ys[k]) < min_dist){
+					min_dist = abs(y - ys[k]);
+					min_idx = k;
+				}
+			}
+			if( min_idx < 9 ){
+				if(outFields0to11meses[min_idx]["segments"].size() < 6){
+					outFields0to11meses[min_idx]["segments"].append(segment);
+				}
+				else{
+					outFields12to23meses[min_idx]["segments"].append(segment);
+				}
+			}
+			else{
+				if(outFieldsFemininos[0u]["segments"].size() < 5){
+					outFieldsFemininos[0u]["segments"].append(segment);
+				}
+				else{
+					outFieldsMasculinos[0u]["segments"].append(segment);
+				}
+			}
+		}
+	}
+	Json::Value outFieldsJson;
+	for(size_t i = 0; i < outFields0to11meses.size(); i++){
+		outFieldsJson.append(outFields0to11meses[i]);
+	}
+	for(size_t i = 0; i < outFields12to23meses.size(); i++){
+		outFieldsJson.append(outFields12to23meses[i]);
+	}
+	for(size_t i = 0; i < outFieldsFemininos.size(); i++){
+		outFieldsJson.append(outFieldsFemininos[i]);
+	}
+	for(size_t i = 0; i < outFieldsMasculinos.size(); i++){
+		outFieldsJson.append(outFieldsMasculinos[i]);
+	}
+	return outFieldsJson;
 }
-Json::Value findBubbleLocations(Mat& segment, const Json::Value& bubbleLocations){
+Json::Value findBubbleLocations(Mat& segment, const Json::Value& bubbleLocations, bool doSomething){
 	#ifdef OUTPUT_SEGMENT_IMAGES
 	//TODO: This should become perminant functionality.
 	//		My idea is to have Java code that displays segment images as the form is being processed.
@@ -60,13 +124,57 @@ Json::Value findBubbleLocations(Mat& segment, const Json::Value& bubbleLocations
 	#endif
 	Json::Value bubblesLocationsOut;
 	for (size_t i = 0; i < bubbleLocations.size(); i++) {
-		Point bubbleLocation = (2.0 / 1.1) * SCALEPARAM * jsonToPoint(bubbleLocations[i]);
-		bubbleLocation.x*=1.1;
+		Point bubbleLocation = SCALEPARAM * jsonToPoint(bubbleLocations[i]);
+								/*
 		if(bubbleLocation.x > segment.cols || bubbleLocation.y > segment.rows ||
 									bubbleLocation.x < 0 || bubbleLocation.y < 0){
 			continue; //Skip out of bounds bubbles
 		}
-		Point refined_location =classifier.bubble_align(segment, bubbleLocation);
+
+		if( doSomething ){
+
+			if(bubbleLocation.y == 31){
+				bubbleLocation.y = 33;
+			}
+			if(bubbleLocation.y < 28 && bubbleLocation.y > 17){
+				bubbleLocation.y +=2;
+			}
+
+			cout << "AAAAAAAA" << endl;
+		}
+
+		if( doSomething ){
+			if(bubbleLocation.x == 8){
+				bubbleLocation.x += 3;
+			}
+			if(bubbleLocation.x == 16){
+				bubbleLocation.x += 2;
+			}
+			if(bubbleLocation.y > 45){
+				bubbleLocation.y -= 1;
+			}
+			cout << "AAAAAAAA" << endl;
+		}
+
+
+		
+		bubbleLocation.x *= .9;
+		bubbleLocation.y += 2;
+		bubbleLocation.y *= 1.01;
+		if(bubbleLocation.y == 46){
+			bubbleLocation.y = 45;
+		}
+		if(bubbleLocation.y == 20){
+			bubbleLocation.y = 18;
+		}
+		if(bubbleLocation.y == 33){
+			bubbleLocation.y = 31;
+		}
+		if(bubbleLocation.x == 8){
+			bubbleLocation.x == 9;
+		}*/
+		
+		Point refined_location = classifier.bubble_align(segment, bubbleLocation);
 		bubblesLocationsOut.append( pointToJson(refined_location));
 		#ifdef OUTPUT_SEGMENT_IMAGES
 		Scalar color(0, 255, 0);
@@ -85,7 +193,10 @@ Json::Value findBubbleLocations(Mat& segment, const Json::Value& bubbleLocations
 	#endif
 	return bubblesLocationsOut;
 }
-Json::Value processSegment(const Json::Value &segmentTemplate){
+bool about(int x, int y){
+	return x < y + 6 && x > y - 6;
+}
+Json::Value processSegment(const Json::Value &segmentTemplate, bool doSomething){
 	#if DEBUG > 0
 	cout << "aligning segment" << endl;
 	#endif
@@ -113,32 +224,51 @@ Json::Value processSegment(const Json::Value &segmentTemplate){
 	
 	Json::Value segmentJsonOut;
 	segmentJsonOut["key"] = segmentTemplate.get("key", -1);
-	segmentJsonOut["x"] = imageRect.tl().x;
-	segmentJsonOut["y"] = imageRect.tl().y;
-	segmentJsonOut["width"] = imageRect.width;
-	segmentJsonOut["height"] = imageRect.height;
-	segmentJsonOut["bubble_locations"] = findBubbleLocations(alignedSegment, segmentTemplate["bubble_locations"]);
 	
+	//This is a hacky of ensuring that the quad has the right ordering of points.
+	quad = transformationToQuad(transformation.inv(), imageRect.size());
+	
+	Point h = .5*( quad[3]-quad[0] + quad[2]-quad[1] );
+	Point w = .5*( quad[1]-quad[0] + quad[2]-quad[3] );
+	Point topLeft = .25*(quad[0] + quad[1]-w + quad[2] - h - w + quad[3]-h) + expandedRect.tl();
+	/*
+	if(w.x > 10 && h.y > 10){
+		for(size_t i = 0; i<4; i++){
+			cout <<  quad[i].x << ", " << quad[i].y << endl;
+		}
+	}*/
+	segmentJsonOut["x"] =  topLeft.x;//imageRect.tl().x;
+	segmentJsonOut["y"] =  topLeft.y;//imageRect.tl().y;
+	segmentJsonOut["width"] = w.x;//imageRect.width;
+	segmentJsonOut["height"] = h.y;//imageRect.height;
+
+	segmentJsonOut["bubble_locations"] = findBubbleLocations(alignedSegment, segmentTemplate["bubble_locations"], doSomething);
+	
+	/*, 
+											about(topLeft.x, 185 ) || 
+											about(topLeft.x, 283 ) ||
+											about(topLeft.x, 380 ) ||
+											about(topLeft.x, 431 ) ||
+											about(topLeft.x, 579 ) && topLeft.y < 900);*/
+
 	return segmentJsonOut;
 }
 bool trainClassifier(const char* trainingImageDir, bool flipExamples){
 	#if DEBUG > 0
 	cout << "training classifier...";
 	#endif
-	Json::Value defaultSize;
-	defaultSize.append(5);
-	defaultSize.append(8);
+	const Json::Value defaultSize = pointToJson(Point(5,8));
 	Json::Value bubbleSize = root.get("bubble_size", defaultSize);
 	bool success = classifier.train_PCA_classifier(string(trainingImageDir), 
 													Size(SCALEPARAM * bubbleSize[0u].asInt(),
 													SCALEPARAM * bubbleSize[1u].asInt()), flipExamples);
 	if (!success) return false;
 	
-	classifier.set_search_window(Size(3,3));
+	//classifier.set_search_window(Size(4,6));
+	//classifier.set_search_window(Size(0,0));
 	#if DEBUG > 0
 	cout << "trained" << endl;
 	#endif
-	return true;
 }
 bool loadForm(const char* imagePath){
 	#if DEBUG > 0
@@ -173,7 +303,9 @@ bool processTemplate(const char* outputPath) {
 		
 		for ( size_t j = 0; j < segments.size(); j++ ) {
 			const Json::Value segmentTemplate = segments[j];
-			Json::Value segmentJsonOut = processSegment(segmentTemplate);
+			
+			Json::Value segmentJsonOut = processSegment(segmentTemplate, 
+					field.get("label", "unlabeled").asString().find("masculinos") != string::npos);
 			fieldJsonOut["segments"].append(segmentJsonOut);
 		}
 		//TODO: Modify output to include form image filename (which should be kept as a record),
@@ -187,6 +319,7 @@ bool processTemplate(const char* outputPath) {
 	JsonOutput["width"] = root["width"];
 	JsonOutput["bubble_size"] = root["bubble_size"];
 	JsonOutput["feature_data_path"] = root["feature_data_path"];
+	//JsonOutput["fields"] = groupSegmentsByY(JsonOutputFields);
 	JsonOutput["fields"] = JsonOutputFields;
 	
 	#if DEBUG > 0
@@ -251,7 +384,7 @@ bool markupForm(const char* bvPath, Mat& markupImage) {
 				//Watch out for templates with double type points.
 				Point tl(segment["x"].asInt(), segment["y"].asInt());
 				rectangle(markupImage, tl, tl + Point(segment["width"].asInt(), segment["height"].asInt()),
-							boxColor);
+							boxColor, 2);
 			
 				const Json::Value bubble_locations = segment["bubble_locations"];
 				for ( size_t k = 0; k < bubble_locations.size(); k++ ) {
@@ -269,8 +402,8 @@ bool markupForm(const char* bvPath, const char* outputPath) {
 	return imwrite(outputPath, markupImage);
 }
 int main(int argc, char *argv[]) {
-	string templatePath("form_templates/unbounded_form_shreddr_w_fields.json");
-	string templateOutPath("form_templates/unbounded_form_shreddr_edited.json");
+	string templatePath("form_templates/unbounded_form.json");
+	string templateOutPath("form_templates/unbounded_form_refined.json");
 	
 	templDir = string(templatePath);
 	templDir = templDir.substr(0, templDir.find_last_of("/") + 1);
@@ -280,13 +413,14 @@ int main(int argc, char *argv[]) {
 	loadForm("form_templates/A0_from_booklet.jpg");
 	trainClassifier("training_examples/empty", true);
 	processTemplate(templateOutPath.c_str());
-	
+
 	Mat markupImage;
 	if( !markupForm(templateOutPath.c_str(), markupImage) ) return false;
 
 	const string winName = "marked-up image";
 	namedWindow(winName, CV_WINDOW_NORMAL);
 	imshow( winName, markupImage );
+
 	for(;;)
     {
         char c = (char)waitKey(0);
@@ -303,6 +437,9 @@ int main(int argc, char *argv[]) {
 			
         	if( !markupForm(templateOutPath.c_str(), markupImage) ) return false;
 			imshow( winName, markupImage );
+			
+			//if( !markupForm(templatePath.c_str(), markupImage) ) return false;
+			//imshow( winName, markupImage );
         }
     }
 }
