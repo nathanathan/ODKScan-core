@@ -5,10 +5,13 @@
 # *In order to run this you must have R the statistical programming language*
 R --vanilla --slave << "EOF" # Pipe all subsequent lines into R. 
 
-alldata<-read.csv("my_data.csv",header=TRUE)
+#params <- read.csv("rparams", header=FALSE)
+params <- c("test_data.csv", "ROC_plot.png")
+
+alldata<-read.csv(params[1], header=TRUE)
 parameter_names = names(summary(alldata$parameter_name))
 my_rainbow = topo.colors(length(parameter_names))
-png(filename = "ROC_plot.png", width= 2048, height=2048, res=300)
+png(filename = params[2], width= 2048, height=2048, res=300)
 plot(c(0,1), c(0,1), type="l", col='red', pch=22, lty=2, xlab="False positive rate",
 		ylab="True positive rate", main="Bubble Classification ROC curves") #, main=paste("Varying Parameter:", parameter_name)
 legend("bottomright", parameter_names, lty=c(1,1), lwd=c(2.5,2.5),col= my_rainbow[1:length(parameter_names)])
