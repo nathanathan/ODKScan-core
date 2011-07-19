@@ -31,9 +31,6 @@ EverythingTest: tests/EverythingTest.test
 	@rm -rf bubble_images
 	@mkdir bubble_images
 	./$<
-#	@echo "You can delete this file. It just tells make the jni-transfer target is up-to-date." > rparams
-#	./ROC_plot_script
-#	rm rparams
 
 TemplateEditor: TemplateEditor.test
 	@rm -rf debug_segment_images
@@ -48,14 +45,14 @@ TemplateEditor: TemplateEditor.test
 
 #does compiling
 .PRECIOUS: %.o
-%.o: %.cpp
+%.o: %.cpp $(MY_HEADERS) configuration.h
 	g++ -Wall -c $< -o $@ $(INCLUDES)
 	
 #This will move all the relevant files into the JNI folder.
 jni-transfer: $(filter-out Test%, $(MY_SRCS) $(MY_HEADERS))
 	cp -i $? ../jni
 	@echo "You can delete this file. It just tells make the jni-transfer target is up-to-date." > jni-transfer
-
+.IGNORE: clean
 clean:
 	rm -rf debug_segment_images
 	rm $(MY_OBJS)
