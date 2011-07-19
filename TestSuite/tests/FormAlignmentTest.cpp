@@ -1,18 +1,15 @@
 /*
 Description of what's being tested
 */
+#include "Processor.h"
+#include "FileUtils.h"
+#include "TestTools.h"
 
 #include <iostream>
 #include <string>
 
-#include "Processor.h"
-#include "FileUtils.h"
-
 using namespace std;
 
-bool isImage(const string& filename){
-	return filename.find(".jpg") != string::npos;
-}
 //The reason to use JSON for the bubble-vals files is that other code, like java code can parse them
 //and display the results without any hardcoding.
 int main(int argc, char *argv[]) {
@@ -21,7 +18,6 @@ int main(int argc, char *argv[]) {
 	string outputDir("aligned_forms/");
 
 	string templatePath("form_templates/unbounded_form_refined.json");
-	
 
 	Processor myProcessor(templatePath.c_str());
 
