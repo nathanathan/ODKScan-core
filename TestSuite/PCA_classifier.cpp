@@ -95,7 +95,7 @@ void PCA_classifier::PCA_set_add(Mat& PCA_set, string& filename, bool flipExampl
 	//Add example to PCA_set
 	Mat example = imread(filename, 0);
 	if (example.data == NULL) {
-        cout << "could not read " << filename << endl;
+        cerr << "could not read " << filename << endl;
         return;
     }
     Mat aptly_sized_example;
@@ -138,7 +138,6 @@ bool PCA_classifier::train_PCA_classifier(const string& dirPath, Size myExampleS
 			PCA_set_add(PCA_set, (*it), flipExamples);
 		}
 	}
-	
 	if(PCA_set.rows < eigenvalues) return false;//Not completely sure about this...
 
 	my_PCA = PCA(PCA_set, Mat(), CV_PCA_DATA_AS_ROW, eigenvalues);
@@ -148,7 +147,7 @@ bool PCA_classifier::train_PCA_classifier(const string& dirPath, Size myExampleS
 //Rate a location on how likely it is to be a bubble.
 //The rating is the SSD of the queried pixels and their PCA back projection,
 //so lower ratings mean more bubble like.
-double PCA_classifier::rateBubble(Mat& det_img_gray, Point bubble_location) {
+double PCA_classifier::rateBubble(const Mat& det_img_gray, const Point& bubble_location) {
     Mat query_pixels, pca_components;
     
     #ifdef USE_GET_RECT_SUB_PIX
@@ -171,7 +170,8 @@ double PCA_classifier::rateBubble(Mat& det_img_gray, Point bubble_location) {
 //then it checks that rather than the exact specified location.
 //This section probably slows things down by quite a bit and it might not provide significant
 //improvement to accuracy. We will need to run some tests to find out if it's worth keeping.
-Point PCA_classifier::bubble_align(Mat& det_img_gray, Point bubble_location) {
+//TODO: A much faster alternative would be to do a hillclimbing search. Perhap it won't be as effective though...
+Point PCA_classifier::bubble_align(const Mat& det_img_gray, const Point& bubble_location) {
 	if(search_window.width == 0 || search_window.height == 0){
 		return bubble_location;
 	}
@@ -191,7 +191,7 @@ Point PCA_classifier::bubble_align(Mat& det_img_gray, Point bubble_location) {
 	return min_location + offset;
 }
 //Compare the specified bubble with all the training bubbles via PCA.
-bubble_val PCA_classifier::classifyBubble(Mat& det_img_gray, Point bubble_location) {
+bubble_val PCA_classifier::classifyBubble(const Mat& det_img_gray, const Point& bubble_location) {
 	Mat query_pixels;
 
     #ifdef USE_GET_RECT_SUB_PIX

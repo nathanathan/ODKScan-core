@@ -3,7 +3,8 @@
 #include "configuration.h"
 
 #ifdef USE_ANDROID_HEADERS_AND_IO
-#include "image_pool.h"
+//I don't think i need this....
+//#include "image_pool.h"
 #endif
 
 #include <opencv2/core/core.hpp>
@@ -45,12 +46,12 @@ class PCA_classifier
 		
 		void set_weight(bubble_val classification, float weight);
 		void set_search_window(cv::Size sw);
-		double rateBubble(cv::Mat& det_img_gray, cv::Point bubble_location);
+		double rateBubble(const cv::Mat& det_img_gray, const cv::Point& bubble_location);
 		bool train_PCA_classifier(const std::string& dirPath, cv::Size myExampleSize = cv::Size(14,18),
 									bool flipExamples = false,
 									bool (*pred)(std::string& filename) = &returnTrue);
-		cv::Point bubble_align(cv::Mat& det_img_gray, cv::Point bubble_location);
-		bubble_val classifyBubble(cv::Mat& det_img_gray, cv::Point bubble_location);
+		cv::Point bubble_align(const cv::Mat& det_img_gray, const cv::Point& bubble_location);
+		bubble_val classifyBubble(const cv::Mat& det_img_gray, const cv::Point& bubble_location);
 		
 		bool trained();
 		
