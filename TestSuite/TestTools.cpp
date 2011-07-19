@@ -13,7 +13,6 @@ void compareSegments(const Json::Value& foundSeg, const Json::Value& actualSeg, 
 	#endif
 	const Json::Value fBubbles = foundSeg["bubbles"];
 	const Json::Value aBubbles = foundSeg["bubbles"];
-	size_t i = 0;
 	for( size_t i = 0; i < fBubbles.size(); i++){
 		bool found = fBubbles[i]["value"].asBool();
 		bool actual = aBubbles[i]["value"].asBool();
@@ -69,4 +68,25 @@ void compareFiles(const string& foundPath, const string& actualPath, int& tp, in
 }
 bool isImage(const string& filename){
 	return filename.find(".jpg") != string::npos;
+}
+void printData(int tp, int fp, int tn, int fn, int errors, int numImages){
+	if(numImages > 0){
+		cout << "Errors: " << errors << endl;
+		cout << "Images Tested: " << numImages << endl;
+		cout << "Percent Success: " << 1.f * errors / numImages << "%" << endl;
+		cout << "Bubble classification stats for successful tests: "<< endl;
+	}
+	else{
+		cout << "Bubble classification stats: "<< endl;
+	}
+	cout << "\tTrue positives: "<< tp << endl;
+	cout << "\tFalse positives: " << fp << endl;
+	cout << "\tTrue negatives: "<< tn << endl;
+	cout << "\tFalse negatives: " << fn << endl;
+	
+	cout << "\tPercent Correct: " << 100.f * (tp + tn) / (tp+fp+tn+fn) << "%" << endl;
+	
+	if(numImages > 0){
+		cout << "Total success rate: " << 100.f * (tp + tn) * errors / ((tp+fp+tn+fn) * numImages) << "%" << endl;
+	}
 }
