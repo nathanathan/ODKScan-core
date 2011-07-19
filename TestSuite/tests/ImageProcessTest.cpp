@@ -6,6 +6,7 @@ Description of what's being tested
 #include "TestTools.h"
 
 #include <iostream>
+#include <fstream>
 #include <string>
 
 using namespace std;
@@ -22,6 +23,12 @@ int main(int argc, char *argv[]) {
 	string templatePath("form_templates/unbounded_form_refined.json");
 	// Location to output results:
 	string outputName("output/unbounded_form_A0");
+	
+	
+	ofstream outfile("test_data.csv", ios::out | ios::binary);
+	outfile << "parameter_name, parameter_value, true_positives, ";
+	outfile << "false_positives, true_negatives, false_negatives" << endl;
+	
 	
 	string jsonOutfile(outputName+"_vals.json");
 	// Location to write the aligned form to:
@@ -58,9 +65,12 @@ int main(int argc, char *argv[]) {
 		
 		int tp=0, fp=0, tn=0, fn=0;
 		compareFiles(jsonOutfile, jsonOutfile, tp, fp, tn, fn);
-		cout << "True positives: "<< tp << endl;
-		cout << "False positives: " << fp << endl;
-		cout << "True negatives: "<< tn << endl;
-		cout << "False negatives: " << fn << endl;
+		printData(tp, fp, tn, fn);
+		
+		outfile << "\"weight parameter\", " << i << ", ";
+		outfile << tp << ", " << fp << ", ";
+		outfile << tn << ", " << fn << endl;
 	}
+	
+	outfile.close();
 }

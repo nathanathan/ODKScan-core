@@ -14,11 +14,12 @@ using namespace std;
 //and display the results without any hardcoding.
 int main(int argc, char *argv[]) {
 
-	int errors;
 	int tp=0, fp=0, tn=0, fn=0;
+	int errors = 0;
+	int numImages = 0;
 
-	string inputDir("form_images/");
-	string outputDir("aligned_forms/");
+	string inputDir("form_images/booklet_form/");
+	string outputDir("aligned_forms/booklet_form/");
 
 	string templatePath("form_templates/unbounded_form_refined.json");
 
@@ -31,6 +32,7 @@ int main(int argc, char *argv[]) {
 	vector<string>::iterator it;
 	for(it = filenames.begin(); it != filenames.end(); it++) {
 		if(isImage((*it))){
+			numImages++;
 			string relativePathMinusExt((*it).substr((*it).find_first_of(inputDir) + inputDir.length(),
 																		(*it).length()-inputDir.length()-4));
 			string imgOutputPath(outputDir + relativePathMinusExt + ".jpg");
@@ -67,4 +69,7 @@ int main(int argc, char *argv[]) {
 			compareFiles(jsonOutfile, expectedJsonFile, tp, fp, tn, fn);
 		}
 	}
+	
+	printData(tp, fp, tn, fn, errors, numImages);
+	
 }
