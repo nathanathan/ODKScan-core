@@ -1,11 +1,6 @@
 #include "configuration.h"
 #include "FormAlignment.h"
-
-#ifdef USE_ANDROID_HEADERS_AND_IO
-	//Might need to put something here eventually...
-#else
-	#define DEBUG_ALIGN_IMAGE
-#endif
+#include "Addons.h"
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -14,9 +9,8 @@
 
 #include <iostream>
 #include <fstream>
-#include "Addons.h"
 
-#ifdef DEBUG_ALIGN_IMAGE
+#ifdef OUTPUT_DEBUG_IMAGES
 #include "NameGenerator.h"
 NameGenerator alignmentNamer("debug_segment_images/");
 NameGenerator dbgNamer("debug_form_images/", true);
@@ -172,7 +166,7 @@ vector<Point> findQuad(Mat& img, int blurSize){
 	//This threshold might be tweakable
 	imgThresh = temp_img2 - temp_img > 0;
 	
-	#ifdef DEBUG_ALIGN_IMAGE
+	#ifdef OUTPUT_DEBUG_IMAGES
 	Mat dbg_out;
 	imgThresh.copyTo(dbg_out);
 	string segfilename = alignmentNamer.get_unique_name("alignment_debug_");
@@ -365,7 +359,11 @@ bool loadFeatureData(const string& featureDataPath, Ptr<FeatureDetector>& detect
 	detector = FeatureDetector::create( "SURF" ); 
 	descriptorExtractor = DescriptorExtractor::create( "SURF" );
 	
-	if( false && fileexists(featureDataPath + ".yml") ) {
+	bool checkForSavedFeatures = true;
+	#ifdef ALWAYS_COMPUTE_TEMPLATE_FEATURES
+	checkForSavedFeatures = false;
+	#endif
+	if( checkForSavedFeatures && fileexists(featureDataPath + ".yml") ) {
 		try
 		{
 			FileStorage fs(featureDataPath + ".yml", FileStorage::READ);
@@ -385,7 +383,7 @@ bool loadFeatureData(const string& featureDataPath, Ptr<FeatureDetector>& detect
 		catch( cv::Exception& e )
 		{
 			const char* err_msg = e.what();
-			cout << err_msg << endl;
+			cerr << err_msg << endl;
 		}
 	}
 	if( detector.empty() || descriptorExtractor.empty() || templKeypoints.empty() || templDescriptors.empty()){
@@ -398,13 +396,15 @@ bool loadFeatureData(const string& featureDataPath, Ptr<FeatureDetector>& detect
 		templImage  = temp;
 		templImageSize = templImage.size();
 
-		cout << endl << "< Extracting keypoints from template image..." << endl;
+		#ifdef DEBUG_ALIGN_IMAGE
+		cout << endl << "Extracting keypoints from template image..." << endl;
+		#endif
 		detector->detect( templImage, templKeypoints );
-		cout << templKeypoints.size() << " points" << endl << ">" << endl;
-
-		cout << "< Computing descriptors for keypoints from template image..." << endl;
+		#ifdef DEBUG_ALIGN_IMAGE
+		cout << "\t" << templKeypoints.size() << " points" << endl;
+		cout << "Computing descriptors for keypoints from template image..." << endl;
+		#endif
 		descriptorExtractor->compute( templImage, templKeypoints, templDescriptors );
-		cout << ">" << endl;
 		
 		// write feature data to a file.
 		FileStorage fs(featureDataPath + ".yml", FileStorage::WRITE);
@@ -417,11 +417,11 @@ bool loadFeatureData(const string& featureDataPath, Ptr<FeatureDetector>& detect
 		write(fs, "templKeypoints", templKeypoints);
 		fs << "templDescriptors" << templDescriptors;
 		
-		imwrite("t2.jpg", templImage);
+		//imwrite("t2.jpg", templImage);
 	}
 	if( detector.empty() || descriptorExtractor.empty() )
 	{
-		cout << "Can not create/load detector or descriptor extractor" << endl;
+		cerr << "Can not create/load detector or descriptor extractor" << endl;
 		return false;
 	}	
 	
@@ -481,22 +481,30 @@ bool alignFormImage(Mat& img, Mat& aligned_img, const string& featureDataPath,
 	//cvtColor(temp, img1, CV_GRAY2RGB);
 	//GaussianBlur(temp, img1, Size(1, 1), 1.0);
 	
-	imwrite("t1.jpg", img_resized);
-
-	cout << endl << "< Extracting keypoints from first image..." << endl;
+	//imwrite("t1.jpg", img_resized);
+	
+	#ifdef DEBUG_ALIGN_IMAGE
+	cout << endl << "Extracting keypoints from unaligned image..." << endl;
+	#endif
+	
 	vector<KeyPoint> keypoints1;
 	detector->detect( img_resized, keypoints1 );
-	cout << keypoints1.size() << " points" << endl << ">" << endl;
-
-	cout << "< Computing descriptors for keypoints from first image..." << endl;
+	
+	#ifdef DEBUG_ALIGN_IMAGE
+	cout << "\t" << keypoints1.size() << " points" << endl;
+	cout << "Computing descriptors for keypoints from unaligned image..." << endl;
+	#endif
+	
 	Mat descriptors1;
 	descriptorExtractor->compute( img_resized, keypoints1, descriptors1 );
-	cout << ">" << endl;
 
-	cout << "< Matching descriptors..." << endl;
+	#ifdef DEBUG_ALIGN_IMAGE
+	cout << "Matching descriptors..." << endl;
+	#endif
+	
 	Ptr<DescriptorMatcher> descriptorMatcher = DescriptorMatcher::create( "BruteForce" );
 	if( descriptorMatcher.empty()  ) {
-		cout << "Can not create descriptor matcher of given type" << endl;
+		cerr << "Can not create descriptor matcher of given type" << endl;
 		return false;
 	}
 	vector<DMatch> filteredMatches;
@@ -521,7 +529,7 @@ bool alignFormImage(Mat& img, Mat& aligned_img, const string& featureDataPath,
 	
 	warpPerspective( img, aligned_img, H*ScalingMat, aligned_img_sz );
 	
-	#ifdef DEBUG_ALIGN_IMAGE
+	#ifdef OUTPUT_DEBUG_IMAGES
 	vector<Point> quad = transformationToQuad(H*ScalingMat, aligned_img_sz);
 	
 	bool alignSuccess = false;

@@ -7,23 +7,12 @@
 
 #include <iostream>
 
-#ifdef USE_ANDROID_HEADERS_AND_IO
+#ifdef OUTPUT_BUBBLE_IMAGES
+NameGenerator classifierNamer("bubble_images/");
+#endif
 
-	//Might need to put something here eventually
-
-#else
-	
-	#define OUTPUT_BUBBLE_IMAGES
-	#define OUTPUT_EXAMPLES
-
-	#ifdef OUTPUT_BUBBLE_IMAGES
-	NameGenerator classifierNamer("bubble_images/");
-	#endif
-
-	#ifdef OUTPUT_EXAMPLES
-	NameGenerator exampleNamer("example_images_used/");
-	#endif
-
+#ifdef OUTPUT_EXAMPLES
+NameGenerator exampleNamer("example_images_used/");
 #endif
 
 //Normalizing everything that goes into the PCA *might* help with lighting problems

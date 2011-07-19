@@ -6,11 +6,6 @@
 	//Note: LOGI doesn't yet transfer to the test suite
 	//		Can I make it work like cout and use defines to switch between them?
 	//Maybe instead of using conditionals I should just move all this stuff to configuration.h
-#else
-
-	#define DEBUG 1
-	#define OUTPUT_SEGMENT_IMAGES
-
 #endif
 
 #include <opencv2/core/core.hpp>
@@ -112,8 +107,8 @@ Json::Value classifyBubbles(Mat& segment, const Json::Value& bubbleLocations, Ma
 	return bubblesJsonOut;
 }
 Json::Value processSegment(const Json::Value &segmentTemplate){
-	#if DEBUG > 0
-	cout << "aligning segment" << endl;
+	#ifdef DEBUG_PROCESSOR
+	cout << "." << flush;
 	#endif
 	Rect imageRect( SCALEPARAM * Point(segmentTemplate.get("x", INT_MIN ).asInt(),
 									   segmentTemplate.get("y", INT_MIN).asInt()),
@@ -153,14 +148,9 @@ ProcessorImpl(const char* templatePath){
 	//templDir will contain JSON templates, form images, and yml? feature data for each form.
 	templDir = string(templatePath);
 	templDir = templDir.substr(0, templDir.find_last_of("/") + 1);
-	
-	#if DEBUG > 0
-	string form_name = root.get("name", "no_name").asString();
-	cout << form_name << endl;
-	#endif
 }
 bool trainClassifier(const char* trainingImageDir){
-	#if DEBUG > 0
+	#ifdef DEBUG_PROCESSOR
 	cout << "training classifier...";
 	#endif
 	const Json::Value defaultSize = pointToJson(Point(5,8));
@@ -169,8 +159,8 @@ bool trainClassifier(const char* trainingImageDir){
 													SCALEPARAM * Size(bubbleSize[0u].asInt(), bubbleSize[1u].asInt()));
 	if (!success) return false;
 	
-	//classifier.set_search_window(Size(3,3));
-	#if DEBUG > 0
+	classifier.set_search_window(Size(5,5));
+	#ifdef DEBUG_PROCESSOR
 	cout << "trained" << endl;
 	#endif
 	return true;
@@ -181,7 +171,7 @@ void setClassifierWeight(float weight){
 	classifier.set_weight(EMPTY_BUBBLE, 1-weight);
 }
 bool loadForm(const char* imagePath){
-	#if DEBUG > 0
+	#ifdef DEBUG_PROCESSOR
 	cout << "loading form image..." << endl;
 	#endif
 	formImage = imread(imagePath, 0);
@@ -200,7 +190,7 @@ bool alignForm(const char* alignedImageOutputPath){
     flip(temp,formImage, 1); //This might vary by phone... Current setting is for Nexus.
     #endif
     
-	#if DEBUG > 0
+	#ifdef DEBUG_PROCESSOR
 	cout << "straightening image" << endl;
 	#endif
 	
@@ -222,10 +212,9 @@ bool alignForm(const char* alignedImageOutputPath){
 	return writeFormImage(alignedImageOutputPath);
 }
 bool processForm(const char* outputPath) {
-	#if DEBUG > 0
-	cout << "debug level is: " << DEBUG << endl;
+	#ifdef  DEBUG_PROCESSOR
+	cout << "Processing form" << flush;
 	#endif
-	
 	if( !root || formImage.empty() || !classifier.trained()){
 		cout << "Unable to process form. Err code: " <<
 				(int)!root << (int)formImage.empty() << (int)!classifier.trained() << endl;
@@ -257,7 +246,11 @@ bool processForm(const char* outputPath) {
 	JsonOutput["form_image_path"] = Json::Value("NA");
 	JsonOutput["fields"] = JsonOutputFields;
 	
-	#if DEBUG > 0
+	#ifdef  DEBUG_PROCESSOR
+	cout << "done" << endl;
+	#endif
+	
+	#ifdef  DEBUG_PROCESSOR
 	cout << "outputting bubble vals... " << endl;
 	#endif
 	ofstream outfile(outputPath, ios::out | ios::binary);
