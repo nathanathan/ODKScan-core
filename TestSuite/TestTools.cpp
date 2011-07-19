@@ -67,3 +67,6 @@ void compareFiles(const string& foundPath, const string& actualPath, int& tp, in
 		}
 	}
 }
+bool isImage(const string& filename){
+	return filename.find(".jpg") != string::npos;
+}
