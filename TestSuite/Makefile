@@ -1,6 +1,6 @@
 #A very helpful source: http://stackoverflow.com/questions/5799820/makefile-and-c-project
 #TEST_SRCS := $(addsuffix .cpp, $(addprefix tests/, $(TESTS)))
-MY_SRCS := TestTools.cpp Processor.cpp PCA_classifier.cpp FormAlignment.cpp FileUtils.cpp Addons.cpp
+MY_SRCS := TestTools.cpp Processor.cpp PCA_classifier.cpp FormAlignment.cpp FileUtils.cpp Addons.cpp MarkupForm.cpp
 MY_OBJS := ${MY_SRCS:.cpp=.o}
 MY_HEADERS := ${MY_SRCS:.cpp=.h} NameGenerator.h
 
