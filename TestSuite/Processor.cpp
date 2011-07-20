@@ -50,7 +50,7 @@ Mat formImage;
 PCA_classifier classifier;
 string templDir;
 
-Json::Value classifyBubbles(Mat& segment, const Json::Value& bubbleLocations, Mat& transformation, const Point& offset){
+Json::Value classifyBubbles(const Mat& segment, const Json::Value& bubbleLocations, Mat& transformation, const Point& offset){
 	#ifdef OUTPUT_SEGMENT_IMAGES
 	//TODO: This should become perminant functionality.
 	//		My idea is to have Java code that displays segment images as the form is being processed.
@@ -61,19 +61,24 @@ Json::Value classifyBubbles(Mat& segment, const Json::Value& bubbleLocations, Ma
 	Json::Value bubblesJsonOut;
 	for (size_t i = 0; i < bubbleLocations.size(); i++) {
 		Point bubbleLocation = SCALEPARAM * jsonToPoint(bubbleLocations[i]);
+		/*
 		if(bubbleLocation.x > segment.cols || bubbleLocation.y > segment.rows ||
 									bubbleLocation.x < 0 || bubbleLocation.y < 0){
 			continue; //Skip out of bounds bubbles
 		}
+		*/
 		Point refined_location = classifier.bubble_align(segment, bubbleLocation);
 		bubble_val current_bubble = classifier.classifyBubble(segment, refined_location);
 		
-		Mat actualLocation = transformation * Mat(Point3d(refined_location.x, refined_location.y, 1.));
+		Mat actualLocation = transformation * Mat(Point3d(refined_location.x, refined_location.y, 1));
 
 		Json::Value bubble;
 		bubble["value"] = Json::Value(current_bubble > NUM_BUBBLE_VALS/2);
-		bubble["location"] = pointToJson(Point(actualLocation.at<double>(0,0),
-											   actualLocation.at<double>(1,0)) + offset);
+		//TODO: I'm thinking I should compute the transformations in the markup function and
+		//		just record relative point locations here.
+		//(1.f/SCALEPARAM)*
+		bubble["location"] = pointToJson((Point(actualLocation.at<double>(0,0),
+											   actualLocation.at<double>(1,0)) + offset));
 		bubblesJsonOut.append(bubble);
 		
 		#ifdef OUTPUT_SEGMENT_IMAGES
@@ -100,6 +105,7 @@ Json::Value classifyBubbles(Mat& segment, const Json::Value& bubbleLocations, Ma
 	}
 
 	#ifdef OUTPUT_SEGMENT_IMAGES
+	//TODO: name by field and segment# instead.
 	string segfilename = namer.get_unique_name("marked_");
 	segfilename.append(".jpg");
 	imwrite(segfilename, dbg_out);
@@ -144,7 +150,7 @@ public:
 //Constructor:
 ProcessorImpl(const char* templatePath){
 	parseJsonFromFile(templatePath, root);
-	
+	classifier = PCA_classifier(6);
 	//templDir will contain JSON templates, form images, and yml? feature data for each form.
 	templDir = string(templatePath);
 	templDir = templDir.substr(0, templDir.find_last_of("/") + 1);
@@ -153,13 +159,13 @@ bool trainClassifier(const char* trainingImageDir){
 	#ifdef DEBUG_PROCESSOR
 	cout << "training classifier...";
 	#endif
-	const Json::Value defaultSize = pointToJson(Point(5,8));
+	const Json::Value defaultSize = pointToJson(Point(8,12));
 	Json::Value bubbleSize = root.get("bubble_size", defaultSize);
 	bool success = classifier.train_PCA_classifier(string(trainingImageDir), 
 													SCALEPARAM * Size(bubbleSize[0u].asInt(), bubbleSize[1u].asInt()));
 	if (!success) return false;
 	
-	classifier.set_search_window(Size(5,5));
+	classifier.set_search_window(Size(0,0));
 	#ifdef DEBUG_PROCESSOR
 	cout << "trained" << endl;
 	#endif
@@ -170,25 +176,27 @@ void setClassifierWeight(float weight){
 	classifier.set_weight(PARTIAL_BUBBLE, 1-weight);
 	classifier.set_weight(EMPTY_BUBBLE, 1-weight);
 }
-bool loadForm(const char* imagePath){
+//The rotate 90 thing might only be necessairy when dealing with non-feature based alignment...
+bool loadForm(const char* imagePath, int rotate90){
 	#ifdef DEBUG_PROCESSOR
 	cout << "loading form image..." << endl;
 	#endif
 	formImage = imread(imagePath, 0);
-	return formImage.data != NULL;
+	if(formImage.empty()) return false;
+	
+	if(rotate90 != 0){
+		Mat temp;
+		transpose(formImage, temp);
+		flip(temp,formImage, rotate90); //This might vary by phone... 1 is for Nexus.
+	}
+    
+	return true;
 }
 bool alignForm(const char* alignedImageOutputPath){
 	Size form_sz(root.get("width", 0).asInt(), root.get("height", 0).asInt());
 	if( form_sz.width <= 0 || form_sz.height <= 0){
 		return false;
 	}
-	
-	//TODO: figure out the best place to do this...
-	#ifdef USE_ANDROID_HEADERS_AND_IO
-	Mat temp;
-    transpose(formImage, temp);
-    flip(temp,formImage, 1); //This might vary by phone... Current setting is for Nexus.
-    #endif
     
 	#ifdef DEBUG_PROCESSOR
 	cout << "straightening image" << endl;
@@ -258,52 +266,6 @@ bool processForm(const char* outputPath) {
 	outfile.close();
 	return true;
 }
-//Marks up formImage based on the specifications of a bubble-vals JSON file at the given path.
-//Then output the form to the given locaiton.
-//TODO: This doesn't need to be part of this class.
-bool markupForm(const char* bvPath, const char* outputPath) {
-	Json::Value bvRoot;
-	Mat markupImage;
-	cvtColor(formImage, markupImage, CV_GRAY2RGB);
-	if( parseJsonFromFile(bvPath, bvRoot) ){
-		const Json::Value fields = bvRoot["fields"];
-		for ( size_t i = 0; i < fields.size(); i++ ) {
-			const Json::Value field = fields[i];
-			const Json::Value segments = field["segments"];
-			for ( size_t j = 0; j < segments.size(); j++ ) {
-				const Json::Value segment = segments[j];
-				
-				//Draw segment rectangles:
-				vector<Point> quad = jsonArrayToQuad(segment["quad"]);
-				const Point* p = &quad[0];
-				int n = (int) quad.size();
-				polylines(markupImage, &p, &n, 1, true, Scalar(10, 255, 10), 2, CV_AA);
-				
-				const Json::Value bubbles = segment["bubbles"];
-				for ( size_t k = 0; k < bubbles.size(); k++ ) {
-					const Json::Value bubble = bubbles[k];
-					
-					// Draw dots on bubbles colored blue if empty and red if filled
-					Point bubbleLocation(jsonToPoint(bubble["location"]));
-					//cout << bubble["location"][0u].asInt() << "," << bubble["location"][1u].asInt() << endl;
-					Scalar color(0, 0, 0);
-					if(bubble["value"].asBool()){
-						color = Scalar(20, 20, 255);
-					}
-					else{
-						color = Scalar(255, 20, 20);
-					}
-					circle(markupImage, bubbleLocation, 1, color, -1);
-				}
-			}
-			
-		}
-		return imwrite(outputPath, markupImage);
-	}
-	else{
-		return false;
-	}
-}
 //Writes the form image to a file.
 bool writeFormImage(const char* outputPath){
 	return imwrite(outputPath, formImage);
@@ -320,17 +282,14 @@ bool Processor::trainClassifier(const char* trainingImageDir){
 void Processor::setClassifierWeight(float weight){
 	processorImpl->setClassifierWeight(weight);
 }
-bool Processor::loadForm(const char* imagePath){
-	return processorImpl->loadForm(imagePath);
+bool Processor::loadForm(const char* imagePath, int rotate90){
+	return processorImpl->loadForm(imagePath, rotate90);
 }
 bool Processor::alignForm(const char* alignedImageOutputPath){
 	return processorImpl->alignForm(alignedImageOutputPath);
 }
 bool Processor::processForm(const char* outPath){
 	return processorImpl->processForm(outPath);
-}
-bool Processor::markupForm(const char* bvPath, const char* outputPath){
-	return processorImpl->markupForm(bvPath, outputPath);
 }
 bool Processor::writeFormImage(const char* outputPath){
 	return processorImpl->writeFormImage(outputPath);
