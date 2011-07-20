@@ -4,6 +4,7 @@ Description of what's being tested
 #include "Processor.h"
 #include "FileUtils.h"
 #include "TestTools.h"
+#include "MarkupForm.h"
 
 #include <iostream>
 #include <string>
@@ -13,6 +14,8 @@ using namespace std;
 //The reason to use JSON for the bubble-vals files is that other code, like java code can parse them
 //and display the results without any hardcoding.
 int main(int argc, char *argv[]) {
+
+	MarkupForm marker;
 
 	int tp=0, fp=0, tn=0, fn=0;
 	int errors = 0;
@@ -55,7 +58,7 @@ int main(int argc, char *argv[]) {
 				errors++;
 				continue;
 			}
-			if( !myProcessor.markupForm(jsonOutfile.c_str(), markedupFormOutfile.c_str()) ) {
+			if( !marker.markupForm(jsonOutfile.c_str(), imgOutputPath.c_str(), markedupFormOutfile.c_str()) ) {
 				cout << "Could not markup. Arg: " << markedupFormOutfile << endl;
 				errors++;
 				continue;

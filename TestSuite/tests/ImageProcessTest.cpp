@@ -4,6 +4,7 @@ Description of what's being tested
 
 #include "Processor.h"
 #include "TestTools.h"
+#include "MarkupForm.h"
 
 #include <iostream>
 #include <fstream>
@@ -15,21 +16,24 @@ using namespace std;
 //and display the results without any hardcoding.
 int main(int argc, char *argv[]) {
 
+	MarkupForm marker;
+
+	string imageDir("form_images/unbounded_form/");
 	// Image to be processed:
-	// TODO: This (or a variant of it) should eventually use FileUtils and a predicate to specify multiple images.
-	string imagePath("form_images/unbounded_form/A0.jpg");
+	string imageName("A0");
+	string imagePath = imageDir + imageName +".jpg";
 	//string imagePath("form_images/initial_form/A0.jpg");
+	
 	// Template to use:
 	string templatePath("form_templates/unbounded_form_refined.json");
 	// Location to output results:
-	string outputName("output/unbounded_form_A0");
-	
+	string outputName("output/" + imageName);
 	
 	ofstream outfile("test_data.csv", ios::out | ios::binary);
 	outfile << "parameter_name, parameter_value, true_positives, ";
 	outfile << "false_positives, true_negatives, false_negatives" << endl;
 	
-	
+
 	string jsonOutfile(outputName+"_vals.json");
 	// Location to write the aligned form to:
 	string alignedFormOutfile(outputName+"_straightened.jpg");
@@ -59,7 +63,7 @@ int main(int argc, char *argv[]) {
 			cout << "Could not process. Arg: " << jsonOutfile << endl;
 			return 0;
 		}
-		if( !myProcessor.markupForm(jsonOutfile.c_str(), markedupFormOutfile.c_str()) ) {
+		if( !marker.markupForm(jsonOutfile.c_str(), alignedFormOutfile.c_str(), markedupFormOutfile.c_str()) ) {
 			cout << "Could not markup. Arg: " << markedupFormOutfile << endl;
 		}
 		
