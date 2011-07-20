@@ -2,11 +2,9 @@ package com.bubblebot;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 
-import android.app.Activity;
 import android.app.ListActivity;
 import android.content.Intent;
 import android.os.Bundle;
@@ -15,9 +13,7 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.ListView;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import org.json.JSONArray;
@@ -49,12 +45,13 @@ public class DisplayProcessedData  extends ListActivity {
 
 		try {
 			
-			JSONArray bubbleVals = parseFileToJSONArray("sdcard/BubbleBot/output.json");
+			JSONObject bubbleVals = parseFileToJSONObject("sdcard/BubbleBot/output.json");
 			//TODO: replace this with some kind of expanding menu thing so that clicking on a field
 			//		allows users to see things broken down by segment.
-			Integer[] fieldCounts = getSegmentCounts(bubbleVals.getJSONObject(0));
+			Log.i("Nathan", "Parsed");
+			String[] fields = getFields(bubbleVals);
 			
-			setListAdapter(new ArrayAdapter<Integer>(this, R.layout.list_item, fieldCounts));
+			setListAdapter(new ArrayAdapter<String>(this, R.layout.list_item, fields));
 
 			ListView lv = getListView();
 			lv.setTextFilterEnabled(true);
@@ -79,7 +76,22 @@ public class DisplayProcessedData  extends ListActivity {
 			e.printStackTrace();
 		}
 	}
+	private JSONObject parseFileToJSONObject(String bvFilename) throws JSONException, IOException {
+		File jsonFile = new File(bvFilename);
 
+		//Read text from file
+		StringBuilder text = new StringBuilder();
+		BufferedReader br = new BufferedReader(new FileReader(jsonFile));
+		String line;
+
+		while ((line = br.readLine()) != null) 
+		{
+			text.append(line);
+			text.append('\n');
+		}
+
+		return new JSONObject(text.toString());
+	}
 	private JSONArray parseFileToJSONArray(String bvFilename) throws JSONException, IOException {
 		File jsonFile = new File(bvFilename);
 
@@ -103,10 +115,20 @@ public class DisplayProcessedData  extends ListActivity {
 		}
 		return sum;
 	}
-	private Integer[] getFieldCounts(JSONArray bubbleVals) throws JSONException {
-		Integer[] fieldCounts = new Integer[bubbleVals.length()];
-		for(int i = 0; i < bubbleVals.length(); i++){
-			Integer[] segmentCounts = getSegmentCounts(bubbleVals.getJSONObject(i));
+	private String[] getFields(JSONObject bubbleVals) throws JSONException {
+		JSONArray fields = bubbleVals.getJSONArray("fields");
+		String[] fieldString = new String[fields.length()];
+		for(int i = 0; i < fields.length(); i++){
+			Integer[] segmentCounts = getSegmentCounts(fields.getJSONObject(i));
+			fieldString[i] = fields.getJSONObject(i).getString("label") + " : \n" + sum(segmentCounts);
+		}
+		return fieldString;
+	}
+	private Integer[] getFieldCounts(JSONObject bubbleVals) throws JSONException {
+		JSONArray fields = bubbleVals.getJSONArray("fields");
+		Integer[] fieldCounts = new Integer[fields.length()];
+		for(int i = 0; i < fields.length(); i++){
+			Integer[] segmentCounts = getSegmentCounts(fields.getJSONObject(i));
 			fieldCounts[i] = sum(segmentCounts);
 		}
 		return fieldCounts;

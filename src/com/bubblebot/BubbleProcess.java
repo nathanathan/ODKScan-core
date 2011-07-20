@@ -11,6 +11,7 @@ import android.util.Log;
 import android.widget.FrameLayout;
 
 import com.bubblebot.jni.Processor;
+import com.bubblebot.jni.MarkupForm;
 
 /* BubbleProcess activity
  * 
@@ -70,22 +71,20 @@ public class BubbleProcess extends Activity  {
 		@Override
 		protected Void doInBackground(Void... arg) {
 			Log.d("Nathan","PICTURE NAME: " + pictureName);
-			mProcessor.trainClassifier();
+			Processor mProcessor = new Processor(getResources().getString(com.bubblebot.R.string.templatePath));
+			mProcessor.trainClassifier("/sdcard/mScan/training_examples");
 			mProcessor.loadForm(pictureName);
 			mProcessor.processForm("sdcard/BubbleBot/output.json");
-			//This would probably make more sense as separate function.
-			mProcessor.markupForm("sdcard/BubbleBot/output.json", "sdcard/BubbleBot/markedup.jpg");
+			//This is a big hacky and should be fixed eventually...
+			//Do I have to instantiate something to use it's methods?
+			(new MarkupForm()).markupForm("sdcard/BubbleBot/output.json", pictureName, "sdcard/BubbleBot/markedup.jpg");
+			
 			return null;
 		}
     }
  
     // The filename of the image
     private String pictureName;
-    
-    // The image processor (C++ component)
-    // It might or might not be a good idea to pass the processor
-    // from AfterPhotoTaken to this class.
-	private final Processor mProcessor = new Processor("/sdcard/mScan/form_templates/unbounded_form_shreddr_w_fields.json");
 	
 	// An instance of the process form task
 	private ProcessFormTask mTask = null;

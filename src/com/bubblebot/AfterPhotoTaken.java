@@ -32,8 +32,6 @@ public class AfterPhotoTaken extends Activity {
 	String processedDir = "/sdcard/mScan/processedImages/";
 	String photoFilename = "";
 	
-	private final Processor mProcessor = new Processor("/sdcard/mScan/form_templates/unbounded_form_shreddr_w_fields.json");
-	
 	private DetectOutlineTask task;
 
 	/* DetectOutlineTask is an async task that displays a progress
@@ -117,8 +115,9 @@ public class AfterPhotoTaken extends Activity {
 		// Run the C++ code that detects the form in the photo
 		@Override
 		protected Void doInBackground(Void... arg) {
+			Processor mProcessor = new Processor(getResources().getString(com.bubblebot.R.string.templatePath));
 			Log.i("Nathan","Loading: " + capturedDir + imageFilename + ".jpg");
-			if(mProcessor.loadForm(capturedDir + imageFilename + ".jpg")){
+			if(mProcessor.loadForm(capturedDir + imageFilename + ".jpg", 1)){
 				detectResult = mProcessor.alignForm(alignmentOutputImage);
 				Log.i("Nathan","aligned");
 			}
