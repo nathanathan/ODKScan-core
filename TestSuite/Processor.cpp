@@ -74,9 +74,10 @@ Json::Value classifyBubbles(const Mat& segment, const Json::Value& bubbleLocatio
 
 		Json::Value bubble;
 		bubble["value"] = Json::Value(current_bubble > NUM_BUBBLE_VALS/2);
-		//TODO: I'm thinking I should compute the transformations in the markup function and
-		//		just record relative point locations here.
-		//(1.f/SCALEPARAM)*
+		//I'm thinking I should compute the transformations in the markup function and
+		//just record relative point locations here.
+		//On the other hand that makes the output data less portable.
+		//(1.f/SCALEPARAM)* this is probably a bad idea
 		bubble["location"] = pointToJson((Point(actualLocation.at<double>(0,0),
 											   actualLocation.at<double>(1,0)) + offset));
 		bubblesJsonOut.append(bubble);
@@ -103,7 +104,6 @@ Json::Value classifyBubbles(const Mat& segment, const Json::Value& bubbleLocatio
 		circle(dbg_out, refined_location, 1, Scalar(255, 2555, 255), -1);
 		#endif
 	}
-
 	#ifdef OUTPUT_SEGMENT_IMAGES
 	//TODO: name by field and segment# instead.
 	string segfilename = namer.get_unique_name("marked_");
@@ -113,9 +113,7 @@ Json::Value classifyBubbles(const Mat& segment, const Json::Value& bubbleLocatio
 	return bubblesJsonOut;
 }
 Json::Value processSegment(const Json::Value &segmentTemplate){
-	#ifdef DEBUG_PROCESSOR
-	cout << "." << flush;
-	#endif
+
 	Rect imageRect( SCALEPARAM * Point(segmentTemplate.get("x", INT_MIN ).asInt(),
 									   segmentTemplate.get("y", INT_MIN).asInt()),
 					SCALEPARAM * Size(segmentTemplate.get("width", INT_MIN).asInt(),
@@ -128,30 +126,37 @@ Json::Value processSegment(const Json::Value &segmentTemplate){
 	//Maybe add some code that will reduce the segment buffer if it goes over the edge.
 	assert(expandedRect.tl().x >= 0 && expandedRect.tl().y >= 0);
 	assert(expandedRect.br().x < formImage.cols && expandedRect.br().y < formImage.rows);
-
+	
 	Mat segment = formImage(expandedRect);
 	
 	vector<Point> quad = findBoundedRegionQuad(segment);
+	//TODO: come up with some way to segment alignment to fail.
 	
-	Mat alignedSegment(0, 0, CV_8U);
-	alignImage(segment, alignedSegment, quad, imageRect.size());
-	
-	Mat transformation = getMyTransform(quad, expandedRect.size(), imageRect.size(), true);
-	
-	Json::Value segmentJsonOut;
-	segmentJsonOut["key"] = segmentTemplate.get("key", -1);
-	segmentJsonOut["quad"] = quadToJsonArray(quad, expandedRect.tl());
-	segmentJsonOut["bubbles"] = classifyBubbles(alignedSegment, segmentTemplate["bubble_locations"],
-												transformation, expandedRect.tl());
-	
-	return segmentJsonOut;
+	if(quad.size() == 4){
+		Mat alignedSegment(0, 0, CV_8U); //But this into alignImage
+		alignImage(segment, alignedSegment, quad, imageRect.size());
+		Mat transformation = getMyTransform(quad, expandedRect.size(), imageRect.size(), true);
+
+		Json::Value segmentJsonOut;
+		segmentJsonOut["key"] = segmentTemplate.get("key", -1);
+		segmentJsonOut["quad"] = quadToJsonArray(quad, expandedRect.tl());
+		segmentJsonOut["bubbles"] = classifyBubbles(alignedSegment, segmentTemplate["bubble_locations"],
+													transformation, expandedRect.tl());
+		return segmentJsonOut;
+	}
+	else{
+		Json::Value segmentJsonOut;
+		segmentJsonOut["key"] = segmentTemplate.get("key", -1);
+		segmentJsonOut["quad"] = quadToJsonArray(quad, expandedRect.tl());
+		return segmentJsonOut;
+	}
 }
 public:
 //Constructor:
 ProcessorImpl(const char* templatePath){
 	parseJsonFromFile(templatePath, root);
 	classifier = PCA_classifier(6);
-	//templDir will contain JSON templates, form images, and yml? feature data for each form.
+	//templDir will contain JSON templates, template form images, and yml? feature data for each form.
 	templDir = string(templatePath);
 	templDir = templDir.substr(0, templDir.find_last_of("/") + 1);
 }
@@ -162,7 +167,8 @@ bool trainClassifier(const char* trainingImageDir){
 	const Json::Value defaultSize = pointToJson(Point(8,12));
 	Json::Value bubbleSize = root.get("bubble_size", defaultSize);
 	bool success = classifier.train_PCA_classifier(string(trainingImageDir), 
-													SCALEPARAM * Size(bubbleSize[0u].asInt(), bubbleSize[1u].asInt()));
+													SCALEPARAM * Size(bubbleSize[0u].asInt(), bubbleSize[1u].asInt()),
+													true);//flip training examples.
 	if (!success) return false;
 	
 	classifier.set_search_window(Size(0,0));
@@ -199,14 +205,15 @@ bool alignForm(const char* alignedImageOutputPath){
 	}
     
 	#ifdef DEBUG_PROCESSOR
-	cout << "straightening image" << endl;
+	cout << "aligning image" << endl;
 	#endif
 	
 	cout << templDir+root.get("feature_data_path", "default").asString() << endl;
 	
-	Mat straightenedImage(0,0, CV_8U);
-	alignFormImage(formImage, straightenedImage, templDir+root.get("feature_data_path", "default").asString(),
-					SCALEPARAM * form_sz, .25);
+	Mat straightenedImage;
+	alignFormImage(formImage, straightenedImage,
+							  templDir+root.get("feature_data_path", "default").asString(),
+							  SCALEPARAM * form_sz, .25);
 					
 	/*
 	vector<Point> quad = findFormQuad(formImage);
@@ -240,6 +247,10 @@ bool processForm(const char* outputPath) {
 		fieldJsonOut["label"] = field.get("label", "unlabeled");
 		
 		for ( size_t j = 0; j < segments.size(); j++ ) {
+			#ifdef DEBUG_PROCESSOR
+			//This makes a stream of dots so we can see how fast things are going.
+			cout << '.' << flush;
+			#endif
 			const Json::Value segmentTemplate = segments[j];
 			Json::Value segmentJsonOut = processSegment(segmentTemplate);
 			fieldJsonOut["segments"].append(segmentJsonOut);

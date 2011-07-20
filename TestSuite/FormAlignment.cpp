@@ -22,6 +22,8 @@ NameGenerator dbgNamer("debug_form_images/", true);
 
 #define EXPANSION_PERCENTAGE .04
 
+#define FH_REPROJECT_THRESH 8.0
+
 using namespace std;
 using namespace cv;
 
@@ -51,6 +53,59 @@ void configCornerArray(vector<Tp>& found_corners, Point2f* dest_corners) {
 		corners.erase(corners.begin()+min_idx);
 	}
 }
+bool majorityIncreasing(const Mat& list){
+	int increasingVotes = 0;
+	for(size_t i = 0; i < (size_t)list.rows; i++ ){
+		if(list.at<double>((i+1) % list.rows,0) - list.at<double>(i,0) > 0){
+			increasingVotes++;
+		}
+	}
+	return 1.f * increasingVotes / list.rows > .5;
+}
+//Order a 4 point vector clockwise with the 0 index at the optimal top-left corner
+void orderCorners(const vector<Point>& corners, vector<Point>& orderedCorners){
+	/*
+	Mat x(0,0,CV_32F), y(0,0,CV_32F);
+	for(size_t i = 0; i < corners.size(); i++ ){
+		x.push_back(corners[i].x);
+		y.push_back(corners[i].y);
+	}
+	//x = x-x_center...
+	Mat magnitude, angle;
+	cartToPolar(x, y, magnitude, angle);
+	if(!majorityIncreasing(angle)){
+	}
+	*/
+	
+	Moments m = moments(Mat(corners));
+	//Point center(m.m10/m.m00, m.m01/m.m00);
+	Mat center = (Mat_<double>(1,3) << m.m10/m.m00, m.m01/m.m00, 0 );
+	Mat p0 = (Mat_<double>(1,3) << corners[0].x, corners[0].y, 0 );
+	Mat p1 = (Mat_<double>(1,3) << corners[1].x, corners[1].y, 0 );
+	if((center - p0).cross(p1 - p0).at<double>(0,2) > 0){
+		orderedCorners = vector<Point>(corners.begin(), corners.end());
+	}
+	else{
+		orderedCorners = vector<Point>(corners.rbegin(), corners.rend());
+	}
+	int shift = 0;
+	double tlMax = 0;
+	Mat B = (Mat_<double>(1,2) << -1, -1);
+	for(size_t i = 0; i < orderedCorners.size(); i++ ){
+		Mat A = (Mat_<double>(1,2) << orderedCorners[i].x - m.m10/m.m00, orderedCorners[i].y - m.m01/m.m00);
+		double tlProj = A.dot(B);
+		if(tlProj > tlMax){
+			shift = i;
+			tlMax = tlProj;
+		}
+	}
+	//Turn on at checking...
+	vector<Point> temp = vector<Point>(orderedCorners.begin(), orderedCorners.end());
+	for(size_t i = 0; i < orderedCorners.size(); i++ ){
+		orderedCorners[i] = temp[(i + shift) % orderedCorners.size()];
+	}
+}
+
 //Creates a new vector with all the points expanded about the average of the first vector.
 vector<Point> expandCorners(const vector<Point>& corners, double expansionPercent){
 	Point center(0,0);
@@ -225,13 +280,18 @@ vector<Point> findQuad(Mat& img, int blurSize){
 //		Reverse is probably also unnecessiary since it can probably be accomplished with inversion.
 //		And quadToTransformation might then be a more consistent name.
 Mat getMyTransform(vector<Point>& foundCorners, Size init_image_sz, Size out_image_sz, bool reverse){
+	//cout << "s1 " << flush;
 	Point2f corners_a[4] = {Point2f(0, 0), Point2f(init_image_sz.width, 0), Point2f(0, init_image_sz.height),
 							Point2f(init_image_sz.width, init_image_sz.height)};
-	Point2f out_corners[4] = {Point2f(0, 0),Point2f(out_image_sz.width, 0), Point2f(0, out_image_sz.height),
-							Point2f(out_image_sz.width, out_image_sz.height)};
-
-	configCornerArray(foundCorners, corners_a);
-	
+	Point2f out_corners[4] = {Point2f(0, 0),Point2f(out_image_sz.width, 0), Point2f(out_image_sz.width, out_image_sz.height), Point2f(0, out_image_sz.height)};
+	//cout << "fc size: " << flush;
+	//cout << foundCorners.size() << flush;
+	//configCornerArray(foundCorners, corners_a);
+	vector<Point> orderedCorners;
+	orderCorners(foundCorners, orderedCorners);
+	for(size_t i = 0; i<orderedCorners.size(); i++){
+		corners_a[i] = Point2f(orderedCorners[i].x, orderedCorners[i].y);
+	}
 	if(reverse){
 		return getPerspectiveTransform(out_corners, corners_a);
 	}
@@ -239,6 +299,8 @@ Mat getMyTransform(vector<Point>& foundCorners, Size init_image_sz, Size out_ima
 		return getPerspectiveTransform(corners_a, out_corners);
 	}
 }
+//Takes a 3x3 transformation matrix H and a output image size and returns
+//a quad representing the region in a image to be transfromed by H the transformed image will contain.
 vector<Point> transformationToQuad(const Mat& H, const Size& out_image_sz){
 										
 	Mat img_rect = (Mat_<double>(3,4) << 0, out_image_sz.width, (double)out_image_sz.width,	 0,
@@ -346,7 +408,7 @@ void crossCheckMatching( Ptr<DescriptorMatcher>& descriptorMatcher,
 }
 bool fileexists(const string& filename){
   ifstream ifile(filename.c_str());
-  return ifile;
+  return (bool) ifile;
 }
 //Tries to read feature data (presumably for the template) from featureDataPath + ".yml" .
 //If none is found it is generated for the image featureDataPath + ".jpg"
@@ -397,7 +459,7 @@ bool loadFeatureData(const string& featureDataPath, Ptr<FeatureDetector>& detect
 		templImageSize = templImage.size();
 
 		#ifdef DEBUG_ALIGN_IMAGE
-		cout << endl << "Extracting keypoints from template image..." << endl;
+		cout << "Extracting keypoints from template image..." << endl;
 		#endif
 		detector->detect( templImage, templKeypoints );
 		#ifdef DEBUG_ALIGN_IMAGE
@@ -509,7 +571,6 @@ bool alignFormImage(Mat& img, Mat& aligned_img, const string& featureDataPath,
 	}
 	vector<DMatch> filteredMatches;
 	crossCheckMatching( descriptorMatcher, descriptors1, templDescriptors, filteredMatches, 1 );
-	cout << ">" << endl;
 
 	vector<int> queryIdxs( filteredMatches.size() ), trainIdxs( filteredMatches.size() );
 	for( size_t i = 0; i < filteredMatches.size(); i++ )
@@ -524,11 +585,11 @@ bool alignFormImage(Mat& img, Mat& aligned_img, const string& featureDataPath,
 	Point3d sc = Point3d( double(aligned_img_sz.width) / templImageSize.width,
 						  double(aligned_img_sz.height) / templImageSize.height,
 						  1);
-	Mat H = findHomography( Mat(points1), Mat(points2), CV_RANSAC, 5.0 );
+	Mat H = findHomography( Mat(points1), Mat(points2), CV_RANSAC, FH_REPROJECT_THRESH );
 	Mat ScalingMat = (Mat::diag(Mat(trueEfficiencyScale)) * Mat::diag(Mat(sc)));
 	
-	warpPerspective( img, aligned_img, H*ScalingMat, aligned_img_sz );
-	
+	aligned_img = Mat(0,0, CV_8U);
+	warpPerspective( img, aligned_img, H*ScalingMat, aligned_img_sz); //, INTER_LINEAR, BORDER_CONSTANT, Scalar(255));
 	
 	vector<Point> quad = transformationToQuad(H*ScalingMat, aligned_img_sz);
 	
