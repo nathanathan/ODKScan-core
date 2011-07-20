@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+<string name="templatePath">/sdcard/mScan/form_templates/unbounded_form_refined.json</string>
 <string name="app_folder">/sdcard/BubbleBot/</string>
 <string name="app_name">mScan</string>
 <string name="app_description">Scan and process bubble forms</string>
