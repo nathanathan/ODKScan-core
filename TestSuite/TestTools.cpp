@@ -70,6 +70,7 @@ bool isImage(const string& filename){
 	return filename.find(".jpg") != string::npos;
 }
 void printData(int tp, int fp, int tn, int fn, int errors, int numImages){
+	cout << endl << "________________________________________________________" << endl << endl;
 	if(numImages > 0){
 		cout << "Errors: " << errors << endl;
 		cout << "Images Tested: " << numImages << endl;
@@ -89,4 +90,5 @@ void printData(int tp, int fp, int tn, int fn, int errors, int numImages){
 	if(numImages > 0){
 		cout << "Total success rate: " << 100.f * (tp + tn) * errors / ((tp+fp+tn+fn) * numImages) << "%" << endl;
 	}
+	cout << "________________________________________________________" << endl;
 }
