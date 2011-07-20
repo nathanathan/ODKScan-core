@@ -529,18 +529,18 @@ bool alignFormImage(Mat& img, Mat& aligned_img, const string& featureDataPath,
 	
 	warpPerspective( img, aligned_img, H*ScalingMat, aligned_img_sz );
 	
-	#ifdef OUTPUT_DEBUG_IMAGES
+	
 	vector<Point> quad = transformationToQuad(H*ScalingMat, aligned_img_sz);
 	
 	bool alignSuccess = false;
 	if( testQuad(quad) ){ 
 		float area = contourArea(Mat(quad));
-		float expected_area = .8 * img.size().area();
-		float tolerence = .2;
+		float expected_area = .8 * .8 * img.size().area();
+		float tolerence = .4;
 		alignSuccess =  area > (1. - tolerence) * expected_area &&
 						area < (1. + tolerence) * expected_area;
 	}
-	
+	#ifdef OUTPUT_DEBUG_IMAGES
 	string qiname = dbgNamer.get_unique_name("alignment_debug_") + ".jpg";
 	const Point* p = &quad[0];
 	int n = (int) quad.size();
@@ -553,7 +553,7 @@ bool alignFormImage(Mat& img, Mat& aligned_img, const string& featureDataPath,
 	}
 	imwrite(qiname, img);
 	#endif
-	return true;
+	return alignSuccess;
 }
 //Aligns a region bounded by black lines (i.e. a bubble segment)
 //It might be necessiary for some of the black lines to touch the edge of the image...
