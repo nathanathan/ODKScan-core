@@ -2,6 +2,7 @@
 #define NAME_GENERATOR
 #include <iostream>
 #include <string>
+#include <sys/stat.h>
 
 class NameGenerator {
 		int unique_name_counter;
@@ -10,6 +11,14 @@ class NameGenerator {
 		NameGenerator(std::string prefix){
 			unique_name_counter = 0;
 			initial_prefix = prefix;
+		}
+		NameGenerator(std::string prefix, bool createDir){
+			unique_name_counter = 0;
+			initial_prefix = prefix;
+			if(createDir){
+				// I have no idea what these mode flags do...
+				mkdir(prefix.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+			}
 		}
 		//Returns prefix with a number concatinated to the end.
 		//Each call increments the number so that the resulting string will always be unique.

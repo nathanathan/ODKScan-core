@@ -31,3 +31,4 @@ import com.opencv.jni.*; //import the android-opencv jni wrappers
 
 %include "Feedback.i"
 %include "Processor.i"
+%include "MarkupForm.i"

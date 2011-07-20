@@ -19,13 +19,11 @@
 class Processor{
 	public:
 		Processor(const char* templatePath);
-		bool trainClassifier();
+		bool trainClassifier(const char* exampleDir);
 		void setClassifierWeight(float weight);
-		
-		bool loadForm(const char* imagePath);
+		bool loadForm(const char* imagePath, int rotate90 = 0);
 		bool alignForm(const char* alignedImageOutputPath);
 		bool processForm(const char* outPath);
-		bool markupForm(const char* bvPath, const char* outputPath);
 		bool writeFormImage(const char* outputPath);
 		
 	private:
