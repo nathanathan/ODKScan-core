@@ -27,67 +27,24 @@ NameGenerator dbgNamer("debug_form_images/", true);
 using namespace std;
 using namespace cv;
 
-//Takes a vector of found corners, and an array of destination corners they should map to
-//and replaces each corner in the dest_corners with the nearest unmatched found corner.
-template <class Tp>
-void configCornerArray(vector<Tp>& found_corners, Point2f* dest_corners) {
-	float min_dist;
-	int min_idx;
-	float dist;
-
-	vector<Point2f> corners;
-
-	for(size_t i = 0; i < found_corners.size(); i++ ){
-		corners.push_back(Point2f(float(found_corners[i].x), float(found_corners[i].y)));
-	}
-	for(size_t i = 0; i < 4; i++) {
-		min_dist = FLT_MAX;
-		for(size_t j = 0; j < corners.size(); j++ ){
-			dist = norm(corners[j]-dest_corners[i]);
-			if(dist < min_dist){
-				min_dist = dist;
-				min_idx = j;
-			}
-		}
-		dest_corners[i]=corners[min_idx]; // + expand * (dest_corners[i] - corners[min_idx]);
-		corners.erase(corners.begin()+min_idx);
-	}
-}
-bool majorityIncreasing(const Mat& list){
-	int increasingVotes = 0;
-	for(size_t i = 0; i < (size_t)list.rows; i++ ){
-		if(list.at<double>((i+1) % list.rows,0) - list.at<double>(i,0) > 0){
-			increasingVotes++;
-		}
-	}
-	return 1.f * increasingVotes / list.rows > .5;
-}
-//Order a 4 point vector clockwise with the 0 index at the optimal top-left corner
-void orderCorners(const vector<Point>& corners, vector<Point>& orderedCorners){
-	/*
-	Mat x(0,0,CV_32F), y(0,0,CV_32F);
-	for(size_t i = 0; i < corners.size(); i++ ){
-		x.push_back(corners[i].x);
-		y.push_back(corners[i].y);
-	}
-	//x = x-x_center...
-	Mat magnitude, angle;
-	cartToPolar(x, y, magnitude, angle);
-	if(!majorityIncreasing(angle)){
-	}
-	*/
+//Order a 4 point vector clockwise with the 0 index at the most top-left corner
+vector<Point> orderCorners(const vector<Point>& corners){
+	
+	vector<Point> orderedCorners;
 	
 	Moments m = moments(Mat(corners));
 	//Point center(m.m10/m.m00, m.m01/m.m00);
 	Mat center = (Mat_<double>(1,3) << m.m10/m.m00, m.m01/m.m00, 0 );
 	Mat p0 = (Mat_<double>(1,3) << corners[0].x, corners[0].y, 0 );
 	Mat p1 = (Mat_<double>(1,3) << corners[1].x, corners[1].y, 0 );
-	if((center - p0).cross(p1 - p0).at<double>(0,2) > 0){
+	
+	if((center - p0).cross(p1 - p0).at<double>(0,2) < 0){ //Check this math just in case
 		orderedCorners = vector<Point>(corners.begin(), corners.end());
 	}
 	else{
 		orderedCorners = vector<Point>(corners.rbegin(), corners.rend());
 	}
+	
 	int shift = 0;
 	double tlMax = 0;
 	Mat B = (Mat_<double>(1,2) << -1, -1);
@@ -99,11 +56,13 @@ void orderCorners(const vector<Point>& corners, vector<Point>& orderedCorners){
 			tlMax = tlProj;
 		}
 	}
-	//Turn on at checking...
+	
+	//TODO: Turn on at checking...
 	vector<Point> temp = vector<Point>(orderedCorners.begin(), orderedCorners.end());
 	for(size_t i = 0; i < orderedCorners.size(); i++ ){
 		orderedCorners[i] = temp[(i + shift) % orderedCorners.size()];
 	}
+	return orderedCorners;
 }
 
 //Creates a new vector with all the points expanded about the average of the first vector.
@@ -121,35 +80,7 @@ vector<Point> expandCorners(const vector<Point>& corners, double expansionPercen
 	}
 	return out;
 }
-//Finds two vertical or horizontal lines that have the minimal gradient sum.
-void find_bounding_lines(Mat& img, int* upper, int* lower, bool vertical) {
-	Mat grad_img, out;
-	
-	int center_size;
-	if( vertical ){
-		// Watch out, I haven't tested to make sure these aren't backwards.
-		center_size = img.cols/4;
-	}
-	else{
-		center_size = img.rows/4;
-	}
-	
-	Sobel(img, grad_img, 0, int(!vertical), int(vertical));
 
-	reduce(grad_img, out, int(!vertical), CV_REDUCE_SUM, CV_32F);
-	
-	//GaussianBlur(out, out, Size(1, center_size/4), 1.0);
-
-	if( vertical )
-		transpose(out,out);
-
-	Point min_location_top;
-	Point min_location_bottom;
-	minMaxLoc(out(Range(3, out.rows/2 - center_size), Range(0,1)), NULL,NULL,&min_location_top);
-	minMaxLoc(out(Range(out.rows/2 + center_size,out.rows - 3), Range(0,1)), NULL,NULL,&min_location_bottom);
-	*upper = min_location_top.y;
-	*lower = min_location_bottom.y + out.rows/2 + center_size;
-}
 // Try to distil the maximum quad (4 point contour) from a convex contour of many points.
 // if none is found maxQuad will not be altered.
 // TODO: Find out what happens when you try to simplify a contour that already has just 4 points.
@@ -193,20 +124,71 @@ vector<Point> findMaxQuad(Mat& img, float approx_p_seed = 0){
 	return maxRect;
 }
 
+Mat makeGCMask(const Size& mask_size, float buffer){
+	Mat mask(mask_size, CV_8UC1, Scalar::all(GC_BGD));
+	Point mask_sz_pt( mask_size.width-1, mask_size.height-1);
+	
+	float bgd_width = .01;
+	float pr_bgd_width = buffer - .01;
+	float pr_fgd_width = .1;
+	
+	rectangle( mask, bgd_width * mask_sz_pt, (1.f - bgd_width) * mask_sz_pt, GC_PR_BGD, -1);
+	rectangle( mask, (bgd_width + pr_bgd_width) * mask_sz_pt,
+					 (1.f - bgd_width - pr_bgd_width) * mask_sz_pt, GC_PR_FGD, -1);
+ 	rectangle( mask, (bgd_width + pr_bgd_width + pr_fgd_width) * mask_sz_pt,
+					 (1.f - bgd_width - pr_bgd_width - pr_fgd_width) * mask_sz_pt, GC_FGD, -1);
+	return mask;
+}
+
+//Looks for a bounded rectanular quadrilateral
+vector<Point> findSegment(const Mat& img, float buffer){
+	Mat img2, fgdModel, bgdModel;
+	cvtColor(img, img2, CV_GRAY2RGB);
+	/*
+	vector<Mat> components;
+	components.push_back(img);
+	Mat temp, temp2;
+	erode(img, temp, Mat());
+	components.push_back(temp);
+	Laplacian(img, temp2, -1, 3, 5);
+	components.push_back(temp2);
+	//merge(components, img2);
+	cvtColor(temp2, img2, CV_GRAY2RGB);
+	*/
+	Mat mask = makeGCMask(img.size(), buffer/(1 + 2*buffer));
+	
+	grabCut( img2, mask, Rect(), bgdModel, fgdModel, 2, GC_INIT_WITH_MASK );
+	//watershed(img2, mask);
+	
+	
+	string segfilename = alignmentNamer.get_unique_name("alignment_debug_");
+	segfilename.append(".jpg");
+	
+	//imwrite(segfilename, mask*50);
+	
+	mask = mask & GC_FGD;// | (mask & GC_PR_FGD));
+	
+	Mat dbg_out;
+	img2.copyTo( dbg_out , mask); 
+	imwrite(segfilename, dbg_out);
+	
+	return findMaxQuad(mask, 0);
+}
+
 //TODO: The blurSize param is sort of a hacky solution to the problem of contours being too large
 //		in certain cases. It fixes the problem on some form images because they can be blurred a lot
 //		and produce good results for contour finding. This is not the case with segments.
 //		I think a better solution might be to alter maxQuad somehow... I haven't figured out how though.
 //TODO: I'm considering an alternative implementation where I do segmentation seeded around the center of the image.
 //		then find a bounding rectangle.
-vector<Point> findQuad(Mat& img, int blurSize){
+vector<Point> findQuad(const Mat& img, int blurSize){
 	Mat imgThresh, temp_img, temp_img2;
 	
 	//Shrink the image down for efficiency
 	//and so we don't have to worry about filters behaving differently on large images
 	int multiple = img.cols / 256;
 	if(multiple > 1){
-		resize(img, temp_img, Size(img.cols/multiple, img.rows/multiple));
+		resize(img, temp_img, Size(img.cols/multiple, img.rows/multiple), INTER_AREA);
 	}
 	else{
 		multiple = 1;
@@ -222,11 +204,32 @@ vector<Point> findQuad(Mat& img, int blurSize){
 	imgThresh = temp_img2 - temp_img > 0;
 	
 	#ifdef OUTPUT_DEBUG_IMAGES
-	Mat dbg_out;
+	
+	Mat dbg_out, dbg_out2;
 	imgThresh.copyTo(dbg_out);
+	//img.copyTo(dbg_out2);
 	string segfilename = alignmentNamer.get_unique_name("alignment_debug_");
 	segfilename.append(".jpg");
+	/*
+    vector<Vec2f> lines;
+    HoughLines(dbg_out, lines, 1, CV_PI/180, 10, 0, 0 );
+    
+    for( size_t i = 0; i < 4; i++ )
+    {
+        float rho = lines[i][0], theta = lines[i][1];
+        Point pt1, pt2;
+        double a = cos(theta), b = sin(theta);
+        double x0 = a*rho, y0 = b*rho;
+        pt1.x = cvRound(x0 + 1000*(-b));
+        pt1.y = cvRound(y0 + 1000*(a));
+        pt2.x = cvRound(x0 - 1000*(-b));
+        pt2.y = cvRound(y0 - 1000*(a));
+        line( dbg_out2, pt1, pt2, 255, 2, CV_AA);
+    }*/
+	
 	imwrite(segfilename, dbg_out);
+	//img.copyTo(dbg_out);
+	
 	#endif
 	
 	vector<Point> quad = findMaxQuad(imgThresh, 0);
@@ -237,67 +240,26 @@ vector<Point> findQuad(Mat& img, int blurSize){
 	for(size_t i = 0; i<quad.size(); i++){
 		quad[i] = Point(actual_width_multiple * quad[i].x, actual_height_multiple * quad[i].y);
 	}
-	/*
-	Moments m = moments(Mat(quad));
-	//Mat Z = (Mat_<double>(1,3) << m.m20, m.m02, 0 );
-	Point center(m.m10/m.m00, m.m01/m.m00);
-	vector<Point> quad2(4);
-	for(size_t i = 0; i<4; i++){
-		Point d = quad[i]-center;
-		if(d.y > 0){
-			if(d.x < 0){
-				quad2[0] = quad[i];
-			}
-			else{
-				quad2[1] = quad[i];
-			}
-		}
-		else{
-			if(d.x > 0){
-				quad2[2] = quad[i];
-			}
-			else{
-				quad2[3] = quad[i];
-			}
-		}
-		cout << d.x << endl;
-	}
-	quad = quad2; */
-	/*
-	Moments m = moments(Mat(quad));
-	//Point center(m.m10/m.m00, m.m01/m.m00);
-	Mat center = (Mat_<double>(1,3) << m.m10/m.m00, m.m01/m.m00, 0 );
-	Mat p0 = (Mat_<double>(1,3) << quad[0].x, quad[0].y, 0 );
-	Mat p1 = (Mat_<double>(1,3) << quad[1].x, quad[1].y, 0 );
-	if((center - p0).cross(p1 - p0).at<double>(0,2) > 0){
-		quad = vector<Point>(quad.rbegin(), quad.rend());
-	}
-	*/
 	
 	return expandCorners(quad, EXPANSION_PERCENTAGE);
 }
 //TODO: This routine could be "simplified" by taking out init_image_sz and using angle from center to order vertices.
 //		Reverse is probably also unnecessiary since it can probably be accomplished with inversion.
 //		And quadToTransformation might then be a more consistent name.
-Mat getMyTransform(vector<Point>& foundCorners, Size init_image_sz, Size out_image_sz, bool reverse){
-	//cout << "s1 " << flush;
-	Point2f corners_a[4] = {Point2f(0, 0), Point2f(init_image_sz.width, 0), Point2f(0, init_image_sz.height),
-							Point2f(init_image_sz.width, init_image_sz.height)};
-	Point2f out_corners[4] = {Point2f(0, 0),Point2f(out_image_sz.width, 0), Point2f(out_image_sz.width, out_image_sz.height), Point2f(0, out_image_sz.height)};
-	//cout << "fc size: " << flush;
-	//cout << foundCorners.size() << flush;
-	//configCornerArray(foundCorners, corners_a);
-	vector<Point> orderedCorners;
-	orderCorners(foundCorners, orderedCorners);
+Mat getMyTransform(const vector<Point>& foundCorners, const Size& out_image_sz){
+
+	Point2f out_corners[4] = {Point2f(0, 0), Point2f(out_image_sz.width, 0),
+							  Point2f(out_image_sz.width, out_image_sz.height), Point2f(0, out_image_sz.height)};
+
+	vector<Point> orderedCorners = orderCorners(foundCorners);
+	
+	Point2f corners_a[4];
+	
 	for(size_t i = 0; i<orderedCorners.size(); i++){
 		corners_a[i] = Point2f(orderedCorners[i].x, orderedCorners[i].y);
 	}
-	if(reverse){
-		return getPerspectiveTransform(out_corners, corners_a);
-	}
-	else{
-		return getPerspectiveTransform(corners_a, out_corners);
-	}
+	
+	return getPerspectiveTransform(out_corners, corners_a);
 }
 //Takes a 3x3 transformation matrix H and a output image size and returns
 //a quad representing the region in a image to be transfromed by H the transformed image will contain.
@@ -322,61 +284,7 @@ vector<Point> transformationToQuad(const Mat& H, const Size& out_image_sz){
 	}
 	return quad;
 }
-//TODO: Refactor this so that it only does the alignment. The else stuff can be added to quad finding,
-//		however I'm not sure it's going to be worth keeping at all.
-void alignImage(Mat& img, Mat& aligned_image, vector<Point>& maxRect, Size aligned_image_sz){
-	
-	if ( maxRect.size() == 4 && isContourConvex(Mat(maxRect)) ){
-		/*
-		//TODO:Possibly remove this
-		cvtColor(img, dbg_out, CV_GRAY2RGB);
-		const Point* p = &maxRect[0];
-		int n = (int) maxRect.size();
-		polylines(dbg_out, &p, &n, 1, true, 200, 2, CV_AA);
-		string segfilename = alignmentNamer.get_unique_name("alignment_debug_");
-		segfilename.append(".jpg");
-		imwrite(segfilename, dbg_out);
-		*/
-		Mat H = getMyTransform(maxRect, img.size(), aligned_image_sz);
-		warpPerspective(img, aligned_image, H, aligned_image_sz);
-	}
-	else{//use the bounding line method if the contour method fails
-		int top = 0, bottom = 0, left = 0, right = 0;
-		find_bounding_lines(img, &top, &bottom, false);
-		find_bounding_lines(img, &left, &right, true);
-
-		/*
-		img.copyTo(dbg_out);
-		const Point* p = &maxRect[0];
-		int n = (int) maxRect.size();
-		polylines(dbg_out, &p, &n, 1, true, 200, 2, CV_AA);
-
-		dbg_out.row(top)+=200;
-		dbg_out.row(bottom)+=200;
-		dbg_out.col(left)+=200;
-		dbg_out.col(right)+=200;
-		string segfilename = alignmentNamer.get_unique_name("alignment_debug_");
-		segfilename.append(".jpg");
-		imwrite(segfilename, dbg_out);
-		*/
-		
-		float bounding_lines_threshold = .2;
-		if ((abs((bottom - top) - aligned_image.rows) < bounding_lines_threshold * aligned_image.rows) &&
-			(abs((right - left) - aligned_image.cols) < bounding_lines_threshold * aligned_image.cols) &&
-			top + aligned_image.rows < img.rows &&  top + aligned_image.cols < img.cols) {
-
-			img(Rect(left, top, aligned_image.cols, aligned_image.rows)).copyTo(aligned_image);
-
-		}
-		else{
-			int seg_buffer_w = (img.cols - aligned_image.cols) / 2;
-			int seg_buffer_h = (img.rows - aligned_image.rows) / 2;
-			img(Rect(seg_buffer_w, seg_buffer_h,
-				aligned_image.cols, aligned_image.rows)).copyTo(aligned_image);
-		}
-	}
-}
-
+//This is from the OpenCV descriptor matcher example.
 void crossCheckMatching( Ptr<DescriptorMatcher>& descriptorMatcher,
                          const Mat& descriptors1, const Mat& descriptors2,
                          vector<DMatch>& filteredMatches12, int knn=1 )
@@ -406,6 +314,7 @@ void crossCheckMatching( Ptr<DescriptorMatcher>& descriptorMatcher,
         }
     }
 }
+//TODO: move to file utils
 bool fileexists(const string& filename){
   ifstream ifile(filename.c_str());
   return (bool) ifile;
@@ -521,7 +430,7 @@ bool testQuad(const vector<Point>& quad){
 			sign*A.cross(E).at<double>(0, 2) > 0;
 }
 //Aligns a image of a form.
-bool alignFormImage(Mat& img, Mat& aligned_img, const string& featureDataPath, 
+bool alignFormImage(const Mat& img, Mat& aligned_img, const string& featureDataPath, 
 					const Size& aligned_img_sz, float efficiencyScale ){
 					
 	Ptr<FeatureDetector> detector;
@@ -546,7 +455,7 @@ bool alignFormImage(Mat& img, Mat& aligned_img, const string& featureDataPath,
 	//imwrite("t1.jpg", img_resized);
 	
 	#ifdef DEBUG_ALIGN_IMAGE
-	cout << endl << "Extracting keypoints from unaligned image..." << endl;
+	cout << "Extracting keypoints from unaligned image..." << endl;
 	#endif
 	
 	vector<KeyPoint> keypoints1;
@@ -602,29 +511,25 @@ bool alignFormImage(Mat& img, Mat& aligned_img, const string& featureDataPath,
 						area < (1. + tolerence) * expected_area;
 	}
 	#ifdef OUTPUT_DEBUG_IMAGES
+	Mat dbg;
+	img.copyTo(dbg);
 	string qiname = dbgNamer.get_unique_name("alignment_debug_") + ".jpg";
 	const Point* p = &quad[0];
 	int n = (int) quad.size();
 	if( alignSuccess ){
-		polylines(img, &p, &n, 1, true, 250, 3, CV_AA);
+		polylines(dbg, &p, &n, 1, true, 250, 3, CV_AA);
 	}
 	else{
-		polylines(img, &p, &n, 1, true, 0, 5, CV_AA);
+		polylines(dbg, &p, &n, 1, true, 0, 5, CV_AA);
 		cout << "Form alignment failed" << endl;
 	}
-	imwrite(qiname, img);
+	imwrite(qiname, dbg);
 	#endif
 	return alignSuccess;
 }
-//Aligns a region bounded by black lines (i.e. a bubble segment)
-//It might be necessiary for some of the black lines to touch the edge of the image...
-//TODO: see if that's the case, and try to do something about it if it is.
-void alignBoundedRegion(Mat& img, Mat& aligned_image, Size aligned_image_sz){
-	return;
-}
-vector<Point> findFormQuad(Mat& img){
+vector<Point> findFormQuad(const Mat& img){
 	return findQuad(img, 12);
 }
-vector<Point> findBoundedRegionQuad(Mat& img){
+vector<Point> findBoundedRegionQuad(const Mat& img){
 	return findQuad(img, 4);
 }
