@@ -1,12 +1,4 @@
 #include "configuration.h"
-#ifdef USE_ANDROID_HEADERS_AND_IO
-	#include <sys/stat.h>
-	#include "log.h"
-	#define LOG_COMPONENT "Nathan"
-	//Note: LOGI doesn't yet transfer to the test suite
-	//		Can I make it work like cout and use defines to switch between them?
-	//Maybe instead of using conditionals I should just move all this stuff to configuration.h
-#endif
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -70,7 +62,7 @@ Json::Value classifyBubbles(const Mat& segment, const Json::Value& bubbleLocatio
 		Point refined_location = classifier.bubble_align(segment, bubbleLocation);
 		bubble_val current_bubble = classifier.classifyBubble(segment, refined_location);
 		
-		Mat actualLocation = transformation * Mat(Point3d(refined_location.x, refined_location.y, 1));
+		Mat actualLocation = transformation * Mat(Point3d(refined_location.x, refined_location.y, 1.f));
 
 		Json::Value bubble;
 		bubble["value"] = Json::Value(current_bubble > NUM_BUBBLE_VALS/2);
@@ -78,8 +70,8 @@ Json::Value classifyBubbles(const Mat& segment, const Json::Value& bubbleLocatio
 		//just record relative point locations here.
 		//On the other hand that makes the output data less portable.
 		//(1.f/SCALEPARAM)* this is probably a bad idea
-		bubble["location"] = pointToJson((Point(actualLocation.at<double>(0,0),
-											   actualLocation.at<double>(1,0)) + offset));
+		bubble["location"] = pointToJson((Point(actualLocation.at<double>(0,0)/actualLocation.at<double>(2, 0),
+											   actualLocation.at<double>(1,0)/actualLocation.at<double>(2, 0)) + offset));
 		bubblesJsonOut.append(bubble);
 		
 		#ifdef OUTPUT_SEGMENT_IMAGES
@@ -129,13 +121,14 @@ Json::Value processSegment(const Json::Value &segmentTemplate){
 	
 	Mat segment = formImage(expandedRect);
 	
-	vector<Point> quad = findBoundedRegionQuad(segment);
+	vector<Point> quad = findBoundedRegionQuad(segment);//, SEGMENT_BUFFER);
 	//TODO: come up with some way to segment alignment to fail.
 	
 	if(quad.size() == 4){
-		Mat alignedSegment(0, 0, CV_8U); //But this into alignImage
-		alignImage(segment, alignedSegment, quad, imageRect.size());
-		Mat transformation = getMyTransform(quad, expandedRect.size(), imageRect.size(), true);
+
+		Mat transformation = getMyTransform(quad, imageRect.size());
+		Mat alignedSegment(0, 0, CV_8U);
+		warpPerspective(segment, alignedSegment, transformation.inv(), imageRect.size());
 
 		Json::Value segmentJsonOut;
 		segmentJsonOut["key"] = segmentTemplate.get("key", -1);
@@ -145,6 +138,9 @@ Json::Value processSegment(const Json::Value &segmentTemplate){
 		return segmentJsonOut;
 	}
 	else{
+		#ifdef DEBUG_PROCESSOR
+		cout << "segment alignment failed" << endl;
+		#endif
 		Json::Value segmentJsonOut;
 		segmentJsonOut["key"] = segmentTemplate.get("key", -1);
 		segmentJsonOut["quad"] = quadToJsonArray(quad, expandedRect.tl());
@@ -162,13 +158,13 @@ ProcessorImpl(const char* templatePath){
 }
 bool trainClassifier(const char* trainingImageDir){
 	#ifdef DEBUG_PROCESSOR
-	cout << "training classifier...";
+	cout << "training classifier..." << flush;
 	#endif
 	const Json::Value defaultSize = pointToJson(Point(8,12));
 	Json::Value bubbleSize = root.get("bubble_size", defaultSize);
 	bool success = classifier.train_PCA_classifier(string(trainingImageDir), 
 													SCALEPARAM * Size(bubbleSize[0u].asInt(), bubbleSize[1u].asInt()),
-													true);//flip training examples.
+													true);//flip training examples. TODO: test this
 	if (!success) return false;
 	
 	classifier.set_search_window(Size(0,0));
@@ -185,7 +181,7 @@ void setClassifierWeight(float weight){
 //The rotate 90 thing might only be necessairy when dealing with non-feature based alignment...
 bool loadForm(const char* imagePath, int rotate90){
 	#ifdef DEBUG_PROCESSOR
-	cout << "loading form image..." << endl;
+	cout << "loading form image..." << flush;
 	#endif
 	formImage = imread(imagePath, 0);
 	if(formImage.empty()) return false;
@@ -195,20 +191,22 @@ bool loadForm(const char* imagePath, int rotate90){
 		transpose(formImage, temp);
 		flip(temp,formImage, rotate90); //This might vary by phone... 1 is for Nexus.
 	}
-    
+	#ifdef DEBUG_PROCESSOR
+	cout << "loaded" << endl;
+	#endif
 	return true;
 }
 bool alignForm(const char* alignedImageOutputPath){
+	#ifdef DEBUG_PROCESSOR
+	cout << "aligning form..." << endl;
+	#endif
 	Size form_sz(root.get("width", 0).asInt(), root.get("height", 0).asInt());
 	if( form_sz.width <= 0 || form_sz.height <= 0){
 		return false;
 	}
     
-	#ifdef DEBUG_PROCESSOR
-	cout << "aligning image" << endl;
-	#endif
 	
-	cout << templDir+root.get("feature_data_path", "default").asString() << endl;
+	//cout << templDir+root.get("feature_data_path", "default").asString() << endl;
 	
 	Mat straightenedImage;
 	alignFormImage(formImage, straightenedImage,
@@ -223,6 +221,9 @@ bool alignForm(const char* alignedImageOutputPath){
 	
 	if(straightenedImage.empty()) return false;
 
+	#ifdef DEBUG_PROCESSOR
+	cout << "aligned" << endl;
+	#endif
 	formImage = straightenedImage;
 	return writeFormImage(alignedImageOutputPath);
 }
