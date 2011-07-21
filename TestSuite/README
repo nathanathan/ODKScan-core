@@ -1,8 +1,30 @@
 This is a testing suite for the form scanning procedure.
 You will need to provide your own form images in a "form_images" folder.
-In order to generate plots you will have to install [R] the statisical programming language.
-The formAlignment PCA_classifier and nameGenerator files can be swapped with those in the jni directory (so long as their header remains intact.)
-The command "make jni-transfer" will do this swapping for you.
+
+Source file information
+______________________________
+
+	Core Files:
+
+* Processor - 		Handles JSON parsing and provides an interface.
+* FormAlignment - 	Contains functions for aligning forms and segments.
+* PCA_classifier - 	Classifies bubbles using principal component analysis.
+					Contains code for reading training data from directories and refining bubble positions.
+* Addons - 			Misc. utility functions that are useful in multiple places.
+* NameGenerator - 	A utility for generating unique names.
+* FileUtils - 		A utility for crawling file tree and returning all the file names.
+* MarkupForm - 		Contains a function for marking up a form using a JSON form template or bubble vals file.
+
+	note:
+	Core Files can be swapped with those in the jni directory.
+	The command "make jni-transfer" will do this swapping for you.
+
+	Test Suite Specific Files:
+	
+* TestTools - 		Code for use in test programs. Prints out stats.
+* ROC_plot_script - Plots ROC curves using the resultant data from tests with varying parameters.
+					In order to generate plots you will have to install [R] the statisical programming language.
+
 The tests folder contains the actual test code.
 Each cpp file in there should have a make corresponding make target you can use.
 If you should decide to modify any of that code with changes to I/O it's important to note that it all gets run from the TestSuite directory.
