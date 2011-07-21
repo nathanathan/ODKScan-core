@@ -42,7 +42,7 @@ Mat formImage;
 PCA_classifier classifier;
 string templDir;
 
-Json::Value classifyBubbles(const Mat& segment, const Json::Value& bubbleLocations, Mat& transformation, const Point& offset){
+Json::Value classifyBubbles(const Mat& segment, const Json::Value& bubbleLocations, const Mat& transformation, const Point& offset){
 	#ifdef OUTPUT_SEGMENT_IMAGES
 	//TODO: This should become perminant functionality.
 	//		My idea is to have Java code that displays segment images as the form is being processed.
@@ -122,19 +122,19 @@ Json::Value processSegment(const Json::Value &segmentTemplate){
 	Mat segment = formImage(expandedRect);
 	
 	vector<Point> quad = findBoundedRegionQuad(segment);//, SEGMENT_BUFFER);
-	//TODO: come up with some way to segment alignment to fail.
+	//TODO: come up with some way for segment alignment to fail.
 	
 	if(quad.size() == 4){
 
 		Mat transformation = getMyTransform(quad, imageRect.size());
 		Mat alignedSegment(0, 0, CV_8U);
-		warpPerspective(segment, alignedSegment, transformation.inv(), imageRect.size());
+		warpPerspective(segment, alignedSegment, transformation, imageRect.size());
 
 		Json::Value segmentJsonOut;
 		segmentJsonOut["key"] = segmentTemplate.get("key", -1);
 		segmentJsonOut["quad"] = quadToJsonArray(quad, expandedRect.tl());
 		segmentJsonOut["bubbles"] = classifyBubbles(alignedSegment, segmentTemplate["bubble_locations"],
-													transformation, expandedRect.tl());
+													transformation.inv(), expandedRect.tl());
 		return segmentJsonOut;
 	}
 	else{

@@ -259,7 +259,7 @@ Mat getMyTransform(const vector<Point>& foundCorners, const Size& out_image_sz){
 		corners_a[i] = Point2f(orderedCorners[i].x, orderedCorners[i].y);
 	}
 	
-	return getPerspectiveTransform(out_corners, corners_a);
+	return getPerspectiveTransform(corners_a, out_corners);
 }
 //Takes a 3x3 transformation matrix H and a output image size and returns
 //a quad representing the region in a image to be transfromed by H the transformed image will contain.
