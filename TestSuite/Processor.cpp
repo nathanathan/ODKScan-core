@@ -126,7 +126,7 @@ Json::Value processSegment(const Json::Value &segmentTemplate){
 	
 	if(quad.size() == 4){
 
-		Mat transformation = getMyTransform(quad, imageRect.size());
+		Mat transformation = quadToTransformation(quad, imageRect.size());
 		Mat alignedSegment(0, 0, CV_8U);
 		warpPerspective(segment, alignedSegment, transformation, imageRect.size());
 

@@ -243,10 +243,7 @@ vector<Point> findQuad(const Mat& img, int blurSize){
 	
 	return expandCorners(quad, EXPANSION_PERCENTAGE);
 }
-//TODO: This routine could be "simplified" by taking out init_image_sz and using angle from center to order vertices.
-//		Reverse is probably also unnecessiary since it can probably be accomplished with inversion.
-//		And quadToTransformation might then be a more consistent name.
-Mat getMyTransform(const vector<Point>& foundCorners, const Size& out_image_sz){
+Mat quadToTransformation(const vector<Point>& foundCorners, const Size& out_image_sz){
 
 	Point2f out_corners[4] = {Point2f(0, 0), Point2f(out_image_sz.width, 0),
 							  Point2f(out_image_sz.width, out_image_sz.height), Point2f(0, out_image_sz.height)};

@@ -3,7 +3,7 @@
 
 #include <opencv2/core/core.hpp>
 
-cv::Mat getMyTransform(const std::vector<cv::Point>& foundCorners, const cv::Size& out_image_sz);
+cv::Mat quadToTransformation(const std::vector<cv::Point>& foundCorners, const cv::Size& out_image_sz);
 std::vector<cv::Point> transformationToQuad(const cv::Mat& H, const cv::Size& out_image_sz);
 
 bool alignFormImage(const cv::Mat& img, cv::Mat& aligned_image, const std::string& dataPath, 
