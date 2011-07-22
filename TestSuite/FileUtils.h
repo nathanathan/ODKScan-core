@@ -5,3 +5,4 @@
 // vector parameter (modifies filenames vector)
 int CrawlFileTree(std::string rootdir, std::vector<std::string> &filenames);
 int CrawlFileTree(char* rootdir, std::vector<std::string > &filenames);
+bool fileExists(const std::string& filename);
