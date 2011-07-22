@@ -29,22 +29,22 @@ using namespace cv;
 
 //Order a 4 point vector clockwise with the 0 index at the most top-left corner
 vector<Point> orderCorners(const vector<Point>& corners){
-	
+
 	vector<Point> orderedCorners;
-	
+
 	Moments m = moments(Mat(corners));
-	//Point center(m.m10/m.m00, m.m01/m.m00);
+
 	Mat center = (Mat_<double>(1,3) << m.m10/m.m00, m.m01/m.m00, 0 );
 	Mat p0 = (Mat_<double>(1,3) << corners[0].x, corners[0].y, 0 );
 	Mat p1 = (Mat_<double>(1,3) << corners[1].x, corners[1].y, 0 );
-	
+
 	if((center - p0).cross(p1 - p0).at<double>(0,2) < 0){ //Check this math just in case
 		orderedCorners = vector<Point>(corners.begin(), corners.end());
 	}
 	else{
 		orderedCorners = vector<Point>(corners.rbegin(), corners.rend());
 	}
-	
+
 	int shift = 0;
 	double tlMax = 0;
 	Mat B = (Mat_<double>(1,2) << -1, -1);
@@ -56,15 +56,13 @@ vector<Point> orderCorners(const vector<Point>& corners){
 			tlMax = tlProj;
 		}
 	}
-	
-	//TODO: Turn on at checking...
+
 	vector<Point> temp = vector<Point>(orderedCorners.begin(), orderedCorners.end());
 	for(size_t i = 0; i < orderedCorners.size(); i++ ){
 		orderedCorners[i] = temp[(i + shift) % orderedCorners.size()];
 	}
 	return orderedCorners;
 }
-
 //Creates a new vector with all the points expanded about the average of the first vector.
 vector<Point> expandCorners(const vector<Point>& corners, double expansionPercent){
 	Point center(0,0);
@@ -124,56 +122,6 @@ vector<Point> findMaxQuad(Mat& img, float approx_p_seed = 0){
 	return maxRect;
 }
 
-Mat makeGCMask(const Size& mask_size, float buffer){
-	Mat mask(mask_size, CV_8UC1, Scalar::all(GC_BGD));
-	Point mask_sz_pt( mask_size.width-1, mask_size.height-1);
-	
-	float bgd_width = .01;
-	float pr_bgd_width = buffer - .01;
-	float pr_fgd_width = .1;
-	
-	rectangle( mask, bgd_width * mask_sz_pt, (1.f - bgd_width) * mask_sz_pt, GC_PR_BGD, -1);
-	rectangle( mask, (bgd_width + pr_bgd_width) * mask_sz_pt,
-					 (1.f - bgd_width - pr_bgd_width) * mask_sz_pt, GC_PR_FGD, -1);
- 	rectangle( mask, (bgd_width + pr_bgd_width + pr_fgd_width) * mask_sz_pt,
-					 (1.f - bgd_width - pr_bgd_width - pr_fgd_width) * mask_sz_pt, GC_FGD, -1);
-	return mask;
-}
-
-//Looks for a bounded rectanular quadrilateral
-vector<Point> findSegment(const Mat& img, float buffer){
-	Mat img2, fgdModel, bgdModel;
-	cvtColor(img, img2, CV_GRAY2RGB);
-	/*
-	vector<Mat> components;
-	components.push_back(img);
-	Mat temp, temp2;
-	erode(img, temp, Mat());
-	components.push_back(temp);
-	Laplacian(img, temp2, -1, 3, 5);
-	components.push_back(temp2);
-	//merge(components, img2);
-	cvtColor(temp2, img2, CV_GRAY2RGB);
-	*/
-	Mat mask = makeGCMask(img.size(), buffer/(1 + 2*buffer));
-	
-	grabCut( img2, mask, Rect(), bgdModel, fgdModel, 2, GC_INIT_WITH_MASK );
-	//watershed(img2, mask);
-	
-	
-	string segfilename = alignmentNamer.get_unique_name("alignment_debug_");
-	segfilename.append(".jpg");
-	
-	//imwrite(segfilename, mask*50);
-	
-	mask = mask & GC_FGD;// | (mask & GC_PR_FGD));
-	
-	Mat dbg_out;
-	img2.copyTo( dbg_out , mask); 
-	imwrite(segfilename, dbg_out);
-	
-	return findMaxQuad(mask, 0);
-}
 
 //TODO: The blurSize param is sort of a hacky solution to the problem of contours being too large
 //		in certain cases. It fixes the problem on some form images because they can be blurred a lot
@@ -200,8 +148,10 @@ vector<Point> findQuad(const Mat& img, int blurSize){
 	
 	temp_img.copyTo(temp_img2);
 	blur(temp_img2, temp_img, Size(2*blurSize+1, 2*blurSize+1));
+	//erode(temp_img2, temp_img, (Mat_<uchar>(3,3) << 1,0,1,0,1,0,1,0,1));
 	//This threshold might be tweakable
 	imgThresh = temp_img2 - temp_img > 0;
+	//medianBlur(temp_img2 - temp_img > 0, imgThresh, 3);
 	
 	#ifdef OUTPUT_DEBUG_IMAGES
 	
@@ -210,25 +160,13 @@ vector<Point> findQuad(const Mat& img, int blurSize){
 	//img.copyTo(dbg_out2);
 	string segfilename = alignmentNamer.get_unique_name("alignment_debug_");
 	segfilename.append(".jpg");
-	/*
-    vector<Vec2f> lines;
-    HoughLines(dbg_out, lines, 1, CV_PI/180, 10, 0, 0 );
-    
-    for( size_t i = 0; i < 4; i++ )
-    {
-        float rho = lines[i][0], theta = lines[i][1];
-        Point pt1, pt2;
-        double a = cos(theta), b = sin(theta);
-        double x0 = a*rho, y0 = b*rho;
-        pt1.x = cvRound(x0 + 1000*(-b));
-        pt1.y = cvRound(y0 + 1000*(a));
-        pt2.x = cvRound(x0 - 1000*(-b));
-        pt2.y = cvRound(y0 - 1000*(a));
-        line( dbg_out2, pt1, pt2, 255, 2, CV_AA);
-    }*/
-	
-	imwrite(segfilename, dbg_out);
+    vector < vector<Point> > contours;
+    Mat temp;
+	//findContours(dbg_out, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
 	//img.copyTo(dbg_out);
+	//drawContours(dbg_out, contours, -1, 255);
+	imwrite(segfilename, dbg_out);
+	
 	
 	#endif
 	
@@ -528,5 +466,58 @@ vector<Point> findFormQuad(const Mat& img){
 	return findQuad(img, 12);
 }
 vector<Point> findBoundedRegionQuad(const Mat& img){
-	return findQuad(img, 4);
+	//Turning the blur up really seems to help...
+	return findQuad(img, 16);
+}
+
+
+Mat makeGCMask(const Size& mask_size, float buffer){
+	Mat mask(mask_size, CV_8UC1, Scalar::all(GC_BGD));
+	Point mask_sz_pt( mask_size.width-1, mask_size.height-1);
+	
+	float bgd_width = .01;
+	float pr_bgd_width = buffer - .01;
+	float pr_fgd_width = .1;
+	
+	rectangle( mask, bgd_width * mask_sz_pt, (1.f - bgd_width) * mask_sz_pt, GC_PR_BGD, -1);
+	rectangle( mask, (bgd_width + pr_bgd_width) * mask_sz_pt,
+					 (1.f - bgd_width - pr_bgd_width) * mask_sz_pt, GC_PR_FGD, -1);
+ 	rectangle( mask, (bgd_width + pr_bgd_width + pr_fgd_width) * mask_sz_pt,
+					 (1.f - bgd_width - pr_bgd_width - pr_fgd_width) * mask_sz_pt, GC_FGD, -1);
+	return mask;
+}
+
+//Looks for a bounded rectanular quadrilateral
+vector<Point> findSegment(const Mat& img, float buffer){
+	Mat img2, fgdModel, bgdModel;
+	cvtColor(img, img2, CV_GRAY2RGB);
+	/*
+	vector<Mat> components;
+	components.push_back(img);
+	Mat temp, temp2;
+	erode(img, temp, Mat());
+	components.push_back(temp);
+	Laplacian(img, temp2, -1, 3, 5);
+	components.push_back(temp2);
+	//merge(components, img2);
+	cvtColor(temp2, img2, CV_GRAY2RGB);
+	*/
+	Mat mask = makeGCMask(img.size(), buffer/(1 + 2*buffer));
+	
+	grabCut( img2, mask, Rect(), bgdModel, fgdModel, 2, GC_INIT_WITH_MASK );
+	//watershed(img2, mask);
+	
+	
+	string segfilename = alignmentNamer.get_unique_name("alignment_debug_");
+	segfilename.append(".jpg");
+	
+	//imwrite(segfilename, mask*50);
+	
+	mask = mask & GC_FGD;// | (mask & GC_PR_FGD));
+	
+	Mat dbg_out;
+	img2.copyTo( dbg_out , mask); 
+	imwrite(segfilename, dbg_out);
+	
+	return findMaxQuad(mask, 0);
 }
