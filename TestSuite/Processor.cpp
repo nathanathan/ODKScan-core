@@ -125,7 +125,10 @@ Json::Value processSegment(const Json::Value &segmentTemplate){
 	//TODO: come up with some way for segment alignment to fail.
 	
 	if(quad.size() == 4){
-
+		#ifdef DEBUG_PROCESSOR
+		//This makes a stream of dots so we can see how fast things are going.
+		cout << '.' << flush;
+		#endif
 		Mat transformation = quadToTransformation(quad, imageRect.size());
 		Mat alignedSegment(0, 0, CV_8U);
 		warpPerspective(segment, alignedSegment, transformation, imageRect.size());
@@ -139,7 +142,7 @@ Json::Value processSegment(const Json::Value &segmentTemplate){
 	}
 	else{
 		#ifdef DEBUG_PROCESSOR
-		cout << "segment alignment failed" << endl;
+		cout << "!" << flush;
 		#endif
 		Json::Value segmentJsonOut;
 		segmentJsonOut["key"] = segmentTemplate.get("key", -1);
@@ -248,10 +251,6 @@ bool processForm(const char* outputPath) {
 		fieldJsonOut["label"] = field.get("label", "unlabeled");
 		
 		for ( size_t j = 0; j < segments.size(); j++ ) {
-			#ifdef DEBUG_PROCESSOR
-			//This makes a stream of dots so we can see how fast things are going.
-			cout << '.' << flush;
-			#endif
 			const Json::Value segmentTemplate = segments[j];
 			Json::Value segmentJsonOut = processSegment(segmentTemplate);
 			fieldJsonOut["segments"].append(segmentJsonOut);
@@ -263,9 +262,9 @@ bool processForm(const char* outputPath) {
 	
 	Json::Value JsonOutput;
 	JsonOutput["form_type"] = root.get("form_type", "NA");
+	JsonOutput["form_scale"] = Json::Value(SCALEPARAM);
 	JsonOutput["form_image_path"] = Json::Value("NA");
 	JsonOutput["fields"] = JsonOutputFields;
-	
 	#ifdef  DEBUG_PROCESSOR
 	cout << "done" << endl;
 	#endif
