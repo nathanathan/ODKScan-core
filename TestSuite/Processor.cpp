@@ -38,6 +38,7 @@ class Processor::ProcessorImpl {
 private:
 
 Json::Value root;
+Json::Value JsonOutput;
 Mat formImage;
 PCA_classifier classifier;
 string templDir;
@@ -110,20 +111,20 @@ Json::Value processSegment(const Json::Value &segmentTemplate){
 									   segmentTemplate.get("y", INT_MIN).asInt()),
 					SCALEPARAM * Size(segmentTemplate.get("width", INT_MIN).asInt(),
 									  segmentTemplate.get("height", INT_MIN).asInt()));	
-	
+
 	Rect expandedRect = expandRect(imageRect, SEGMENT_BUFFER);
-	
+
 	//Ensure that the segment with the buffer added on doesn't go off the form
 	//and that everything is positive.
 	//Maybe add some code that will reduce the segment buffer if it goes over the edge.
 	assert(expandedRect.tl().x >= 0 && expandedRect.tl().y >= 0);
 	assert(expandedRect.br().x < formImage.cols && expandedRect.br().y < formImage.rows);
-	
+
 	Mat segment = formImage(expandedRect);
-	
-	vector<Point> quad = findBoundedRegionQuad(segment);//, SEGMENT_BUFFER);
+
+	vector<Point> quad = findBoundedRegionQuad(segment, SEGMENT_BUFFER);
 	//TODO: come up with some way for segment alignment to fail.
-	
+
 	if(quad.size() == 4){
 		#ifdef DEBUG_PROCESSOR
 		//This makes a stream of dots so we can see how fast things are going.
@@ -134,7 +135,6 @@ Json::Value processSegment(const Json::Value &segmentTemplate){
 		warpPerspective(segment, alignedSegment, transformation, imageRect.size());
 
 		Json::Value segmentJsonOut;
-		segmentJsonOut["key"] = segmentTemplate.get("key", -1);
 		segmentJsonOut["quad"] = quadToJsonArray(quad, expandedRect.tl());
 		segmentJsonOut["bubbles"] = classifyBubbles(alignedSegment, segmentTemplate["bubble_locations"],
 													transformation.inv(), expandedRect.tl());
@@ -145,7 +145,6 @@ Json::Value processSegment(const Json::Value &segmentTemplate){
 		cout << "!" << flush;
 		#endif
 		Json::Value segmentJsonOut;
-		segmentJsonOut["key"] = segmentTemplate.get("key", -1);
 		segmentJsonOut["quad"] = quadToJsonArray(quad, expandedRect.tl());
 		return segmentJsonOut;
 	}
@@ -158,6 +157,7 @@ ProcessorImpl(const char* templatePath){
 	//templDir will contain JSON templates, template form images, and yml? feature data for each form.
 	templDir = string(templatePath);
 	templDir = templDir.substr(0, templDir.find_last_of("/") + 1);
+	JsonOutput["template_file"] = templatePath;
 }
 bool trainClassifier(const char* trainingImageDir){
 	#ifdef DEBUG_PROCESSOR
@@ -171,6 +171,7 @@ bool trainClassifier(const char* trainingImageDir){
 	if (!success) return false;
 	
 	classifier.set_search_window(Size(0,0));
+	JsonOutput["training_immage_directory"] = Json::Value(trainingImageDir);
 	#ifdef DEBUG_PROCESSOR
 	cout << "trained" << endl;
 	#endif
@@ -194,6 +195,7 @@ bool loadForm(const char* imagePath, int rotate90){
 		transpose(formImage, temp);
 		flip(temp,formImage, rotate90); //This might vary by phone... 1 is for Nexus.
 	}
+	JsonOutput["image_file"] = imagePath;
 	#ifdef DEBUG_PROCESSOR
 	cout << "loaded" << endl;
 	#endif
@@ -207,20 +209,18 @@ bool alignForm(const char* alignedImageOutputPath){
 	if( form_sz.width <= 0 || form_sz.height <= 0){
 		return false;
 	}
-    
-	
+
 	//cout << templDir+root.get("feature_data_path", "default").asString() << endl;
 	
 	Mat straightenedImage;
+	#if 1 //USE_FEATURE_BASED_FORM_ALIGNMENT TODO: move this option to the alignment files
 	alignFormImage(formImage, straightenedImage,
 							  templDir+root.get("feature_data_path", "default").asString(),
 							  SCALEPARAM * form_sz, .25);
-					
-	/*
+	#else
 	vector<Point> quad = findFormQuad(formImage);
-	Mat straightenedImage(0,0, CV_8U);
 	alignImage(formImage, straightenedImage, quad,  SCALEPARAM * form_sz);
-	*/
+	#endif
 	
 	if(straightenedImage.empty()) return false;
 
@@ -253,14 +253,13 @@ bool processForm(const char* outputPath) {
 		for ( size_t j = 0; j < segments.size(); j++ ) {
 			const Json::Value segmentTemplate = segments[j];
 			Json::Value segmentJsonOut = processSegment(segmentTemplate);
+			segmentJsonOut["key"] = segmentTemplate.get("key", -1);
 			fieldJsonOut["segments"].append(segmentJsonOut);
 		}
-		//TODO: Modify output to include form image filename (which should be kept as a record),
-		//the template name and a "fields" key that everything in the current arry will fall under.
+		fieldJsonOut["key"] = field.get("key", -1);
 		JsonOutputFields.append(fieldJsonOut);
 	}
 	
-	Json::Value JsonOutput;
 	JsonOutput["form_type"] = root.get("form_type", "NA");
 	JsonOutput["form_scale"] = Json::Value(SCALEPARAM);
 	JsonOutput["form_image_path"] = Json::Value("NA");
