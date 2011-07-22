@@ -10,6 +10,6 @@ bool alignFormImage(const cv::Mat& img, cv::Mat& aligned_image, const std::strin
 					const cv::Size& aligned_image_sz, float efficiencyScale = .25 );
 					
 std::vector<cv::Point> findFormQuad(const cv::Mat& img);
-std::vector<cv::Point> findBoundedRegionQuad(const cv::Mat& img);
+std::vector<cv::Point> findBoundedRegionQuad(const cv::Mat& img, float buffer);
 std::vector<cv::Point> findSegment(const cv::Mat& img, float buffer);
 #endif

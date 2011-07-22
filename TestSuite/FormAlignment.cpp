@@ -122,36 +122,46 @@ vector<Point> findMaxQuad(Mat& img, float approx_p_seed = 0){
 	return maxRect;
 }
 
-
 //TODO: The blurSize param is sort of a hacky solution to the problem of contours being too large
 //		in certain cases. It fixes the problem on some form images because they can be blurred a lot
 //		and produce good results for contour finding. This is not the case with segments.
 //		I think a better solution might be to alter maxQuad somehow... I haven't figured out how though.
 //TODO: I'm considering an alternative implementation where I do segmentation seeded around the center of the image.
 //		then find a bounding rectangle.
-vector<Point> findQuad(const Mat& img, int blurSize){
+vector<Point> findQuad(const Mat& img, int blurSize, float buffer = 0.0){
 	Mat imgThresh, temp_img, temp_img2;
 	
 	//Shrink the image down for efficiency
 	//and so we don't have to worry about filters behaving differently on large images
 	int multiple = img.cols / 256;
 	if(multiple > 1){
-		resize(img, temp_img, Size(img.cols/multiple, img.rows/multiple), INTER_AREA);
+		resize(img, temp_img, (1.f / multiple) * img.size(), INTER_AREA);
 	}
 	else{
 		multiple = 1;
 		img.copyTo(temp_img);
 	}
+	//resize(img, temp_img, 2*Size(img.cols, img.rows), INTER_AREA);
 	
 	float actual_width_multiple = float(img.rows) / temp_img.rows;
 	float actual_height_multiple = float(img.cols) / temp_img.cols;
 	
 	temp_img.copyTo(temp_img2);
-	blur(temp_img2, temp_img, Size(2*blurSize+1, 2*blurSize+1));
+	//blur(temp_img, temp_img2, Size(3, 3));
+	blur(temp_img2, temp_img, 2*Size(2*blurSize+1, 2*blurSize+1));
 	//erode(temp_img2, temp_img, (Mat_<uchar>(3,3) << 1,0,1,0,1,0,1,0,1));
 	//This threshold might be tweakable
 	imgThresh = temp_img2 - temp_img > 0;
-	//medianBlur(temp_img2 - temp_img > 0, imgThresh, 3);
+	
+	//Subtracting the laplacian is a hacky but sometimes effective way to
+	//improve segmentation in cases when separate segments are connected by a handful of pixels.
+	Laplacian(temp_img2, temp_img, -1, 9);
+	imgThresh = imgThresh - (temp_img > 40);
+	
+	//Blocking out a chunk in the middle of the segment can help in cases with densely filled bubbles.
+	float choke = buffer/(1 + 2*buffer) + .15;
+	Rect roi(choke * Point(temp_img.cols, temp_img.rows), (1.f - 2*choke) * temp_img.size());
+	imgThresh(roi) = 255;
 	
 	#ifdef OUTPUT_DEBUG_IMAGES
 	
@@ -166,7 +176,6 @@ vector<Point> findQuad(const Mat& img, int blurSize){
 	//img.copyTo(dbg_out);
 	//drawContours(dbg_out, contours, -1, 255);
 	imwrite(segfilename, dbg_out);
-	
 	
 	#endif
 	
@@ -465,19 +474,25 @@ bool alignFormImage(const Mat& img, Mat& aligned_img, const string& featureDataP
 vector<Point> findFormQuad(const Mat& img){
 	return findQuad(img, 12);
 }
-vector<Point> findBoundedRegionQuad(const Mat& img){
+vector<Point> findBoundedRegionQuad(const Mat& img, float buffer){
 	//Turning the blur up really seems to help...
-	return findQuad(img, 16);
+	return findQuad(img, 16, buffer);
 }
+
 
 
 Mat makeGCMask(const Size& mask_size, float buffer){
 	Mat mask(mask_size, CV_8UC1, Scalar::all(GC_BGD));
 	Point mask_sz_pt( mask_size.width-1, mask_size.height-1);
 	
+	/*
 	float bgd_width = .01;
 	float pr_bgd_width = buffer - .01;
 	float pr_fgd_width = .1;
+	*/
+	float bgd_width = buffer + .08;
+	float pr_bgd_width = .02;
+	float pr_fgd_width = .05;
 	
 	rectangle( mask, bgd_width * mask_sz_pt, (1.f - bgd_width) * mask_sz_pt, GC_PR_BGD, -1);
 	rectangle( mask, (bgd_width + pr_bgd_width) * mask_sz_pt,
@@ -504,7 +519,7 @@ vector<Point> findSegment(const Mat& img, float buffer){
 	*/
 	Mat mask = makeGCMask(img.size(), buffer/(1 + 2*buffer));
 	
-	grabCut( img2, mask, Rect(), bgdModel, fgdModel, 2, GC_INIT_WITH_MASK );
+	grabCut( img2, mask, Rect(), bgdModel, fgdModel, 1, GC_INIT_WITH_MASK );
 	//watershed(img2, mask);
 	
 	
@@ -521,3 +536,4 @@ vector<Point> findSegment(const Mat& img, float buffer){
 	
 	return findMaxQuad(mask, 0);
 }
+
