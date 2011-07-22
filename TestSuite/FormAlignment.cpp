@@ -1,6 +1,7 @@
 #include "configuration.h"
 #include "FormAlignment.h"
 #include "Addons.h"
+#include "FileUtils.h"
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -21,6 +22,8 @@ NameGenerator dbgNamer("debug_form_images/", true);
 #define THRESH_DECR_SIZE .05
 
 #define EXPANSION_PERCENTAGE .04
+
+#define USE_FEATURE_BASED_FORM_ALIGNMENT
 
 #define FH_REPROJECT_THRESH 8.0
 
@@ -258,11 +261,6 @@ void crossCheckMatching( Ptr<DescriptorMatcher>& descriptorMatcher,
         }
     }
 }
-//TODO: move to file utils
-bool fileexists(const string& filename){
-  ifstream ifile(filename.c_str());
-  return (bool) ifile;
-}
 //Tries to read feature data (presumably for the template) from featureDataPath + ".yml" .
 //If none is found it is generated for the image featureDataPath + ".jpg"
 bool loadFeatureData(const string& featureDataPath, Ptr<FeatureDetector>& detector,
@@ -278,7 +276,7 @@ bool loadFeatureData(const string& featureDataPath, Ptr<FeatureDetector>& detect
 	#ifdef ALWAYS_COMPUTE_TEMPLATE_FEATURES
 	checkForSavedFeatures = false;
 	#endif
-	if( checkForSavedFeatures && fileexists(featureDataPath + ".yml") ) {
+	if( checkForSavedFeatures && fileExists(featureDataPath + ".yml") ) {
 		try
 		{
 			FileStorage fs(featureDataPath + ".yml", FileStorage::READ);
@@ -373,10 +371,9 @@ bool testQuad(const vector<Point>& quad){
 			sign*C.cross(D).at<double>(0, 2) > 0 &&
 			sign*A.cross(E).at<double>(0, 2) > 0;
 }
-//Aligns a image of a form.
-bool alignFormImage(const Mat& img, Mat& aligned_img, const string& featureDataPath, 
-					const Size& aligned_img_sz, float efficiencyScale ){
-					
+bool alignFormImageByFeatures(const Mat& img, Mat& aligned_img, const string& featureDataPath, 
+					const Size& aligned_img_sz, float efficiencyScale ) {
+
 	Ptr<FeatureDetector> detector;
 	Ptr<DescriptorExtractor> descriptorExtractor;
 	
@@ -478,9 +475,20 @@ vector<Point> findBoundedRegionQuad(const Mat& img, float buffer){
 	//Turning the blur up really seems to help...
 	return findQuad(img, 16, buffer);
 }
-
-
-
+//Aligns a image of a form.
+bool alignFormImage(const Mat& img, Mat& aligned_img, const string& featureDataPath, 
+					const Size& aligned_img_sz, float efficiencyScale ) {
+	#ifdef USE_FEATURE_BASED_FORM_ALIGNMENT
+	return alignFormImageByFeatures(img, aligned_img, featureDataPath,  aligned_img_sz, efficiencyScale );
+	#else
+	vector<Point> quad = findQuad(formImage);
+	Mat transformation = quadToTransformation(quad, aligned_img_sz);
+	Mat alignedSegment(0, 0, CV_8U);
+	warpPerspective(segment, alignedSegment, transformation, aligned_img_sz);
+	return !alignedSegment.empty();
+	#endif
+}
+//GrabCut stuff that doesn't work particularly well:
 Mat makeGCMask(const Size& mask_size, float buffer){
 	Mat mask(mask_size, CV_8UC1, Scalar::all(GC_BGD));
 	Point mask_sz_pt( mask_size.width-1, mask_size.height-1);
