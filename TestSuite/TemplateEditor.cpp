@@ -327,8 +327,8 @@ bool processTemplate(const char* outputPath) {
 }
 bool markupForm(const char* formPath, const char* markupPath, Mat& markupImage) {
 	
-	if(!marker.markupForm(markupPath, formPath, formPath)) return false;
-	markupImage = imread(formPath);
+	if(!marker.markupForm(markupPath, formPath, "templateEditor_temp.jpg")) return false;
+	markupImage = imread("templateEditor_temp.jpg");
 	return !markupImage.empty();
 }
 int main(int argc, char *argv[]) {
