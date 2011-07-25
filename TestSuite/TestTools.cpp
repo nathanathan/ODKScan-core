@@ -74,7 +74,7 @@ void printData(int tp, int fp, int tn, int fn, int errors, int numImages){
 	if(numImages > 0){
 		cout << "Errors: " << errors << endl;
 		cout << "Images Tested: " << numImages << endl;
-		cout << "Percent Success: " << 1.f * errors / numImages << "%" << endl;
+		cout << "Percent Success: " << 100.f * (numImages - errors) / numImages << "%" << endl;
 		cout << "Bubble classification stats for successful tests: "<< endl;
 	}
 	else{
@@ -88,7 +88,15 @@ void printData(int tp, int fp, int tn, int fn, int errors, int numImages){
 	cout << "\tPercent Correct: " << 100.f * (tp + tn) / (tp+fp+tn+fn) << "%" << endl;
 	
 	if(numImages > 0){
-		cout << "Total success rate: " << 100.f * (tp + tn) * errors / ((tp+fp+tn+fn) * numImages) << "%" << endl;
+		cout << "Total success rate: " << 100.f * (tp + tn) * (numImages - errors) / ((tp+fp+tn+fn) * numImages) << "%" << endl;
 	}
+	cout << "________________________________________________________" << endl;
+}
+void printData(int errors, int numImages){
+	cout << endl << "________________________________________________________" << endl << endl;
+	cout << "Errors: " << errors << endl;
+	cout << "Images Tested: " << numImages << endl;
+	cout << "Percent Success: " << 100.f * (numImages - errors) / numImages << "%" << endl;
+	cout << "Bubble classification stats for successful tests: "<< endl;
 	cout << "________________________________________________________" << endl;
 }
