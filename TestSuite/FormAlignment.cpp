@@ -129,19 +129,26 @@ int lineSum(const Mat& img, int start, int end){
 	int sum = 0;
 	double slope = (double)(end - start)/(img.cols - 1);
 	for(int i = 0; i<img.cols; i++) {
-		sum += (int) (img.at<uchar>(start + slope*i, i) >= 1);
+		int j = start + slope*i;
+		if(j < 0){
+			sum++;
+		}
+		else{
+			sum += (int) (img.at<uchar>(j, i) >= 1);
+		}
 	}
 	return sum;
 }
-void findLines(Mat& img) {
+void findLines(Mat& img, int& start, int& end, int depth) {
 	Mat grad_img, out;
-	int start, end;
 	
-	int range = 12;
+	int range = .12 * img.rows;
+	//This is the number of pixels beyond the image we might look for lines.
+	int outerBuffer = -.05 * img.rows;
 
 	int minLs = INT_MAX;
-	for(int i = 0; i<img.rows/2; i++) {
-		for(int j = MAX(i-range, 0); j< MIN(i+range, img.rows/2); j++) {
+	for(int i = outerBuffer; i < depth; i++) {
+		for(int j = MAX(i-range, outerBuffer); j < MIN(i+range, depth); j++) {
 			int ls = lineSum(img, i, j);
 			if( ls < minLs ){
 				start = i;
@@ -150,7 +157,7 @@ void findLines(Mat& img) {
 			}
 		}
 	}
-	line( img, Point(0, start), Point(img.cols-1, end), Scalar(0), 2);
+	line( img, Point(0, start), Point(img.cols-1, end), Scalar(0), 1, 4);
 }
 //TODO: The blurSize param is sort of a hacky solution to the problem of contours being too large
 //		in certain cases. It fixes the problem on some form images because they can be blurred a lot
@@ -181,30 +188,22 @@ vector<Point> findQuad(const Mat& img, int blurSize, float buffer = 0.0){
 	//This threshold might be tweakable
 	imgThresh = temp_img2 - temp_img > 0;
 	
-
-	/*
-	//Subtracting the laplacian is a hacky but sometimes effective way to
-	//improve segmentation in cases when separate segments are connected by a handful of pixels.
-	Laplacian(temp_img2, temp_img, -1, 9);
-	imgThresh = imgThresh - (temp_img > 40);
-	*/
-	
 	//Blocking out a chunk in the middle of the segment can help in cases with densely filled bubbles.
-	float choke = buffer/(1 + 2*buffer) + .15;
+	float choke = buffer/(1 + 2*buffer) + .2;
 	Rect roi(choke * Point(temp_img.cols, temp_img.rows), (1.f - 2*choke) * temp_img.size());
 	imgThresh(roi) = Scalar(255);
 	
 	//This will draw a few lines across the image to split up the contour
 	{
 		Mat temp;
-	
-		findLines(imgThresh);
+		int start, end;
+		findLines(imgThresh, start, end, roi.y);
 		flip(imgThresh, temp, 0);
-		findLines(temp);
+		findLines(temp, start, end, roi.y);
 		transpose(temp, imgThresh);
-		findLines(imgThresh);
+		findLines(imgThresh, start, end, roi.x);
 		flip(imgThresh, temp, 0);
-		findLines(temp);
+		findLines(temp, start, end, roi.x);
 		flip(temp, imgThresh, -1);
 		transpose(imgThresh, temp);
 		imgThresh = temp;
@@ -440,8 +439,10 @@ bool alignFormImageByFeatures(const Mat& img, Mat& aligned_img, const string& fe
 	
 	// Be careful when resizing, aliasing can completely break this function.
 	Mat img_resized;
-	resize(img, img_resized, efficiencyScale*img.size(), 0, 0, INTER_AREA);
-	Point3d trueEfficiencyScale(double(img_resized.cols) / img.cols, double(img_resized.rows) / img.rows, 1);
+	resize(img, img_resized, efficiencyScale * img.size(), 0, 0, INTER_AREA);
+	Point3d trueEfficiencyScale(double(img_resized.cols) / img.cols,
+								double(img_resized.rows) / img.rows,
+								1.0);
 	
 	#ifdef DEBUG_ALIGN_IMAGE
 	cout << "Extracting keypoints from unaligned image..." << endl;
@@ -481,22 +482,32 @@ bool alignFormImageByFeatures(const Mat& img, Mat& aligned_img, const string& fe
 
 	vector<Point2f> points1; KeyPoint::convert(keypoints1, points1, queryIdxs);
 	vector<Point2f> points2; KeyPoint::convert(templKeypoints, points2, trainIdxs);
-	
-	Point3d sc = Point3d( double(aligned_img_sz.width) / templImageSize.width,
-						  double(aligned_img_sz.height) / templImageSize.height,
-						  1);
-	Mat H = findHomography( Mat(points1), Mat(points2), CV_RANSAC, FH_REPROJECT_THRESH );
+
+	Point3d sc = Point3d( ((double)aligned_img_sz.width) / templImageSize.width,
+						  ((double)aligned_img_sz.height) / templImageSize.height,
+						  1.0);
+
 	Mat ScalingMat = (Mat::diag(Mat(trueEfficiencyScale)) * Mat::diag(Mat(sc)));
 	
-	aligned_img = Mat(0,0, CV_8U);
-	warpPerspective( img, aligned_img, H*ScalingMat, aligned_img_sz); //, INTER_LINEAR, BORDER_CONSTANT, Scalar(255));
+	#if 0
+  	for(size_t i = 0; i < points2.size(); i++){
+		points2[i].x *=  sc.x;
+		points2[i].y *=  sc.y;
+	}
+	#endif
 	
-	vector<Point> quad = transformationToQuad(H*ScalingMat, aligned_img_sz);
+	Mat H = findHomography( Mat(points1), Mat(points2), CV_RANSAC, FH_REPROJECT_THRESH );
+	H = Mat::diag(Mat(sc)) * H * Mat::diag(Mat(trueEfficiencyScale));
+
+	aligned_img = Mat(0,0, CV_8U);
+	warpPerspective( img, aligned_img, H, aligned_img_sz); //, INTER_LINEAR, BORDER_CONSTANT, Scalar(255));
+	
+	vector<Point> quad = transformationToQuad(H, aligned_img_sz);
 	
 	bool alignSuccess = false;
 	if( testQuad(quad) ){ 
 		float area = contourArea(Mat(quad));
-		float expected_area = .8 * .8 * img.size().area();
+		float expected_area = (.8 * img.size()).area();
 		float tolerence = .4;
 		alignSuccess =  area > (1. - tolerence) * expected_area &&
 						area < (1. + tolerence) * expected_area;
