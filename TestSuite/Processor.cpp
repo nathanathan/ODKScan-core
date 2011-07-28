@@ -15,11 +15,9 @@
 #include "FormAlignment.h"
 #include "Addons.h"
 
-#if 1
+// This sets the resolution of the form at which to perform segment alignment and classification.
+// It is a percentage of the size specified in the template.
 #define SCALEPARAM 1.0
-#else
-#define SCALEPARAM 0.5
-#endif
 
 // Creates a buffer around segments porpotional to their size.
 // I think .5 is the largest value that won't cause ambiguous cases.
@@ -41,7 +39,7 @@ Json::Value root;
 Json::Value JsonOutput;
 Mat formImage;
 PCA_classifier classifier;
-string templDir;
+string templPath;
 
 Json::Value classifyBubbles(const Mat& segment, const Json::Value& bubbleLocations, const Mat& transformation, const Point& offset){
 	#ifdef OUTPUT_SEGMENT_IMAGES
@@ -51,16 +49,13 @@ Json::Value classifyBubbles(const Mat& segment, const Json::Value& bubbleLocatio
 	cvtColor(segment, dbg_out, CV_GRAY2RGB);
 	dbg_out.copyTo(dbg_out);
 	#endif
+	
 	Json::Value bubblesJsonOut;
+	
 	for (size_t i = 0; i < bubbleLocations.size(); i++) {
 		Point bubbleLocation = SCALEPARAM * jsonToPoint(bubbleLocations[i]);
-		/*
-		if(bubbleLocation.x > segment.cols || bubbleLocation.y > segment.rows ||
-									bubbleLocation.x < 0 || bubbleLocation.y < 0){
-			continue; //Skip out of bounds bubbles
-		}
-		*/
 		Point refined_location = classifier.bubble_align(segment, bubbleLocation);
+		
 		bubble_val current_bubble = classifier.classifyBubble(segment, refined_location);
 		
 		Mat actualLocation = transformation * Mat(Point3d(refined_location.x, refined_location.y, 1.f));
@@ -70,7 +65,7 @@ Json::Value classifyBubbles(const Mat& segment, const Json::Value& bubbleLocatio
 		//I'm thinking I should compute the transformations in the markup function and
 		//just record relative point locations here.
 		//On the other hand that makes the output data less portable.
-		//(1.f/SCALEPARAM)* this is probably a bad idea
+		//(1.f/SCALEPARAM)* this is probably a bad idea (unless I shrink the output aligned image...)
 		bubble["location"] = pointToJson((Point(actualLocation.at<double>(0,0)/actualLocation.at<double>(2, 0),
 											   actualLocation.at<double>(1,0)/actualLocation.at<double>(2, 0)) + offset));
 		bubblesJsonOut.append(bubble);
@@ -151,13 +146,17 @@ Json::Value processSegment(const Json::Value &segmentTemplate){
 }
 public:
 //Constructor:
+//TODO: rewrite this so it is a separate function that can return an error if it fails to find a template.
 ProcessorImpl(const char* templatePath){
-	parseJsonFromFile(templatePath, root);
-	classifier = PCA_classifier(6);
-	//templDir will contain JSON templates, template form images, and yml? feature data for each form.
-	templDir = string(templatePath);
-	templDir = templDir.substr(0, templDir.find_last_of("/") + 1);
-	JsonOutput["template_file"] = templatePath;
+	classifier = PCA_classifier(8);
+	templPath = string(templatePath);
+	if(templPath.find(".") != string::npos){
+		templPath = templPath.substr(0, templPath.find_last_of(".") + 1);
+	}
+	cout << templPath << endl;
+	parseJsonFromFile(templPath + ".json", root);
+	
+	JsonOutput["template_path"] = templPath;
 }
 bool trainClassifier(const char* trainingImageDir){
 	#ifdef DEBUG_PROCESSOR
@@ -170,7 +169,7 @@ bool trainClassifier(const char* trainingImageDir){
 													true);//flip training examples. TODO: test this
 	if (!success) return false;
 	
-	classifier.set_search_window(Size(0,0));
+	//classifier.set_search_window(Size(5,5));
 	JsonOutput["training_immage_directory"] = Json::Value(trainingImageDir);
 	#ifdef DEBUG_PROCESSOR
 	cout << "trained" << endl;
@@ -201,33 +200,30 @@ bool loadForm(const char* imagePath, int rotate90){
 	#endif
 	return true;
 }
+//TODO: Maybe add a JSON template field for alignedImageOutputPath
+//TODO: Definately add one for the alignment quad and come up with a way to compare quads.
 bool alignForm(const char* alignedImageOutputPath){
+
 	#ifdef DEBUG_PROCESSOR
 	cout << "aligning form..." << endl;
 	#endif
+	
 	Size form_sz(root.get("width", 0).asInt(), root.get("height", 0).asInt());
-	if( form_sz.width <= 0 || form_sz.height <= 0){
-		return false;
-	}
 
-	//cout << templDir+root.get("feature_data_path", "default").asString() << endl;
+	if( form_sz.width <= 0 || form_sz.height <= 0) return false;
 	
 	Mat straightenedImage;
-	#if 1 //USE_FEATURE_BASED_FORM_ALIGNMENT TODO: move this option to the alignment files
-	alignFormImage(formImage, straightenedImage,
-							  templDir+root.get("feature_data_path", "default").asString(),
-							  SCALEPARAM * form_sz, .25);
-	#else
-	vector<Point> quad = findFormQuad(formImage);
-	alignImage(formImage, straightenedImage, quad,  SCALEPARAM * form_sz);
-	#endif
+	if( !alignFormImage( formImage, straightenedImage,
+									templPath,
+									SCALEPARAM * form_sz, .5) ) return false;
 	
 	if(straightenedImage.empty()) return false;
 
+	formImage = straightenedImage;	
+	
 	#ifdef DEBUG_PROCESSOR
 	cout << "aligned" << endl;
 	#endif
-	formImage = straightenedImage;
 	return writeFormImage(alignedImageOutputPath);
 }
 bool processForm(const char* outputPath) {
