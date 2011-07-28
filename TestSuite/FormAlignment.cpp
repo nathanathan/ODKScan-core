@@ -11,12 +11,6 @@
 #include <iostream>
 #include <fstream>
 
-#ifdef OUTPUT_DEBUG_IMAGES
-#include "NameGenerator.h"
-NameGenerator alignmentNamer("debug_segment_images/");
-NameGenerator dbgNamer("debug_form_images/", true);
-#endif
-
 //image_align constants
 #define THRESH_OFFSET_LB -.3
 #define THRESH_DECR_SIZE .05
@@ -24,9 +18,19 @@ NameGenerator dbgNamer("debug_form_images/", true);
 #define EXPANSION_PERCENTAGE .04
 
 #define USE_FEATURE_BASED_FORM_ALIGNMENT
+//vaying the reproject threshold can make a big difference in performance.
+#define FH_REPROJECT_THRESH 3.0
 
 //#define ALWAYS_COMPUTE_TEMPLATE_FEATURES
-#define FH_REPROJECT_THRESH 3.0
+//#define SHOW_MATCHES_WINDOW
+
+
+
+#ifdef OUTPUT_DEBUG_IMAGES
+#include "NameGenerator.h"
+NameGenerator alignmentNamer("debug_segment_images/");
+NameGenerator dbgNamer("debug_form_images/", true);
+#endif
 
 using namespace std;
 using namespace cv;
@@ -126,8 +130,6 @@ vector<Point> findMaxQuad(Mat& img, float approx_p_seed = 0){
 	return maxRect;
 }
 
-//enum edge {TOP=0, RIGHT, BOTTOM, LEFT };
-
 int lineSum(const Mat& img, int start, int end, bool transpose){
 
 	int hSpan;
@@ -141,7 +143,7 @@ int lineSum(const Mat& img, int start, int end, bool transpose){
 	int sum = 0;
 	double slope = (double)(end - start)/hSpan;
 	
-	for(int i = 0; i<hSpan; i++) {
+	for(int i = 0; i<=hSpan; i++) {
 		int j = start + slope*i;
 
 		if(j < 0){
@@ -158,29 +160,33 @@ int lineSum(const Mat& img, int start, int end, bool transpose){
 	}
 	return sum;
 }
-void findLinesHelper(Mat& img, int& start, int& end, int depth, bool flip, bool transpose) {
+void findLinesHelper(const Mat& img, int& start, int& end, const Rect& roi, bool flip, bool transpose) {
 
 	int vSpan, hSpan;
+	int range, midpoint;
+	float maxSlope = .2;
 
 	if(transpose){
 		vSpan = img.cols - 1;
 		hSpan = img.rows - 1;
+		midpoint = roi.x;
+		range = roi.y;
 	}
 	else{		
 		vSpan = img.rows - 1;
 		hSpan = img.cols - 1;
+		midpoint = roi.y;
+		range = roi.y;
 	}
 	
-	int range = .12 * vSpan;
-	int outerBuffer = -.05 * vSpan;
 	
 	int minLs = INT_MAX;
-	for(int i = outerBuffer; i < depth; i++) {
-		for(int j = MAX(i-range, outerBuffer); j < MIN(i+range, depth); j++) {
+	for(int i = midpoint - range; i < midpoint + range; i++) {
+		for(int j = MAX(i-hSpan*maxSlope, midpoint - range); j < MIN(i+hSpan*maxSlope, midpoint + range); j++) {
 			//This weights the line finder to look for lines further into the image.
 			//TODO: this could cause problems when there are dense bubbles,
 			//		the weight should probably be based on how far from the expected location.
-			int param = .2 * hSpan;
+			int param = .11 * 2 * hSpan;
 			int ls = param - param * (i+j) * 1.f / (2*vSpan);
 			if(flip){
 				ls += lineSum(img, vSpan - i, vSpan - j, transpose);
@@ -196,10 +202,10 @@ void findLinesHelper(Mat& img, int& start, int& end, int depth, bool flip, bool 
 		}
 	}
 }
-void findLines(Mat& img, Point& A, Point& B, int depth, bool flip, bool transpose) {
+void findLines(const Mat& img, Point& A, Point& B, const Rect& roi, bool flip, bool transpose) {
 	int start, end;
 	
-	findLinesHelper(img, start, end, depth, flip, transpose);
+	findLinesHelper(img, start, end, roi, flip, transpose);
 	
 	if(flip && transpose){
 		A = Point(img.cols - 1 - start, img.rows-1);
@@ -261,18 +267,19 @@ vector<Point> findQuad(const Mat& img, int blurSize, float buffer = 0.0){
 	//This threshold might be tweakable
 	imgThresh = temp_img2 - temp_img > 0;
 
+	float bufferChoke = buffer/(1 + 2*buffer);
+	Rect roi(bufferChoke * Point(temp_img.cols, temp_img.rows), (1.f - 2*bufferChoke) * temp_img.size());
+	
 	//Blocking out a chunk in the middle of the segment can help in cases with densely filled bubbles.
-	float choke = buffer/(1 + 2*buffer) + .2;
-	Rect roi(choke * Point(temp_img.cols, temp_img.rows), (1.f - 2*choke) * temp_img.size());
-	imgThresh(roi) = Scalar(255);
+	float extendedChoke = bufferChoke + .2;
+	Rect contractedRoi(extendedChoke * Point(temp_img.cols, temp_img.rows), (1.f - 2*extendedChoke) * temp_img.size());
+	imgThresh(contractedRoi) = Scalar(255);
 
-
-	//float bufferChoke = buffer/(1 + 2*buffer);
 	Point A1, B1, A2, B2, A3, B3, A4, B4;
-	findLines(imgThresh, A1, B1, roi.y, false, true);
-	findLines(imgThresh, A2, B2, roi.y, false, false);
-	findLines(imgThresh, A3, B3, roi.y, true, true);
-	findLines(imgThresh, A4, B4, roi.y, true, false);
+	findLines(imgThresh, A1, B1, roi, false, true);
+	findLines(imgThresh, A2, B2, roi, false, false);
+	findLines(imgThresh, A3, B3, roi, true, true);
+	findLines(imgThresh, A4, B4, roi, true, false);
 	
 	#define USE_INTERSECTIONS
 	#ifdef USE_INTERSECTIONS
@@ -419,7 +426,7 @@ bool loadFeatureData(const string& templPath, Ptr<FeatureDetector>& detector,
 	detector = FeatureDetector::create( "GridSURF" );
 	descriptorExtractor = DescriptorExtractor::create( "SURF" );
 	
-	bool checkForSavedFeatures = false;
+	bool checkForSavedFeatures = true;
 	#ifdef ALWAYS_COMPUTE_TEMPLATE_FEATURES
 	checkForSavedFeatures = false;
 	#endif
@@ -572,8 +579,7 @@ bool alignFormImageByFeatures(const Mat& img, Mat& aligned_img, const string& te
 						area < (1. + tolerence) * expected_area;
 	}
 	
-	#ifdef OUTPUT_DEBUG_IMAGES
-		#if 1
+	#ifdef SHOW_MATCHES_WINDOW
 		//This code creates a window to show matches:
 		vector<char> matchesMask( filteredMatches.size(), 0 );
 		Mat points1t; perspectiveTransform(Mat(points1), points1t, H);
@@ -609,9 +615,8 @@ bool alignFormImageByFeatures(const Mat& img, Mat& aligned_img, const string& te
 		        break;
 		    }
 		}
-		#endif
-		
-		
+	#endif
+	#ifdef OUTPUT_DEBUG_IMAGES
 		Mat dbg;
 		img.copyTo(dbg);
 		string qiname = dbgNamer.get_unique_name("alignment_debug_") + ".jpg";
@@ -626,6 +631,7 @@ bool alignFormImageByFeatures(const Mat& img, Mat& aligned_img, const string& te
 		}
 		imwrite(qiname, dbg);
 	#endif
+	
 	return alignSuccess;
 }
 vector<Point> findFormQuad(const Mat& img){
