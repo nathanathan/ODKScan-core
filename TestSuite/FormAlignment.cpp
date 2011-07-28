@@ -26,7 +26,7 @@ NameGenerator dbgNamer("debug_form_images/", true);
 #define USE_FEATURE_BASED_FORM_ALIGNMENT
 
 //#define ALWAYS_COMPUTE_TEMPLATE_FEATURES
-#define FH_REPROJECT_THRESH 6.0
+#define FH_REPROJECT_THRESH 3.0
 
 using namespace std;
 using namespace cv;
@@ -178,8 +178,10 @@ void findLinesHelper(Mat& img, int& start, int& end, int depth, bool flip, bool 
 	for(int i = outerBuffer; i < depth; i++) {
 		for(int j = MAX(i-range, outerBuffer); j < MIN(i+range, depth); j++) {
 			//This weights the line finder to look for lines further into the image.
-			int param = .1 * hSpan;
-			int ls = param - (i+j)/2 * param / vSpan;
+			//TODO: this could cause problems when there are dense bubbles,
+			//		the weight should probably be based on how far from the expected location.
+			int param = .2 * hSpan;
+			int ls = param - param * (i+j) * 1.f / (2*vSpan);
 			if(flip){
 				ls += lineSum(img, vSpan - i, vSpan - j, transpose);
 			}
@@ -265,7 +267,7 @@ vector<Point> findQuad(const Mat& img, int blurSize, float buffer = 0.0){
 	imgThresh(roi) = Scalar(255);
 
 
-	
+	//float bufferChoke = buffer/(1 + 2*buffer);
 	Point A1, B1, A2, B2, A3, B3, A4, B4;
 	findLines(imgThresh, A1, B1, roi.y, false, true);
 	findLines(imgThresh, A2, B2, roi.y, false, false);
@@ -402,9 +404,9 @@ void crossCheckMatching( Ptr<DescriptorMatcher>& descriptorMatcher,
         }
     }
 }
-//Tries to read feature data (presumably for the template) from featureDataPath + ".yml" .
-//If none is found it is generated for the image featureDataPath + ".jpg"
-bool loadFeatureData(const string& featureDataPath, Ptr<FeatureDetector>& detector,
+//Tries to read feature data (presumably for the template) from templPath + ".yml" .
+//If none is found it is generated for the image templPath + ".jpg"
+bool loadFeatureData(const string& templPath, Ptr<FeatureDetector>& detector,
 					Ptr<DescriptorExtractor>& descriptorExtractor, vector<KeyPoint>& templKeypoints,
 					Mat& templDescriptors, Size& templImageSize) {
 			
@@ -422,10 +424,10 @@ bool loadFeatureData(const string& featureDataPath, Ptr<FeatureDetector>& detect
 	checkForSavedFeatures = false;
 	#endif
 	
-	if( checkForSavedFeatures && fileExists(featureDataPath + ".yml") ) {
+	if( checkForSavedFeatures && fileExists(templPath + ".yml") ) {
 		try
 		{
-			FileStorage fs(featureDataPath + ".yml", FileStorage::READ);
+			FileStorage fs(templPath + ".yml", FileStorage::READ);
 			/*if( !fs["fdtype"].empty () && !fs["detype"].empty() && !fs["detector"].empty() && 
 				!fs["descriptorExtractor"].empty() && !fs["templKeypoints"].empty() && !fs["templDescriptors"].empty() ){
 			*/
@@ -447,10 +449,9 @@ bool loadFeatureData(const string& featureDataPath, Ptr<FeatureDetector>& detect
 	}
 	if( detector.empty() || descriptorExtractor.empty() || templKeypoints.empty() || templDescriptors.empty()){
 		//if there is no file to read descriptors and keypoints from make one.
-		//cout << featureDataPath + ".yml " << fileexists(featureDataPath + ".yml") << endl;
-		
+	
 		Mat templImage, temp;
-		templImage = imread( featureDataPath + ".jpg", 0 );
+		templImage = imread( templPath + ".jpg", 0 );
 		resize(templImage, temp, templImage.size(), 0, 0, INTER_AREA);
 		templImage  = temp;
 		templImageSize = templImage.size();
@@ -459,7 +460,7 @@ bool loadFeatureData(const string& featureDataPath, Ptr<FeatureDetector>& detect
 		cout << "Extracting keypoints from template image..." << endl;
 		#endif
 		//TODO: Make a mask that covers everything that someone might fill in using the template.
-		detector->detect( templImage, templKeypoints); //makeFieldMask(featureDataPath + ".json") );
+		detector->detect( templImage, templKeypoints); //makeFieldMask(templPath + ".json") );
 		#ifdef DEBUG_ALIGN_IMAGE
 		cout << "\t" << templKeypoints.size() << " points" << endl;
 		cout << "Computing descriptors for keypoints from template image..." << endl;
@@ -467,7 +468,7 @@ bool loadFeatureData(const string& featureDataPath, Ptr<FeatureDetector>& detect
 		descriptorExtractor->compute( templImage, templKeypoints, templDescriptors );
 		
 		// write feature data to a file.
-		FileStorage fs(featureDataPath + ".yml", FileStorage::WRITE);
+		FileStorage fs(templPath + ".yml", FileStorage::WRITE);
 		fs << "detector" << "{:"; detector->write(fs); fs << "}";
 		fs << "descriptorExtractor" << "{:"; descriptorExtractor->write(fs); fs << "}";
 		
@@ -489,7 +490,7 @@ bool loadFeatureData(const string& featureDataPath, Ptr<FeatureDetector>& detect
 	
 	return true;
 }
-bool alignFormImageByFeatures(const Mat& img, Mat& aligned_img, const string& featureDataPath, 
+bool alignFormImageByFeatures(const Mat& img, Mat& aligned_img, const string& templPath, 
 					const Size& aligned_img_sz, float efficiencyScale ) {
 
 	Ptr<FeatureDetector> detector;
@@ -500,7 +501,7 @@ bool alignFormImageByFeatures(const Mat& img, Mat& aligned_img, const string& fe
 	
 	Size templImageSize;
 	
-	bool success = loadFeatureData(featureDataPath, detector, descriptorExtractor,
+	bool success = loadFeatureData(templPath, detector, descriptorExtractor,
 									templKeypoints, templDescriptors, templImageSize);
 	if(!success) return false;
 	
@@ -572,7 +573,7 @@ bool alignFormImageByFeatures(const Mat& img, Mat& aligned_img, const string& fe
 	}
 	
 	#ifdef OUTPUT_DEBUG_IMAGES
-		#if 0
+		#if 1
 		//This code creates a window to show matches:
 		vector<char> matchesMask( filteredMatches.size(), 0 );
 		Mat points1t; perspectiveTransform(Mat(points1), points1t, H);
@@ -631,13 +632,13 @@ vector<Point> findFormQuad(const Mat& img){
 	return findQuad(img, 12);
 }
 vector<Point> findBoundedRegionQuad(const Mat& img, float buffer){
-	return findQuad(img, 26, buffer);
+	return findQuad(img, 9, buffer);
 }
 //Aligns a image of a form.
-bool alignFormImage(const Mat& img, Mat& aligned_img, const string& featureDataPath, 
+bool alignFormImage(const Mat& img, Mat& aligned_img, const string& templPath, 
 					const Size& aligned_img_sz, float efficiencyScale ) {
 	#ifdef USE_FEATURE_BASED_FORM_ALIGNMENT
-	return alignFormImageByFeatures(img, aligned_img, featureDataPath,  aligned_img_sz, efficiencyScale );
+	return alignFormImageByFeatures(img, aligned_img, templPath,  aligned_img_sz, efficiencyScale );
 	#else
 	vector<Point> quad = findQuad(formImage);
 	Mat transformation = quadToTransformation(quad, aligned_img_sz);
