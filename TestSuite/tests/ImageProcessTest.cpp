@@ -1,5 +1,6 @@
 /*
-Description of what's being tested
+This program tests the end to end image processing pipeline on a single image.
+In the future it will vary a parameter and record performance to a csv file.
 */
 
 #include "Processor.h"
@@ -21,10 +22,11 @@ int main(int argc, char *argv[]) {
 	#if 0
 	string imageDir("form_images/unbounded_form/");
 	string imageName("A0");
+	string jsonTrueVals("form_images/booklet_form/A.json");
 	#else
 	string imageDir("form_images/booklet_form/");
-	string imageName("C0");
-	string jsonTrueVals("form_images/booklet_form/A.json");
+	string imageName("G7");
+	string jsonTrueVals("form_images/booklet_form/C.json");
 	#endif
 	string imagePath = imageDir + imageName +".jpg";
 	

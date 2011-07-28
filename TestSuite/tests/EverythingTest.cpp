@@ -1,5 +1,5 @@
 /*
-Description of what's being tested
+This program tests the full images processing pipeline on all the images in a specified directory.
 */
 #include "Processor.h"
 #include "FileUtils.h"
@@ -12,7 +12,7 @@ Description of what's being tested
 using namespace std;
 
 bool extraPred(const string& filename){
-	return filename.find("F") != string::npos;
+	return filename.find("G") != string::npos;
 }
 
 //The reason to use JSON for the bubble-vals files is that other code, like java code can parse them
@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
 	string inputDir("form_images/booklet_form/");
 	string outputDir("aligned_forms/booklet_form/");
 
-	string templatePath("form_templates/unbounded_form_refined.json");
+	string templatePath("form_templates/SIS-A01.json");
 
 	Processor myProcessor(templatePath.c_str());
 	myProcessor.trainClassifier("training_examples/android_training_examples");
@@ -47,26 +47,28 @@ int main(int argc, char *argv[]) {
 			string jsonOutfile(outputDir + relativePathMinusExt + ".json");
 			cout << "Processing image: " << (*it) << endl;
 			if( !myProcessor.loadForm((*it).c_str()) ) {
-				cout << "Could not load. Arg: " << (*it) << endl;
+				cout << "\E[31m" <<  "Could not load. Arg: " << "\e[0m" << (*it) << endl;
 				errors++;
 				continue;
 			}
 			cout << "Outputting aligned image to: " << imgOutputPath << endl;
 			if( !myProcessor.alignForm(imgOutputPath.c_str()) ) {
-				cout << "Could not align. Arg: " << imgOutputPath  << endl;
+				cout << "\E[31m" <<  "Could not align. Arg: " << "\e[0m" << imgOutputPath  << endl;
 				errors++;
 				continue;
 			}
 			if( !myProcessor.processForm(jsonOutfile.c_str()) ) {
-				cout << "Could not process. Arg: " << jsonOutfile << endl;
+				cout << "\E[31m" << "Could not process. Arg: " << "\e[0m" << jsonOutfile << endl;
 				errors++;
 				continue;
 			}
 			if( !marker.markupForm(jsonOutfile.c_str(), imgOutputPath.c_str(), markedupFormOutfile.c_str()) ) {
-				cout << "Could not markup. Arg: " << markedupFormOutfile << endl;
+				cout << "\E[31m" <<  "Could not markup. Arg: " << "\e[0m" << markedupFormOutfile  << endl;
 				errors++;
 				continue;
 			}
+			
+			cout << "\E[32m" << "Apparent success!" << "\e[0m" << endl;
 			
 			//This might be a bug if I have numbers in directory names.
 			string expectedJsonFile(outputDir + 
@@ -76,7 +78,7 @@ int main(int argc, char *argv[]) {
 			//TODO: To compare quads I'll need a bubble val file for each image.
 			/*
 			string expectedJsonFile(outputDir +  relativePathMinusExt + ".json");
-			*/						
+			*/			
 			if( fileExists(expectedJsonFile) ) {
 				compareFiles(jsonOutfile, expectedJsonFile, tp, fp, tn, fn);
 			}
