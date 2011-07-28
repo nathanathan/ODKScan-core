@@ -14,6 +14,50 @@
 
 using namespace std;
 using namespace cv;
+
+//Indexing is a little bit complicated here.
+//The first element of the filledIntegral is always 0.
+//A min error cut at 0 means no bubbles are considered filled.
+int minErrorCut(const vector<int>& filledIntegral){
+	int minErrors = filledIntegral.back();
+	int minErrorCutIdx = 0;
+	for ( size_t i = 1; i < filledIntegral.size(); i++ ) {
+		int errors = (int)i - 2 * filledIntegral[i] + filledIntegral.back();
+		if(errors < minErrors){ // saying <= instead would weight things towards more filled bubbles
+			minErrors = errors;
+			minErrorCutIdx = i;
+		}
+	}
+	return minErrorCutIdx;
+}
+vector<int> computedFilledIntegral(const Json::Value& field){
+	vector<int> filledIntegral(1,0);
+	const Json::Value segments = field["segments"];
+	for ( size_t i = 0; i < segments.size(); i++ ) {
+		const Json::Value segment = segments[i];
+		const Json::Value bubbles = segment["bubbles"];
+		
+		for ( size_t j = 0; j < bubbles.size(); j++ ) {
+			const Json::Value bubble = bubbles[j];
+			if(bubble["value"].asBool()){
+				filledIntegral.push_back(filledIntegral.back()+1);
+			}
+			else{
+				filledIntegral.push_back(filledIntegral.back());
+			}
+		}
+	}
+	return filledIntegral;
+}
+Scalar getColor(bool filled){
+	if(filled){
+		return Scalar(20, 20, 255);
+	}
+	else{
+		return Scalar(255, 20, 20);
+	}
+}
+
 //Marks up formImage based on the specifications of a bubble-vals JSON file at the given path.
 //Then output the form to the given locaiton.
 //Could add functionality for alignment markup to this but is it worth it?
@@ -32,6 +76,8 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage) {
 	const Json::Value fields = bvRoot["fields"];
 	for ( size_t i = 0; i < fields.size(); i++ ) {
 		const Json::Value field = fields[i];
+		int cutIdx = minErrorCut(computedFilledIntegral(field));
+		int bubbleNum = 0;
 		
 		string fieldName = field.get("label", "Unlabeled").asString();
 		Scalar boxColor = colors[i%6];
@@ -49,18 +95,14 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage) {
 				const Json::Value bubbles = segment["bubbles"];
 				for ( size_t k = 0; k < bubbles.size(); k++ ) {
 					const Json::Value bubble = bubbles[k];
-				
+					
 					// Draw dots on bubbles colored blue if empty and red if filled
 					Point bubbleLocation(jsonToPoint(bubble["location"]));
-					//cout << bubble["location"][0u].asInt() << "," << bubble["location"][1u].asInt() << endl;
-					Scalar color(0, 0, 0);
-					if(bubble["value"].asBool()){
-						color = Scalar(20, 20, 255);
-					}
-					else{
-						color = Scalar(255, 20, 20);
-					}
-					circle(markupImage, bubbleLocation, 1, color, -1);
+					
+					circle(markupImage, bubbleLocation, 4, 	getColor(bubbleNum < cutIdx), 1, CV_AA);
+					bubbleNum++;
+
+					circle(markupImage, bubbleLocation, 2, 	getColor(bubble["value"].asBool()), 1, CV_AA);
 				}
 			}
 			else{//If we're dealing with a regular form template
