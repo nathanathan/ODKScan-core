@@ -18,14 +18,18 @@ int main(int argc, char *argv[]) {
 
 	MarkupForm marker;
 
+	#if 0
 	string imageDir("form_images/unbounded_form/");
-	// Image to be processed:
 	string imageName("A0");
+	#else
+	string imageDir("form_images/booklet_form/");
+	string imageName("C0");
+	string jsonTrueVals("form_images/booklet_form/A.json");
+	#endif
 	string imagePath = imageDir + imageName +".jpg";
-	//string imagePath("form_images/initial_form/A0.jpg");
 	
 	// Template to use:
-	string templatePath("form_templates/unbounded_form_refined.json");
+	string templatePath("form_templates/SIS-A01");
 	// Location to output results:
 	string outputName("output/" + imageName);
 	
@@ -49,8 +53,8 @@ int main(int argc, char *argv[]) {
 	#else
 	for (i = 0.0; i <= 1.0; i += 0.05) {
 	#endif
-		
 		myProcessor.setClassifierWeight(i);
+		
 		if( !myProcessor.loadForm(imagePath.c_str()) ) {
 			cout << "Could not load. Arg: " << imagePath << endl;
 			return 0;
@@ -68,7 +72,7 @@ int main(int argc, char *argv[]) {
 		}
 		
 		int tp=0, fp=0, tn=0, fn=0;
-		compareFiles(jsonOutfile, jsonOutfile, tp, fp, tn, fn);
+		compareFiles(jsonOutfile, jsonTrueVals, tp, fp, tn, fn);
 		printData(tp, fp, tn, fn);
 		
 		outfile << "\"weight parameter\", " << i << ", ";

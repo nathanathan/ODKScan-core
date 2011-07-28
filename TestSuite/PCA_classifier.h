@@ -34,8 +34,8 @@ class PCA_classifier
 		cv::Mat weights;
 		
 		void update_gaussian_weights();
-		void PCA_set_add(cv::Mat& PCA_set, cv::Mat& img);
-		void PCA_set_add(cv::Mat& PCA_set, std::string& filename, bool flipExamples);
+		void PCA_set_add(cv::Mat& PCA_set, const cv::Mat& img);
+		void PCA_set_add(cv::Mat& PCA_set, const std::string& filename, bool flipExamples);
 	public:
 		//TODO: I'm running into problems with the ex_width+height.
 		//		Should the width and height be measured from the edges of the bubble than have a additional buffer?

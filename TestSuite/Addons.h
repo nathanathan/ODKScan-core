@@ -25,6 +25,7 @@ Json::Value quadToJsonArray(std::vector<cv::Point>& quad, cv::Point offset);
 std::vector<cv::Point> jsonArrayToQuad(const Json::Value& quadJson);
 //Pure Json:
 bool parseJsonFromFile(const char* filePath, Json::Value& myRoot);
+bool parseJsonFromFile(const std::string& filePath, Json::Value& myRoot);
 //Misc:
 template <class Tp>
 bool returnTrue(Tp& anything){

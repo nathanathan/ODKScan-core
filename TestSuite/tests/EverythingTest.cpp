@@ -11,6 +11,10 @@ Description of what's being tested
 
 using namespace std;
 
+bool extraPred(const string& filename){
+	return filename.find("F") != string::npos;
+}
+
 //The reason to use JSON for the bubble-vals files is that other code, like java code can parse them
 //and display the results without any hardcoding.
 int main(int argc, char *argv[]) {
@@ -34,7 +38,7 @@ int main(int argc, char *argv[]) {
 
 	vector<string>::iterator it;
 	for(it = filenames.begin(); it != filenames.end(); it++) {
-		if(isImage((*it))){
+		if(isImage((*it)) && extraPred((*it))){
 			numImages++;
 			string relativePathMinusExt((*it).substr((*it).find_first_of(inputDir) + inputDir.length(),
 																		(*it).length()-inputDir.length()-4));
@@ -68,8 +72,17 @@ int main(int argc, char *argv[]) {
 			string expectedJsonFile(outputDir + 
 									relativePathMinusExt.substr(0, relativePathMinusExt.find_first_of("0123456789")) +
 									".json");
-
-			compareFiles(jsonOutfile, expectedJsonFile, tp, fp, tn, fn);
+			
+			//TODO: To compare quads I'll need a bubble val file for each image.
+			/*
+			string expectedJsonFile(outputDir +  relativePathMinusExt + ".json");
+			*/						
+			if( fileExists(expectedJsonFile) ) {
+				compareFiles(jsonOutfile, expectedJsonFile, tp, fp, tn, fn);
+			}
+			else{
+				cout << "Could not find: " << expectedJsonFile << endl;
+			}
 		}
 	}
 	

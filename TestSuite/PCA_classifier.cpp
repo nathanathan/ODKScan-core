@@ -24,7 +24,7 @@ NameGenerator exampleNamer("example_images_used/");
 //   half pixel error.
 //2. If the rectangle crosses the image boundary (because of a large search window)
 //   it won't give an error.
-#define USE_GET_RECT_SUB_PIX
+//#define USE_GET_RECT_SUB_PIX
 
 using namespace std;
 using namespace cv;
@@ -36,6 +36,8 @@ PCA_classifier::PCA_classifier(int eigenvalues):eigenvalues(eigenvalues) {
 	weights = (Mat_<float>(3,1) << 1, 1, 1);
 }
 void PCA_classifier::update_gaussian_weights(){
+	float sigma = 1.0; //.5 gets best contrast
+
 	//This precomputes the gaussian for subbbubble alignment.
 	int height = search_window.height;
 	int width = search_window.width;
@@ -43,9 +45,9 @@ void PCA_classifier::update_gaussian_weights(){
 		gaussian_weights.release();
 		return;
 	}
-	Mat v_gauss = getGaussianKernel(height, float(height)*.5, CV_32F);
+	Mat v_gauss = getGaussianKernel(height, float(height) * sigma, CV_32F);
 	Mat h_gauss;
-	transpose(getGaussianKernel(width, float(width)*.5, CV_32F), h_gauss);
+	transpose(getGaussianKernel(width, float(width) * sigma, CV_32F), h_gauss);
 	v_gauss = repeat(v_gauss, 1, width);
 	h_gauss = repeat(h_gauss, height, 1);
 	Mat temp = v_gauss.mul(h_gauss);
@@ -62,8 +64,9 @@ void PCA_classifier::set_search_window(Size sw) {
 }
 //Add an image Mat to a PCA_set performing the 
 //necessairy reshaping and type conversion.
-void PCA_classifier::PCA_set_add(Mat& PCA_set, Mat& img) {
+void PCA_classifier::PCA_set_add(Mat& PCA_set, const Mat& img) {
 	Mat PCA_set_row;
+    
 	img.convertTo(PCA_set_row, CV_32F);
 	#ifdef NORMALIZE
 	normalize(PCA_set_row, PCA_set_row);
@@ -77,7 +80,7 @@ void PCA_classifier::PCA_set_add(Mat& PCA_set, Mat& img) {
 }
 //Loads a image with the specified filename and adds it to the PCA set.
 //Classifications are inferred from the filename and added to training_bubble_values.
-void PCA_classifier::PCA_set_add(Mat& PCA_set, string& filename, bool flipExamples) {
+void PCA_classifier::PCA_set_add(Mat& PCA_set, const string& filename, bool flipExamples) {
 	//Infer classification
 	bubble_val classification;
 	if( filename.find("filled") != string::npos ) {
@@ -133,7 +136,7 @@ bool PCA_classifier::train_PCA_classifier(const string& dirPath, Size myExampleS
 
 	Mat PCA_set;
 	vector<string>::iterator it;
-	for(it = filenames.begin(); it != filenames.end(); it++) {
+	for(it = filenames.begin(); it != filenames.end(); ++it) {
 		if( pred((*it)) ) {
 			PCA_set_add(PCA_set, (*it), flipExamples);
 		}
@@ -148,34 +151,36 @@ bool PCA_classifier::train_PCA_classifier(const string& dirPath, Size myExampleS
 //The rating is the SSD of the queried pixels and their PCA back projection,
 //so lower ratings mean more bubble like.
 double PCA_classifier::rateBubble(const Mat& det_img_gray, const Point& bubble_location) {
+
     Mat query_pixels, pca_components;
-    
+
     #ifdef USE_GET_RECT_SUB_PIX
-	getRectSubPix(det_img_gray, Size(exampleSize.width, exampleSize.height), bubble_location, query_pixels);
-	query_pixels.reshape(0,1).convertTo(query_pixels, CV_32F);
+		getRectSubPix(det_img_gray, exampleSize, bubble_location, query_pixels);
 	#else
-	det_img_gray(Rect(bubble_location-Point(exampleSize.width/2, exampleSize.height/2),
-					  Size(exampleSize.width, exampleSize.height))).convertTo(query_pixels, CV_32F);
-	query_pixels = query_pixels.reshape(0,1);
+		Rect window = Rect(bubble_location - Point(exampleSize.width/2, exampleSize.height/2), exampleSize) & Rect(Point(0,0), det_img_gray.size());
+		query_pixels = Mat::zeros(exampleSize, det_img_gray.type());
+		query_pixels(Rect(Point(0,0), window.size())) += det_img_gray(window);
 	#endif
 	
+	query_pixels.reshape(0,1).convertTo(query_pixels, CV_32F);
+
 	#ifdef NORMALIZE
-	normalize(query_pixels, query_pixels);
+		normalize(query_pixels, query_pixels);
 	#endif
+
     pca_components = my_PCA.project(query_pixels);
-    Mat out = my_PCA.backProject(pca_components)- query_pixels;
+    Mat out = my_PCA.backProject(pca_components) - query_pixels;
     return sum(out.mul(out)).val[0];
 }
 //This bit of code finds the location in the search_window most likely to be a bubble
 //then it checks that rather than the exact specified location.
 //This section probably slows things down by quite a bit and it might not provide significant
-//improvement to accuracy. We will need to run some tests to find out if it's worth keeping.
-//TODO: A much faster alternative would be to do a hillclimbing search. Perhap it won't be as effective though...
+//improvement to accuracy. We will need to run some tests to find out if it's worth using.
 Point PCA_classifier::bubble_align(const Mat& det_img_gray, const Point& bubble_location) {
 	if(search_window.width == 0 || search_window.height == 0){
 		return bubble_location;
 	}
-	
+
 	Mat out = Mat::zeros(search_window, CV_32F);
 	Point offset = Point(bubble_location.x - search_window.width/2, bubble_location.y - search_window.height/2);
 	
@@ -190,15 +195,58 @@ Point PCA_classifier::bubble_align(const Mat& det_img_gray, const Point& bubble_
 	
 	return min_location + offset;
 }
+/*
+void bubbleAlignHelper(const Mat& det_img_gray, const Point& bubble_location, Mat& computed, int iterations) {
+
+	Point directions[8] = {	Point(-1,1),  Point(0,1),  Point(1,1),
+							Point(-1,0), 			   Point(1,0),
+							Point(-1,-1), Point(0,-1), Point(1,-1) };
+							
+	Point offset(bubble_location);
+	
+	Point currentLocation(bubble_location);
+	
+	while( iterations >= 0 ){
+		for(size_t i = 0; i < (size_t)computed.cols; i++) {
+			for(size_t j = 0; j < (size_t)computed.rows; j++) {
+				if(computed.at<double>(j, i) == 0 ){
+					computed.at<double>(j, i) = rateBubble(det_img_gray, Point(j, i) + offset);
+				}
+				
+			}
+		}
+		
+		iterations--;
+	}
+	
+	Point offset = Point(bubble_location.x - search_window.width/2, bubble_location.y - search_window.height/2);
+	
+	for(size_t i = 0; int(i) < search_window.width; i++) {
+		for(size_t j = 0; int(j) < search_window.height; j++) {
+			out.col(i).row(j) += rateBubble(det_img_gray, Point(i,j) + offset);
+		}
+	}
+	out = out.mul(gaussian_weights);
+	Point min_location;
+	minMaxLoc(out, NULL,NULL, &min_location);
+	
+	return min_location + offset;
+}
+Point PCA_classifier::bubble_align(const Mat& det_img_gray, const Point& bubble_location){
+	Mat mask = Mat::zeros(search_window, CV_32F);
+	bubbleAlignHelper(det_img_gray, bubble_location, mask, 10);
+}*/
+
 //Compare the specified bubble with all the training bubbles via PCA.
 bubble_val PCA_classifier::classifyBubble(const Mat& det_img_gray, const Point& bubble_location) {
 	Mat query_pixels;
 
     #ifdef USE_GET_RECT_SUB_PIX
 	getRectSubPix(det_img_gray, Size(exampleSize.width, exampleSize.height), bubble_location, query_pixels);
-	#else
-	query_pixels = det_img_gray(Rect(bubble_location-Point(exampleSize.width/2, exampleSize.height/2),
-									 Size(exampleSize.width, exampleSize.height)));
+	#else									 
+	Rect window = Rect(bubble_location - Point(exampleSize.width/2, exampleSize.height/2), exampleSize) & Rect(Point(0,0), det_img_gray.size());
+	query_pixels = Mat::zeros(exampleSize, det_img_gray.type());
+	query_pixels(Rect(Point(0,0), window.size())) += det_img_gray(window);
 	#endif
 	
 	#ifdef OUTPUT_BUBBLE_IMAGES

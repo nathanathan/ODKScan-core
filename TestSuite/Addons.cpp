@@ -41,7 +41,6 @@ vector<Point> jsonArrayToQuad(const Json::Value& quadJson){
 	}
 	return out;
 }
-
 bool parseJsonFromFile(const char* filePath, Json::Value& myRoot){
 	ifstream JSONin;
 	Json::Reader reader;
@@ -51,4 +50,7 @@ bool parseJsonFromFile(const char* filePath, Json::Value& myRoot){
 	
 	JSONin.close();
 	return parse_successful;
+}
+bool parseJsonFromFile(const string& filePath, Json::Value& myRoot){
+	return parseJsonFromFile(filePath.c_str(), myRoot);
 }

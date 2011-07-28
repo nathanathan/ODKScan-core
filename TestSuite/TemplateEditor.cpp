@@ -17,7 +17,7 @@
 #define OUTPUT_SEGMENT_IMAGES
 
 //The scale param can be used to generate templates at higher res but the templates are not scaled by it.
-#define SCALEPARAM 2.0
+#define SCALEPARAM 1.0
 
 // Creates a buffer around segments porpotional to their size.
 // I think .5 is the largest value that won't cause ambiguous cases.
@@ -177,6 +177,7 @@ Json::Value findBubbleLocations(Mat& segment, const Json::Value& bubbleLocations
 		}*/
 		
 		Point refined_location = classifier.bubble_align(segment, bubbleLocation);
+		classifier.classifyBubble(segment, refined_location);
 		bubblesLocationsOut.append( pointToJson(1.f/SCALEPARAM * refined_location));
 		#ifdef OUTPUT_SEGMENT_IMAGES
 		Scalar color(0, 255, 0);
@@ -202,7 +203,7 @@ Json::Value processSegment(const Json::Value &segmentTemplate, bool doSomething)
 	#if DEBUG > 0
 	cout << "aligning segment" << endl;
 	#endif
-	Rect imageRect( SCALEPARAM * Point(segmentTemplate.get("x", INT_MIN ).asInt(),
+	Rect imageRect(SCALEPARAM * Point(segmentTemplate.get("x", INT_MIN ).asInt(),
 									   segmentTemplate.get("y", INT_MIN).asInt()),
 					SCALEPARAM * Size(segmentTemplate.get("width", INT_MIN).asInt(),
 									  segmentTemplate.get("height", INT_MIN).asInt()));	
@@ -331,30 +332,37 @@ bool markupForm(const char* formPath, const char* markupPath, Mat& markupImage) 
 	markupImage = imread("templateEditor_temp.jpg");
 	return !markupImage.empty();
 }
+#define OUTPUT_TEMPLATE
 int main(int argc, char *argv[]) {
 
-	classifier = PCA_classifier(9);
-
-	string formPath("form_templates/A0_from_booklet.jpg");
-	string templatePath("form_templates/unbounded_form_refined.json");
-	string templateOutPath("form_templates/unbounded_form_refined2.json");
-	
-	templDir = string(templatePath);
-	templDir = templDir.substr(0, templDir.find_last_of("/") + 1);
-	string templateImgDir = templDir+root.get("feature_data_path", "default").asString() + ".jpg";
-
-	if( !parseJsonFromFile(templatePath.c_str(), root) ) return false;
-	loadForm(formPath.c_str());
-	trainClassifier("training_examples/empty", true);
-	processTemplate(templateOutPath.c_str());
-
 	Mat markupImage;
-	if( !markupForm(formPath.c_str(), templateOutPath.c_str(), markupImage) ) return false;
+	
+	#ifdef OUTPUT_TEMPLATE
 
-	const string winName = "marked-up image";
+		classifier = PCA_classifier(9);
+		string formPath("form_templates/SIS-A01.jpg");
+		string templatePath("form_templates/SIS-A01.json");
+		string templateOutPath("form_templates/SIS-A01_refined.json");
+	
+		templDir = string(templatePath);
+		templDir = templDir.substr(0, templDir.find_last_of("/") + 1);
+		string templateImgDir = templDir+root.get("feature_data_path", "default").asString() + ".jpg";
+	
+		if( !parseJsonFromFile(templatePath.c_str(), root) ) return false;
+		loadForm(formPath.c_str());
+	
+		trainClassifier("training_examples/empty", true);
+
+	#else
+	
+		string formPath("aligned_forms/booklet_form/C0.jpg");
+		string templatePath("form_images/booklet_form/C.json");
+	
+	#endif
+	
+	const string winName = "editing window";
 	namedWindow(winName, CV_WINDOW_NORMAL);
-	imshow( winName, markupImage );
-
+	
 	for(;;)
     {
         char c = (char)waitKey(0);
@@ -365,15 +373,16 @@ int main(int argc, char *argv[]) {
         }
         if( c == 'l' )
         {
-        	//First fix offset scale then do this...
+        	#ifdef OUTPUT_TEMPLATE
+        	processTemplate(templateOutPath.c_str());
     		if( !parseJsonFromFile(templateOutPath.c_str(), root) ) return false;
-			processTemplate(templateOutPath.c_str());
 			
         	if( !markupForm(formPath.c_str(), templateOutPath.c_str(), markupImage) ) return false;
 			imshow( winName, markupImage );
-			
-			//if( !markupForm(templatePath.c_str(), markupImage) ) return false;
-			//imshow( winName, markupImage );
+			#else
+			if( !markupForm(formPath.c_str(), templatePath.c_str(), markupImage) ) return false;
+			imshow( winName, markupImage );
+			#endif
         }
     }
 }

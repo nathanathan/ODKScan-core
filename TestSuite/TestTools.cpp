@@ -4,6 +4,7 @@
 #include <iostream>
 
 #define DEBUG 0
+#define PRINT_MISS_LOCATIONS
 
 using namespace std;
 
@@ -12,17 +13,26 @@ void compareSegments(const Json::Value& foundSeg, const Json::Value& actualSeg, 
 	cout << "Comparing segments..." << endl;
 	#endif
 	const Json::Value fBubbles = foundSeg["bubbles"];
-	const Json::Value aBubbles = foundSeg["bubbles"];
+	const Json::Value aBubbles = actualSeg["bubbles"];
 	for( size_t i = 0; i < fBubbles.size(); i++){
 		bool found = fBubbles[i]["value"].asBool();
 		bool actual = aBubbles[i]["value"].asBool();
+		
 		if(found && actual){
 			tp++;
 		}
 		else if(found && !actual){
+			#ifdef PRINT_MISS_LOCATIONS
+			cout << "false positive at:" << endl;
+			cout << "\t" << fBubbles[i]["location"][0u].asInt() << ", " << fBubbles[i]["location"][1u].asInt() << endl;
+			#endif
 			fp++;
 		}
 		else if(!found && actual){
+			#ifdef PRINT_MISS_LOCATIONS
+			cout << "false negative at:" << endl;
+			cout << "\t" << fBubbles[i]["location"][0u].asInt() << ", " << fBubbles[i]["location"][1u].asInt() << endl;
+			#endif
 			fn++;
 		}
 		else{
@@ -46,7 +56,8 @@ void compareFields(const Json::Value& foundField, const Json::Value& actualField
 		}
 	}
 }
-void compareFiles(const string& foundPath, const string& actualPath, int& tp, int& fp, int& tn, int& fn){
+void compareFiles(const string& foundPath, const string& actualPath,
+					int& tp, int& fp, int& tn, int& fn){
 	Json::Value foundRoot, actualRoot;
 	parseJsonFromFile(foundPath.c_str(), foundRoot);
 	parseJsonFromFile(actualPath.c_str(), actualRoot);
@@ -57,10 +68,10 @@ void compareFiles(const string& foundPath, const string& actualPath, int& tp, in
 	const Json::Value fFields = foundRoot["fields"];
 	const Json::Value aFields = actualRoot["fields"];
 	for( size_t i = 0; i < fFields.size(); i++){
-		const string fLabel = fFields[i].get("label", "parser breaking label 1").asString();
+		const int fFieldKey = fFields[i].get("key", -1).asInt();
 		for( size_t j = i; j < aFields.size(); j++){
-			const string aLabel = aFields[j].get("label", "parser breaking label 2").asString();
-			if(fLabel.compare(aLabel) == 0) {
+			const int aFieldKey = aFields[j].get("key", -2).asInt();
+			if(fFieldKey == aFieldKey) {
 				compareFields(fFields[i], aFields[j], tp, fp, tn, fn);
 			}
 		}

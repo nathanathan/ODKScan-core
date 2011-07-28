@@ -13,6 +13,8 @@ using namespace std;
 //The reason to use JSON for the bubble-vals files is that other code, like java code can parse them
 //and display the results without any hardcoding.
 int main(int argc, char *argv[]) {
+	
+	int errors = 0, numImages = 0;
 
 	string inputDir("form_images/");
 	string outputDir("aligned_forms/");
@@ -27,6 +29,7 @@ int main(int argc, char *argv[]) {
 	vector<string>::iterator it;
 	for(it = filenames.begin(); it != filenames.end(); it++) {
 		if(isImage((*it))){
+			numImages++;
 			string outputPath(outputDir + (*it).substr((*it).find_first_of(inputDir) + inputDir.length()));
 			cout << "Processing form from: " << (*it) << endl << "to: " << outputPath << endl;
 			if( !myProcessor.loadForm((*it).c_str()) ) {
@@ -34,9 +37,11 @@ int main(int argc, char *argv[]) {
 				return 0;
 			}
 			if( !myProcessor.alignForm(outputPath.c_str()) ) {
-				cout << "Could not align. Arg: " << outputPath  << endl;
-				return 0;
+				errors++;
+				continue;
 			}
 		}
 	}
+	cout << endl;
+	printData(errors, numImages);
 }
