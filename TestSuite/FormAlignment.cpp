@@ -26,7 +26,7 @@ NameGenerator dbgNamer("debug_form_images/", true);
 #define USE_FEATURE_BASED_FORM_ALIGNMENT
 
 //#define ALWAYS_COMPUTE_TEMPLATE_FEATURES
-#define FH_REPROJECT_THRESH 5.0
+#define FH_REPROJECT_THRESH 6.0
 
 using namespace std;
 using namespace cv;
@@ -125,31 +125,67 @@ vector<Point> findMaxQuad(Mat& img, float approx_p_seed = 0){
 	}
 	return maxRect;
 }
-int lineSum(const Mat& img, int start, int end){
+
+//enum edge {TOP=0, RIGHT, BOTTOM, LEFT };
+
+int lineSum(const Mat& img, int start, int end, bool transpose){
+
+	int hSpan;
+	if(transpose){
+		hSpan = img.rows - 1;
+	}
+	else{
+		hSpan = img.cols - 1;
+	}
+	
 	int sum = 0;
-	double slope = (double)(end - start)/(img.cols - 1);
-	for(int i = 0; i<img.cols; i++) {
+	double slope = (double)(end - start)/hSpan;
+	
+	for(int i = 0; i<hSpan; i++) {
 		int j = start + slope*i;
+
 		if(j < 0){
 			sum++;
 		}
 		else{
-			sum += (int) (img.at<uchar>(j, i) >= 1);
+			if(transpose){
+				sum += 2 * ((int) (img.at<uchar>(i, j) >= 1));
+			}
+			else{
+				sum += 2 * ((int) (img.at<uchar>(j, i) >= 1));
+			}
 		}
 	}
 	return sum;
 }
-void findLines(Mat& img, int& start, int& end, int depth) {
-	Mat grad_img, out;
-	
-	int range = .12 * img.rows;
-	//This is the number of pixels beyond the image we might look for lines.
-	int outerBuffer = -.05 * img.rows;
+void findLinesHelper(Mat& img, int& start, int& end, int depth, bool flip, bool transpose) {
 
+	int vSpan, hSpan;
+
+	if(transpose){
+		vSpan = img.cols - 1;
+		hSpan = img.rows - 1;
+	}
+	else{		
+		vSpan = img.rows - 1;
+		hSpan = img.cols - 1;
+	}
+	
+	int range = .12 * vSpan;
+	int outerBuffer = -.05 * vSpan;
+	
 	int minLs = INT_MAX;
 	for(int i = outerBuffer; i < depth; i++) {
 		for(int j = MAX(i-range, outerBuffer); j < MIN(i+range, depth); j++) {
-			int ls = lineSum(img, i, j);
+			//This weights the line finder to look for lines further into the image.
+			int param = .1 * hSpan;
+			int ls = param - (i+j)/2 * param / vSpan;
+			if(flip){
+				ls += lineSum(img, vSpan - i, vSpan - j, transpose);
+			}
+			else{
+				ls += lineSum(img, i, j, transpose);
+			}
 			if( ls < minLs ){
 				start = i;
 				end = j;
@@ -157,8 +193,43 @@ void findLines(Mat& img, int& start, int& end, int depth) {
 			}
 		}
 	}
-	line( img, Point(0, start), Point(img.cols-1, end), Scalar(0), 1, 4);
 }
+void findLines(Mat& img, Point& A, Point& B, int depth, bool flip, bool transpose) {
+	int start, end;
+	
+	findLinesHelper(img, start, end, depth, flip, transpose);
+	
+	if(flip && transpose){
+		A = Point(img.cols - 1 - start, img.rows-1);
+		B = Point(img.cols - 1 - end, 0);
+	}
+	else if(!flip && transpose){
+		A = Point(start, 0);
+		B = Point(end, img.rows -1);
+	}
+	else if(flip && !transpose){
+		A = Point(0, img.rows - 1 - start);
+		B = Point(img.cols-1, img.rows - 1 - end);
+	}
+	else{
+		A = Point(0, start);
+		B = Point(img.cols-1, end);
+	}
+}
+Point findIntersection(const Point& P1, const Point& P2,
+						const Point& P3, const Point& P4){
+	// From determinant formula here:
+	// http://en.wikipedia.org/wiki/Line_intersection
+	return Point(
+		( (P1.x * P2.y - P1.y * P2.x) * (P3.x - P4.x) -
+		  (P1.x - P2.x) * (P3.x * P4.y - P3.y * P4.x) ) /
+		( (P1.x - P2.x) * (P3.y - P4.y) - (P1.y - P2.y) * (P3.x - P4.x) ),
+		( (P1.x * P2.y - P1.y * P2.x) * (P3.y - P4.y) -
+		  (P1.y - P2.y) * (P3.x * P4.y - P3.y * P4.x) ) /
+		( (P1.x - P2.x) * (P3.y - P4.y) - (P1.y - P2.y) * (P3.x - P4.x) ));
+
+}
+
 //TODO: The blurSize param is sort of a hacky solution to the problem of contours being too large
 //		in certain cases. It fixes the problem on some form images because they can be blurred a lot
 //		and produce good results for contour finding. This is not the case with segments.
@@ -187,54 +258,52 @@ vector<Point> findQuad(const Mat& img, int blurSize, float buffer = 0.0){
 	//erode(temp_img2, temp_img, (Mat_<uchar>(3,3) << 1,0,1,0,1,0,1,0,1));
 	//This threshold might be tweakable
 	imgThresh = temp_img2 - temp_img > 0;
-	
+
 	//Blocking out a chunk in the middle of the segment can help in cases with densely filled bubbles.
 	float choke = buffer/(1 + 2*buffer) + .2;
 	Rect roi(choke * Point(temp_img.cols, temp_img.rows), (1.f - 2*choke) * temp_img.size());
 	imgThresh(roi) = Scalar(255);
+
+
 	
-	//This will draw a few lines across the image to split up the contour
-	{
-		Mat temp;
-		int start, end;
-		findLines(imgThresh, start, end, roi.y);
-		flip(imgThresh, temp, 0);
-		findLines(temp, start, end, roi.y);
-		transpose(temp, imgThresh);
-		findLines(imgThresh, start, end, roi.x);
-		flip(imgThresh, temp, 0);
-		findLines(temp, start, end, roi.x);
-		flip(temp, imgThresh, -1);
-		transpose(imgThresh, temp);
-		imgThresh = temp;
-	}
+	Point A1, B1, A2, B2, A3, B3, A4, B4;
+	findLines(imgThresh, A1, B1, roi.y, false, true);
+	findLines(imgThresh, A2, B2, roi.y, false, false);
+	findLines(imgThresh, A3, B3, roi.y, true, true);
+	findLines(imgThresh, A4, B4, roi.y, true, false);
 	
-	#ifdef OUTPUT_DEBUG_IMAGES
-	
-	Mat dbg_out, dbg_out2;
-	imgThresh.copyTo(dbg_out);
-	//img.copyTo(dbg_out2);
-	string segfilename = alignmentNamer.get_unique_name("alignment_debug_");
-	segfilename.append(".jpg");
-    vector < vector<Point> > contours;
-    Mat temp;
-	//findContours(dbg_out, contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
-	//img.copyTo(dbg_out);
-	//drawContours(dbg_out, contours, -1, 255);
-	imwrite(segfilename, dbg_out);
-	
-	#endif
+	#define USE_INTERSECTIONS
+	#ifdef USE_INTERSECTIONS
+	vector <Point> quad;
+	quad.push_back(findIntersection(A1, B1, A2, B2));
+	quad.push_back(findIntersection(A2, B2, A3, B3));
+	quad.push_back(findIntersection(A3, B3, A4, B4));
+	quad.push_back(findIntersection(A4, B4, A1, B1));
+	#else
+	line( imgThresh, A1, B1, Scalar(130), 1, 4);
+	line( imgThresh, A2, B2, Scalar(130), 1, 4);
+	line( imgThresh, A3, B3, Scalar(130), 1, 4);
+	line( imgThresh, A4, B4, Scalar(130), 1, 4);
 	
 	vector<Point> quad = findMaxQuad(imgThresh, 0);
 	
-	imgThresh.release();
+	quad = expandCorners(quad, EXPANSION_PERCENTAGE);
+	#endif
 	
 	//Resize the contours for the full size image:
 	for(size_t i = 0; i<quad.size(); i++){
 		quad[i] = Point(actual_width_multiple * quad[i].x, actual_height_multiple * quad[i].y);
 	}
 	
-	return expandCorners(quad, EXPANSION_PERCENTAGE);
+	#ifdef OUTPUT_DEBUG_IMAGES
+	Mat dbg_out, dbg_out2;
+	imgThresh.copyTo(dbg_out);
+	string segfilename = alignmentNamer.get_unique_name("alignment_debug_");
+	segfilename.append(".jpg");
+	imwrite(segfilename, dbg_out);
+	#endif
+
+	return quad;
 }
 Mat quadToTransformation(const vector<Point>& foundCorners, const Size& out_image_sz){
 
@@ -251,15 +320,13 @@ Mat quadToTransformation(const vector<Point>& foundCorners, const Size& out_imag
 	
 	return getPerspectiveTransform(corners_a, out_corners);
 }
-//Takes a 3x3 transformation matrix H and a output image size and returns
-//a quad representing the region in a image to be transfromed by H the transformed image will contain.
+//Takes a 3x3 transformation matrix H and a transformed output image size and returns
+//a quad representing the location of the output image in a image to be transformed by H.
 vector<Point> transformationToQuad(const Mat& H, const Size& out_image_sz){
 										
 	Mat img_rect = (Mat_<double>(3,4) << 0, out_image_sz.width, (double)out_image_sz.width,	 0,
 										 0, 0,					(double)out_image_sz.height, out_image_sz.height,
 										 1,	1,					1, 					 1);
-	//cout << img_rect.at<double>(3, 0) <<", " << img_rect.at<double>(3, 1) << endl;
-	//cout << img_rect << endl;
 
 	Mat out_img_rect =  H.inv() * img_rect;
 
@@ -345,12 +412,12 @@ bool loadFeatureData(const string& featureDataPath, Ptr<FeatureDetector>& detect
 	//detector = Ptr<FeatureDetector>(new GoodFeaturesToTrackDetector( 800, .2, 10));
 	//MSER is pretty fast. Grid seems to help limit number but messes up more.
 	//descriptorExtractor = Ptr<DescriptorExtractor>(new SurfDescriptorExtractor( 4, 1, true ));
-	//detector = FeatureDetector::create( "MSER" );
 	//descriptorExtractor = Ptr<DescriptorExtractor>(new SurfDescriptorExtractor( 4, 3, true ));
-	detector = FeatureDetector::create( "SURF" ); 
+	//detector = FeatureDetector::create( "SURF" ); 
+	detector = FeatureDetector::create( "GridSURF" );
 	descriptorExtractor = DescriptorExtractor::create( "SURF" );
 	
-	bool checkForSavedFeatures = true;
+	bool checkForSavedFeatures = false;
 	#ifdef ALWAYS_COMPUTE_TEMPLATE_FEATURES
 	checkForSavedFeatures = false;
 	#endif
@@ -486,26 +553,17 @@ bool alignFormImageByFeatures(const Mat& img, Mat& aligned_img, const string& fe
 	Point3d sc = Point3d( ((double)aligned_img_sz.width) / templImageSize.width,
 						  ((double)aligned_img_sz.height) / templImageSize.height,
 						  1.0);
-
-	Mat ScalingMat = (Mat::diag(Mat(trueEfficiencyScale)) * Mat::diag(Mat(sc)));
-	
-	#if 0
-  	for(size_t i = 0; i < points2.size(); i++){
-		points2[i].x *=  sc.x;
-		points2[i].y *=  sc.y;
-	}
-	#endif
 	
 	Mat H = findHomography( Mat(points1), Mat(points2), CV_RANSAC, FH_REPROJECT_THRESH );
-	H = Mat::diag(Mat(sc)) * H * Mat::diag(Mat(trueEfficiencyScale));
+	Mat Hscaled = Mat::diag(Mat(sc)) * H * Mat::diag(Mat(trueEfficiencyScale));
 
 	aligned_img = Mat(0,0, CV_8U);
-	warpPerspective( img, aligned_img, H, aligned_img_sz); //, INTER_LINEAR, BORDER_CONSTANT, Scalar(255));
+	warpPerspective( img, aligned_img, Hscaled, aligned_img_sz); //, INTER_LINEAR, BORDER_CONSTANT, Scalar(255));
 	
-	vector<Point> quad = transformationToQuad(H, aligned_img_sz);
+	vector<Point> quad = transformationToQuad(Hscaled, aligned_img_sz);
 	
 	bool alignSuccess = false;
-	if( testQuad(quad) ){ 
+	if( testQuad(quad) ) {
 		float area = contourArea(Mat(quad));
 		float expected_area = (.8 * img.size()).area();
 		float tolerence = .4;
@@ -514,7 +572,7 @@ bool alignFormImageByFeatures(const Mat& img, Mat& aligned_img, const string& fe
 	}
 	
 	#ifdef OUTPUT_DEBUG_IMAGES
-		/*
+		#if 0
 		//This code creates a window to show matches:
 		vector<char> matchesMask( filteredMatches.size(), 0 );
 		Mat points1t; perspectiveTransform(Mat(points1), points1t, H);
@@ -549,7 +607,9 @@ bool alignFormImageByFeatures(const Mat& img, Mat& aligned_img, const string& fe
 		    	cvDestroyWindow("outliers");
 		        break;
 		    }
-		}*/
+		}
+		#endif
+		
 		
 		Mat dbg;
 		img.copyTo(dbg);
@@ -571,8 +631,7 @@ vector<Point> findFormQuad(const Mat& img){
 	return findQuad(img, 12);
 }
 vector<Point> findBoundedRegionQuad(const Mat& img, float buffer){
-	//Turning the blur up really seems to help...
-	return findQuad(img, 8, buffer);
+	return findQuad(img, 26, buffer);
 }
 //Aligns a image of a form.
 bool alignFormImage(const Mat& img, Mat& aligned_img, const string& featureDataPath, 
