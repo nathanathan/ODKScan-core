@@ -26,6 +26,12 @@ std::vector<cv::Point> jsonArrayToQuad(const Json::Value& quadJson);
 //Pure Json:
 bool parseJsonFromFile(const char* filePath, Json::Value& myRoot);
 bool parseJsonFromFile(const std::string& filePath, Json::Value& myRoot);
+//Indexing is a little bit complicated here.
+//The first element of the filledIntegral is always 0.
+//A min error cut at 0 means no bubbles are considered filled.
+void inferBubbles(Json::Value& field);
+int minErrorCut(const std::vector<int>& filledIntegral);
+std::vector<int> computedFilledIntegral(const Json::Value& field);
 //Misc:
 template <class Tp>
 bool returnTrue(Tp& anything){
