@@ -13,45 +13,12 @@
 #include "FormAlignment.h"
 #include "Addons.h"
 
-#define SHOW_MIN_ERROR_CUT
+//#define SHOW_MIN_ERROR_CUT
 
 using namespace std;
 using namespace cv;
 
-//Indexing is a little bit complicated here.
-//The first element of the filledIntegral is always 0.
-//A min error cut at 0 means no bubbles are considered filled.
-int minErrorCut(const vector<int>& filledIntegral){
-	int minErrors = filledIntegral.back();
-	int minErrorCutIdx = 0;
-	for ( size_t i = 1; i < filledIntegral.size(); i++ ) {
-		int errors = (int)i - 2 * filledIntegral[i] + filledIntegral.back();
-		if(errors < minErrors){ // saying <= instead would weight things towards more filled bubbles
-			minErrors = errors;
-			minErrorCutIdx = i;
-		}
-	}
-	return minErrorCutIdx;
-}
-vector<int> computedFilledIntegral(const Json::Value& field){
-	vector<int> filledIntegral(1,0);
-	const Json::Value segments = field["segments"];
-	for ( size_t i = 0; i < segments.size(); i++ ) {
-		const Json::Value segment = segments[i];
-		const Json::Value bubbles = segment["bubbles"];
-		
-		for ( size_t j = 0; j < bubbles.size(); j++ ) {
-			const Json::Value bubble = bubbles[j];
-			if(bubble["value"].asBool()){
-				filledIntegral.push_back(filledIntegral.back()+1);
-			}
-			else{
-				filledIntegral.push_back(filledIntegral.back());
-			}
-		}
-	}
-	return filledIntegral;
-}
+
 Scalar getColor(bool filled){
 	if(filled){
 		return Scalar(20, 20, 255);
@@ -60,7 +27,6 @@ Scalar getColor(bool filled){
 		return Scalar(255, 20, 20);
 	}
 }
-
 //Marks up formImage based on the specifications of a bubble-vals JSON file at the given path.
 //Then output the form to the given locaiton.
 //Could add functionality for alignment markup to this but is it worth it?
@@ -130,7 +96,6 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage) {
 	}
 	return true;
 }
-/*
 //Makes a JSON file that contains only the field counts.
 bool outputFieldCounts(const char* bubbleVals, const char* outputPath) {
 
@@ -143,7 +108,7 @@ bool outputFieldCounts(const char* bubbleVals, const char* outputPath) {
 
 		Json::Value field = fields[i];
 		Json::Value segments = field["segments"];
-	
+		int counter = 0;
 		for ( size_t j = 0; j < segments.size(); j++ ) {
 			
 			Json::Value segment = segments[j];
@@ -151,20 +116,20 @@ bool outputFieldCounts(const char* bubbleVals, const char* outputPath) {
 			
 			for ( size_t k = 0; k < bubbles.size(); k++ ) {
 				const Json::Value bubble = bubbles[k];
-				
-				circle(markupImage, bubbleLocation, 2, 	getColor(bubble["value"].asBool()), 1, CV_AA);
+				if(bubble["value"].asBool()){
+					counter++;
+				}
 			}
-			segment["count"] = X;
-			segment["bubbles"].remove();
-
 		}
+		field["count"] = counter;
+		field.removeMember("segments");
 	}
 	
 	ofstream outfile(outputPath, ios::out | ios::binary);
 	outfile << bvRoot;
 	outfile.close();
 	return true;
-}*/
+}
 bool MarkupForm::markupForm(const char* markupPath, const char* formPath, const char* outputPath) {
 	Mat markupImage = imread(formPath);
 	if(markupImage.empty()) return false;
