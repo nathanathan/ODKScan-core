@@ -23,7 +23,8 @@ import android.widget.Button;
 public class BubbleBot extends Activity {
 	public static final String PREFS_NAME = "mScanPrefs";
 	//The version variable is used to reextract assets after they are modified.
-	public static final int version = 7;
+	//TODO: Make feature data dependent on this
+	public static final int version = 9;
 	// Initialize the application
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
