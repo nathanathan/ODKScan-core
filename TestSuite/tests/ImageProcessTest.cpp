@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
 	#else
 	string imageDir("form_images/booklet_form/");
 	string imageName("G7");
-	string jsonTrueVals("form_images/booklet_form/C.json");
+	string jsonTrueVals("form_images/booklet_form/G.json");
 	#endif
 	string imagePath = imageDir + imageName +".jpg";
 	
