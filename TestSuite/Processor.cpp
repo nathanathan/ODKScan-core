@@ -106,7 +106,7 @@ Json::Value processSegment(const Json::Value &segmentTemplate){
 	Rect imageRect( SCALEPARAM * Point(segmentTemplate.get("x", INT_MIN ).asInt(),
 									   segmentTemplate.get("y", INT_MIN).asInt()),
 					SCALEPARAM * Size(segmentTemplate.get("width", INT_MIN).asInt(),
-									  segmentTemplate.get("height", INT_MIN).asInt()));	
+									  segmentTemplate.get("height", INT_MIN).asInt()));
 
 	Rect expandedRect = expandRect(imageRect, SEGMENT_BUFFER);
 
@@ -258,9 +258,13 @@ bool processForm(const char* outputPath) {
 			fieldJsonOut["segments"].append(segmentJsonOut);
 		}
 		fieldJsonOut["key"] = field.get("key", -1);
+		#define DO_BUBBLE_INFERENCE
+		#ifdef DO_BUBBLE_INFERENCE
+		inferBubbles(fieldJsonOut);
+		#endif
+		
 		JsonOutputFields.append(fieldJsonOut);
 	}
-	
 	JsonOutput["form_scale"] = Json::Value(SCALEPARAM);
 	JsonOutput["fields"] = JsonOutputFields;
 	#ifdef  DEBUG_PROCESSOR
