@@ -413,6 +413,34 @@ void crossCheckMatching( Ptr<DescriptorMatcher>& descriptorMatcher,
         }
     }
 }
+//I think the proper way to do this would be to make a FormAlignment class
+//then pass in the mask from Processor.cpp
+Mat makeFieldMask(const string& jsonTemplate){
+	
+	cout << jsonTemplate;
+	//Should there be a file that has all the JSON functions?
+	Json::Value myRoot;
+	parseJsonFromFile(jsonTemplate, myRoot);
+	
+	Mat mask(myRoot.get("height", 0).asInt(), myRoot.get("width", 0).asInt(),
+			CV_8UC1, Scalar::all(255));
+	const Json::Value fields = myRoot["fields"];
+	for ( size_t i = 0; i < fields.size(); i++ ) {
+		const Json::Value field = fields[i];
+		const Json::Value segments = field["segments"];
+		for ( size_t j = 0; j < segments.size(); j++ ) {
+			const Json::Value segmentTemplate = segments[j];
+
+			Rect segRect( Point( segmentTemplate.get("x", INT_MIN ).asInt(),
+								   segmentTemplate.get("y", INT_MIN).asInt()),
+							Size(segmentTemplate.get("width", INT_MIN).asInt(),
+							segmentTemplate.get("height", INT_MIN).asInt()));
+			rectangle(mask, segRect.tl(), segRect.br(), Scalar::all(0), -1);				
+		}
+	}
+	return mask;
+}
+
 //Tries to read feature data (presumably for the template) from templPath + ".yml" .
 //If none is found it is generated for the image templPath + ".jpg"
 bool loadFeatureData(const string& templPath, Ptr<FeatureDetector>& detector,
@@ -429,6 +457,7 @@ bool loadFeatureData(const string& templPath, Ptr<FeatureDetector>& detector,
 	descriptorExtractor = DescriptorExtractor::create( "SURF" );
 	
 	bool checkForSavedFeatures = true;
+	
 	#ifdef ALWAYS_COMPUTE_TEMPLATE_FEATURES
 	checkForSavedFeatures = false;
 	#endif
@@ -462,14 +491,35 @@ bool loadFeatureData(const string& templPath, Ptr<FeatureDetector>& detector,
 		Mat templImage, temp;
 		templImage = imread( templPath + ".jpg", 0 );
 		resize(templImage, temp, templImage.size(), 0, 0, INTER_AREA);
-		templImage  = temp;
+		templImage = temp;
+		temp.release();
 		templImageSize = templImage.size();
 
 		#ifdef DEBUG_ALIGN_IMAGE
 		cout << "Extracting keypoints from template image..." << endl;
 		#endif
-		//TODO: Make a mask that covers everything that someone might fill in using the template.
-		detector->detect( templImage, templKeypoints); //makeFieldMask(templPath + ".json") );
+		
+		Mat mask = makeFieldMask(templPath + ".json");
+		resize(mask, temp, templImage.size(), 0, 0, INTER_AREA);
+		erode(temp, mask, Mat(), Point(-1,-1), 5);
+		//mask = temp;
+		/*
+		imshow( "outliers", templImage & mask);
+		for(;;)
+		{
+		    char c = (char)waitKey(0);
+		    if( c == '\x1b' ) // esc
+		    {
+		    	cvDestroyWindow("inliers");
+		    	cvDestroyWindow("outliers");
+		        break;
+		    }
+		}
+		*/
+		
+		temp.release();
+		detector->detect( templImage, templKeypoints, mask );
+
 		#ifdef DEBUG_ALIGN_IMAGE
 		cout << "\t" << templKeypoints.size() << " points" << endl;
 		cout << "Computing descriptors for keypoints from template image..." << endl;
@@ -486,10 +536,6 @@ bool loadFeatureData(const string& templPath, Ptr<FeatureDetector>& detector,
 		
 		write(fs, "templKeypoints", templKeypoints);
 		fs << "templDescriptors" << templDescriptors;
-		
-		#ifdef DEBUG_ALIGN_IMAGE
-		imwrite("lfdImage.jpg", templImage);
-		#endif
 	}
 	if( detector.empty() || descriptorExtractor.empty() )
 	{
@@ -540,8 +586,11 @@ bool alignFormImageByFeatures(const Mat& img, Mat& aligned_img, const string& te
 	cout << "Matching descriptors..." << endl;
 	#endif
 	
+	#if 0
 	Ptr<DescriptorMatcher> descriptorMatcher = DescriptorMatcher::create( "BruteForce" );
-	// "FlannBased" is another option but doesn't perform well out of the box
+	#else
+	Ptr<DescriptorMatcher> descriptorMatcher = DescriptorMatcher::create( "FlannBased" );
+	#endif
 	
 	if( descriptorMatcher.empty()  ) {
 		cerr << "Can not create descriptor matcher of given type" << endl;
@@ -564,7 +613,7 @@ bool alignFormImageByFeatures(const Mat& img, Mat& aligned_img, const string& te
 						  ((double)aligned_img_sz.height) / templImageSize.height,
 						  1.0);
 	
-	Mat H = findHomography( Mat(points1), Mat(points2), CV_RANSAC, FH_REPROJECT_THRESH );
+	Mat H = findHomography( Mat(points1), Mat(points2), CV_RANSAC, FH_REPROJECT_THRESH );//CV_LMEDS
 	Mat Hscaled = Mat::diag(Mat(sc)) * H * Mat::diag(Mat(trueEfficiencyScale));
 
 	aligned_img = Mat(0,0, CV_8U);
@@ -580,7 +629,6 @@ bool alignFormImageByFeatures(const Mat& img, Mat& aligned_img, const string& te
 		alignSuccess =  area > (1. - tolerence) * expected_area &&
 						area < (1. + tolerence) * expected_area;
 	}
-	
 	#ifdef SHOW_MATCHES_WINDOW
 		//This code creates a window to show matches:
 		vector<char> matchesMask( filteredMatches.size(), 0 );
