@@ -147,14 +147,14 @@ int lineSum(const Mat& img, int start, int end, bool transpose){
 		int j = start + slope*i;
 
 		if(j < 0){
-			sum++;
+			sum+=127;
 		}
 		else{
 			if(transpose){
-				sum += 2 * ((int) (img.at<uchar>(i, j) >= 1));
+				sum += img.at<uchar>(i, j);
 			}
 			else{
-				sum += 2 * ((int) (img.at<uchar>(j, i) >= 1));
+				sum += img.at<uchar>(j, i);
 			}
 		}
 	}
@@ -179,15 +179,16 @@ void findLinesHelper(const Mat& img, int& start, int& end, const Rect& roi, bool
 		range = roi.y;
 	}
 	
+	//The param limits the weigting to a certain magnitude, in this case 10% of the max.
+	int param = .11 * 255 * (hSpan + 1);
+	float maxSsdFromMidpoint = 2*range*range;
 	
 	int minLs = INT_MAX;
 	for(int i = midpoint - range; i < midpoint + range; i++) {
 		for(int j = MAX(i-hSpan*maxSlope, midpoint - range); j < MIN(i+hSpan*maxSlope, midpoint + range); j++) {
-			//This weights the line finder to look for lines further into the image.
-			//TODO: this could cause problems when there are dense bubbles,
-			//		the weight should probably be based on how far from the expected location.
-			int param = .11 * 2 * hSpan;
-			int ls = param - param * (i+j) * 1.f / (2*vSpan);
+
+			float ssdFromMidpoint = (i - midpoint)*(i - midpoint) + (j - midpoint)*(j - midpoint);
+			int ls = param * ssdFromMidpoint / maxSsdFromMidpoint;
 			if(flip){
 				ls += lineSum(img, vSpan - i, vSpan - j, transpose);
 			}
@@ -224,18 +225,16 @@ void findLines(const Mat& img, Point& A, Point& B, const Rect& roi, bool flip, b
 		B = Point(img.cols-1, end);
 	}
 }
-Point findIntersection(const Point& P1, const Point& P2,
+inline Point findIntersection(const Point& P1, const Point& P2,
 						const Point& P3, const Point& P4){
 	// From determinant formula here:
 	// http://en.wikipedia.org/wiki/Line_intersection
+	int denom = (P1.x - P2.x) * (P3.y - P4.y) - (P1.y - P2.y) * (P3.x - P4.x);
 	return Point(
 		( (P1.x * P2.y - P1.y * P2.x) * (P3.x - P4.x) -
-		  (P1.x - P2.x) * (P3.x * P4.y - P3.y * P4.x) ) /
-		( (P1.x - P2.x) * (P3.y - P4.y) - (P1.y - P2.y) * (P3.x - P4.x) ),
+		  (P1.x - P2.x) * (P3.x * P4.y - P3.y * P4.x) ) / denom,
 		( (P1.x * P2.y - P1.y * P2.x) * (P3.y - P4.y) -
-		  (P1.y - P2.y) * (P3.x * P4.y - P3.y * P4.x) ) /
-		( (P1.x - P2.x) * (P3.y - P4.y) - (P1.y - P2.y) * (P3.x - P4.x) ));
-
+		  (P1.y - P2.y) * (P3.x * P4.y - P3.y * P4.x) ) / denom);
 }
 
 //TODO: The blurSize param is sort of a hacky solution to the problem of contours being too large
@@ -249,23 +248,30 @@ vector<Point> findQuad(const Mat& img, int blurSize, float buffer = 0.0){
 	//and so we don't have to worry about filters behaving differently on large images
 	int multiple = img.cols / 256;
 	if(multiple > 1){
-		resize(img, temp_img, (1.f / multiple) * img.size(), INTER_AREA);
+		resize(img, temp_img, (1.f / multiple) * img.size(), 0, 0, INTER_AREA);
 	}
 	else{
 		multiple = 1;
 		img.copyTo(temp_img);
 	}
-	//resize(img, temp_img, 2*Size(img.cols, img.rows), INTER_AREA);
 	
 	float actual_width_multiple = float(img.rows) / temp_img.rows;
 	float actual_height_multiple = float(img.cols) / temp_img.cols;
 	
 	temp_img.copyTo(temp_img2);
-	//blur(temp_img, temp_img2, Size(3, 3));
+	#if 0
 	blur(temp_img2, temp_img, 2*Size(2*blurSize+1, 2*blurSize+1));
+	#else
+	//Not sure if this had advantages or not...
+	//My theory is that it is slower but more accurate,
+	//but I don't know if either difference is significant enough to notice.
+	//Will need to test.
+	GaussianBlur(temp_img2, temp_img, Size(9, 9), 3, 3);
+	#endif
+	
 	//erode(temp_img2, temp_img, (Mat_<uchar>(3,3) << 1,0,1,0,1,0,1,0,1));
 	//This threshold might be tweakable
-	imgThresh = temp_img2 - temp_img > 0;
+	imgThresh = (temp_img2 - temp_img) > 0;
 
 	float bufferChoke = buffer/(1 + 2*buffer);
 	Rect roi(bufferChoke * Point(temp_img.cols, temp_img.rows), (1.f - 2*bufferChoke) * temp_img.size());
@@ -273,7 +279,7 @@ vector<Point> findQuad(const Mat& img, int blurSize, float buffer = 0.0){
 	//Blocking out a chunk in the middle of the segment can help in cases with densely filled bubbles.
 	float extendedChoke = bufferChoke + .2;
 	Rect contractedRoi(extendedChoke * Point(temp_img.cols, temp_img.rows), (1.f - 2*extendedChoke) * temp_img.size());
-	imgThresh(contractedRoi) = Scalar(255);
+	imgThresh(contractedRoi) = Scalar::all(255);
 
 	Point A1, B1, A2, B2, A3, B3, A4, B4;
 	findLines(imgThresh, A1, B1, roi, false, true);
@@ -299,10 +305,25 @@ vector<Point> findQuad(const Mat& img, int blurSize, float buffer = 0.0){
 	quad = expandCorners(quad, EXPANSION_PERCENTAGE);
 	#endif
 	
+	#if 0 
+	//refine corner locations
+	//This seems to actually do worse
+	vector <Point2f> fquad;
+	for(size_t i = 0; i<quad.size(); i++){
+		fquad.push_back(Point2f(actual_width_multiple * quad[i].x, actual_height_multiple * quad[i].y));
+	}
+	TermCriteria termcrit(CV_TERMCRIT_ITER|CV_TERMCRIT_EPS,20,0.03);
+	cornerSubPix(img, fquad, Size(3,3), Size(2, 2), termcrit);
+	
+	for(size_t i = 0; i<quad.size(); i++){
+		quad[i] = Point(fquad[i].x, fquad[i].y);
+	}
+	#else
 	//Resize the contours for the full size image:
 	for(size_t i = 0; i<quad.size(); i++){
 		quad[i] = Point(actual_width_multiple * quad[i].x, actual_height_multiple * quad[i].y);
 	}
+	#endif
 	
 	//TODO: Use OpenCV subpixel corner finding function here.
 	
