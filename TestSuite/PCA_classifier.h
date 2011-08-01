@@ -9,6 +9,7 @@
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/ml/ml.hpp>
 #include "Addons.h"
 
 //TODO: Add a 4th classification. The middle classification doesn't really help since it has to be entirely
@@ -18,6 +19,9 @@ enum bubble_val { EMPTY_BUBBLE = 0, PARTIAL_BUBBLE, FILLED_BUBBLE, NUM_BUBBLE_VA
 class PCA_classifier
 {
 	private:	
+		
+		CvSVM statClassifier;
+	
 		int eigenvalues;
 		
 		cv::Mat comparison_vectors;

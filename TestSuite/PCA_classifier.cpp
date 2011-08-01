@@ -141,15 +141,26 @@ bool PCA_classifier::train_PCA_classifier(const string& dirPath, Size myExampleS
 			PCA_set_add(PCA_set, (*it), flipExamples);
 		}
 	}
+
 	if(PCA_set.rows < eigenvalues) return false;//Not completely sure about this...
 
 	my_PCA = PCA(PCA_set, Mat(), CV_PCA_DATA_AS_ROW, eigenvalues);
 	comparison_vectors = my_PCA.project(PCA_set);
+	
+	Mat trainClasses(1,1,CV_32SC1);
+	trainClasses.at<int>(0) = (int)training_bubble_values[0];
+	for(size_t i = 1; i < training_bubble_values.size(); i++){
+		trainClasses.push_back( (int)training_bubble_values[i] );
+	}
+	
+	statClassifier.train(comparison_vectors, trainClasses);
+	
 	return true;
 }
 //Rate a location on how likely it is to be a bubble.
 //The rating is the SSD of the queried pixels and their PCA back projection,
 //so lower ratings mean more bubble like.
+//TODO: Add an option to use correlation instead of SSD and see if we get an improvement.
 double PCA_classifier::rateBubble(const Mat& det_img_gray, const Point& bubble_location) {
 
     Mat query_pixels, pca_components;
@@ -261,14 +272,19 @@ bubble_val PCA_classifier::classifyBubble(const Mat& det_img_gray, const Point& 
 	#ifdef NORMALIZE
 	normalize(query_pixels, query_pixels);
 	#endif
-	
+	bubble_val returnVal = (bubble_val) statClassifier.predict( my_PCA.project(query_pixels) );
+	return returnVal;
+	/*
 	//Here we find the best filled and empty matches in the PCA training set.
 	Mat responce, out;
 	matchTemplate(comparison_vectors, my_PCA.project(query_pixels), responce, CV_TM_CCOEFF_NORMED);
 	reduce(responce, out, 1, CV_REDUCE_MAX);
+	
 	vector<float> max_responces(NUM_BUBBLE_VALS, 0);
 	for(size_t i = 0; i < training_bubble_values.size(); i+=1) {
+	
 		float current_responce = sum(out.row(i)).val[0]; //This only uses the sum function for convenience
+		
 		if(current_responce > max_responces[training_bubble_values[i]]) {
 			max_responces[training_bubble_values[i]] = current_responce;
 		}
@@ -279,7 +295,7 @@ bubble_val PCA_classifier::classifyBubble(const Mat& det_img_gray, const Point& 
 	//to return the scores without comparing them.
 	Point max_location;
 	minMaxLoc(Mat(max_responces).mul(weights), NULL, NULL, NULL, &max_location);
-	return (bubble_val) max_location.y;
+	return (bubble_val) max_location.y;*/
 }
 bool PCA_classifier::trained(){
 	return my_PCA.mean.data != NULL;
