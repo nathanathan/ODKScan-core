@@ -304,6 +304,8 @@ vector<Point> findQuad(const Mat& img, int blurSize, float buffer = 0.0){
 		quad[i] = Point(actual_width_multiple * quad[i].x, actual_height_multiple * quad[i].y);
 	}
 	
+	//TODO: Use OpenCV subpixel corner finding function here.
+	
 	#ifdef OUTPUT_DEBUG_IMAGES
 	Mat dbg_out, dbg_out2;
 	imgThresh.copyTo(dbg_out);
@@ -653,7 +655,9 @@ bool alignFormImage(const Mat& img, Mat& aligned_img, const string& templPath,
 	return !alignedSegment.empty();
 	#endif
 }
-//GrabCut stuff that doesn't work particularly well:
+//GrabCut stuff that doesn't work particularly well
+// I will probably get rid of it eventually but it might be help for
+// improving feature finding by masking out the form and using a minimum rectangle.
 Mat makeGCMask(const Size& mask_size, float buffer){
 	Mat mask(mask_size, CV_8UC1, Scalar::all(GC_BGD));
 	Point mask_sz_pt( mask_size.width-1, mask_size.height-1);
@@ -694,18 +698,18 @@ vector<Point> findSegment(const Mat& img, float buffer){
 	
 	grabCut( img2, mask, Rect(), bgdModel, fgdModel, 1, GC_INIT_WITH_MASK );
 	//watershed(img2, mask);
-	
-	
-	string segfilename = alignmentNamer.get_unique_name("alignment_debug_");
-	segfilename.append(".jpg");
-	
+
 	//imwrite(segfilename, mask*50);
 	
 	mask = mask & GC_FGD;// | (mask & GC_PR_FGD));
 	
+	#ifdef OUTPUT_DEBUG_IMAGES
+	string segfilename = alignmentNamer.get_unique_name("alignment_debug_");
+	segfilename.append(".jpg");
 	Mat dbg_out;
 	img2.copyTo( dbg_out , mask); 
 	imwrite(segfilename, dbg_out);
+	#endif
 	
 	return findMaxQuad(mask, 0);
 }

@@ -1,7 +1,8 @@
+//TODO: renames this since it does more than just marking up forms now.
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/legacy/compat.hpp>
+#include <opencv2/legacy/compat.hpp> //I'm not sure why I need this
 
 #include <json/json.h>
 
@@ -11,6 +12,8 @@
 #include "MarkupForm.h"
 #include "FormAlignment.h"
 #include "Addons.h"
+
+#define SHOW_MIN_ERROR_CUT
 
 using namespace std;
 using namespace cv;
@@ -76,8 +79,12 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage) {
 	const Json::Value fields = bvRoot["fields"];
 	for ( size_t i = 0; i < fields.size(); i++ ) {
 		const Json::Value field = fields[i];
+		
+		#ifdef SHOW_MIN_ERROR_CUT
+		//Should this be specified in the template??
 		int cutIdx = minErrorCut(computedFilledIntegral(field));
 		int bubbleNum = 0;
+		#endif
 		
 		string fieldName = field.get("label", "Unlabeled").asString();
 		Scalar boxColor = colors[i%6];
@@ -99,14 +106,16 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage) {
 					// Draw dots on bubbles colored blue if empty and red if filled
 					Point bubbleLocation(jsonToPoint(bubble["location"]));
 					
+					#ifdef SHOW_MIN_ERROR_CUT
 					circle(markupImage, bubbleLocation, 4, 	getColor(bubbleNum < cutIdx), 1, CV_AA);
 					bubbleNum++;
-
+					#endif
+					
 					circle(markupImage, bubbleLocation, 2, 	getColor(bubble["value"].asBool()), 1, CV_AA);
 				}
 			}
 			else{//If we're dealing with a regular form template
-				//Watch out for templates with double type points.
+				//TODO: Watch out for templates with double type points.
 				Point tl(segment["x"].asInt(), segment["y"].asInt());
 				rectangle(markupImage, tl, tl + Point(segment["width"].asInt(), segment["height"].asInt()),
 							boxColor, 2);
@@ -121,6 +130,41 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage) {
 	}
 	return true;
 }
+/*
+//Makes a JSON file that contains only the field counts.
+bool outputFieldCounts(const char* bubbleVals, const char* outputPath) {
+
+	Json::Value bvRoot;
+	
+	if( !parseJsonFromFile(bubbleVals, bvRoot) ) return false;
+	
+	Json::Value fields = bvRoot["fields"];
+	for ( size_t i = 0; i < fields.size(); i++ ) {
+
+		Json::Value field = fields[i];
+		Json::Value segments = field["segments"];
+	
+		for ( size_t j = 0; j < segments.size(); j++ ) {
+			
+			Json::Value segment = segments[j];
+			const Json::Value bubbles = segment["bubbles"];
+			
+			for ( size_t k = 0; k < bubbles.size(); k++ ) {
+				const Json::Value bubble = bubbles[k];
+				
+				circle(markupImage, bubbleLocation, 2, 	getColor(bubble["value"].asBool()), 1, CV_AA);
+			}
+			segment["count"] = X;
+			segment["bubbles"].remove();
+
+		}
+	}
+	
+	ofstream outfile(outputPath, ios::out | ios::binary);
+	outfile << bvRoot;
+	outfile.close();
+	return true;
+}*/
 bool MarkupForm::markupForm(const char* markupPath, const char* formPath, const char* outputPath) {
 	Mat markupImage = imread(formPath);
 	if(markupImage.empty()) return false;

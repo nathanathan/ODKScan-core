@@ -1,4 +1,8 @@
 #include "configuration.h"
+#include "Processor.h"
+#include "PCA_classifier.h"
+#include "FormAlignment.h"
+#include "Addons.h"
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -10,11 +14,6 @@
 #include <iostream>
 #include <fstream>
 
-#include "Processor.h"
-#include "PCA_classifier.h"
-#include "FormAlignment.h"
-#include "Addons.h"
-
 // This sets the resolution of the form at which to perform segment alignment and classification.
 // It is a percentage of the size specified in the template.
 #define SCALEPARAM 1.0
@@ -22,6 +21,8 @@
 // Creates a buffer around segments porpotional to their size.
 // I think .5 is the largest value that won't cause ambiguous cases.
 #define SEGMENT_BUFFER .25
+
+
 
 #ifdef OUTPUT_SEGMENT_IMAGES
 #include "NameGenerator.h"
@@ -37,9 +38,9 @@ private:
 
 Json::Value root;
 Json::Value JsonOutput;
-Mat formImage;
 PCA_classifier classifier;
 string templPath;
+Mat formImage;
 
 Json::Value classifyBubbles(const Mat& segment, const Json::Value& bubbleLocations, const Mat& transformation, const Point& offset){
 	#ifdef OUTPUT_SEGMENT_IMAGES
@@ -59,7 +60,7 @@ Json::Value classifyBubbles(const Mat& segment, const Json::Value& bubbleLocatio
 		bubble_val current_bubble = classifier.classifyBubble(segment, refined_location);
 		
 		Mat actualLocation = transformation * Mat(Point3d(refined_location.x, refined_location.y, 1.f));
-
+		
 		Json::Value bubble;
 		bubble["value"] = Json::Value(current_bubble > NUM_BUBBLE_VALS/2);
 		//I'm thinking I should compute the transformations in the markup function and
@@ -119,10 +120,11 @@ Json::Value processSegment(const Json::Value &segmentTemplate){
 
 	vector<Point> quad = findBoundedRegionQuad(segment, SEGMENT_BUFFER);
 	//TODO: come up with some way for segment alignment to fail.
-
+				
 	if(quad.size() == 4){
 		#ifdef DEBUG_PROCESSOR
 		//This makes a stream of dots so we can see how fast things are going.
+		//we get a ! when things go wrong.
 		cout << '.' << flush;
 		#endif
 		Mat transformation = quadToTransformation(quad, imageRect.size());
@@ -133,6 +135,7 @@ Json::Value processSegment(const Json::Value &segmentTemplate){
 		segmentJsonOut["quad"] = quadToJsonArray(quad, expandedRect.tl());
 		segmentJsonOut["bubbles"] = classifyBubbles(alignedSegment, segmentTemplate["bubble_locations"],
 													transformation.inv(), expandedRect.tl());
+													
 		return segmentJsonOut;
 	}
 	else{
@@ -144,18 +147,18 @@ Json::Value processSegment(const Json::Value &segmentTemplate){
 		return segmentJsonOut;
 	}
 }
+
 public:
 //Constructor:
 //TODO: rewrite this so it is a separate function that can return an error if it fails to find a template.
 ProcessorImpl(const char* templatePath){
-	classifier = PCA_classifier(8);
+	classifier = PCA_classifier(22);
 	templPath = string(templatePath);
 	if(templPath.find(".") != string::npos){
-		templPath = templPath.substr(0, templPath.find_last_of(".") + 1);
+		templPath = templPath.substr(0, templPath.find_last_of("."));
 	}
 	cout << templPath << endl;
 	parseJsonFromFile(templPath + ".json", root);
-	
 	JsonOutput["template_path"] = templPath;
 }
 bool trainClassifier(const char* trainingImageDir){
@@ -169,8 +172,8 @@ bool trainClassifier(const char* trainingImageDir){
 													true);//flip training examples. TODO: test this
 	if (!success) return false;
 	
-	//classifier.set_search_window(Size(5,5));
-	JsonOutput["training_immage_directory"] = Json::Value(trainingImageDir);
+	classifier.set_search_window(Size(5,5));
+	JsonOutput["training_image_directory"] = Json::Value(trainingImageDir);
 	#ifdef DEBUG_PROCESSOR
 	cout << "trained" << endl;
 	#endif
@@ -181,7 +184,7 @@ void setClassifierWeight(float weight){
 	classifier.set_weight(PARTIAL_BUBBLE, 1-weight);
 	classifier.set_weight(EMPTY_BUBBLE, 1-weight);
 }
-//The rotate 90 thing might only be necessairy when dealing with non-feature based alignment...
+
 bool loadForm(const char* imagePath, int rotate90){
 	#ifdef DEBUG_PROCESSOR
 	cout << "loading form image..." << flush;
@@ -189,19 +192,18 @@ bool loadForm(const char* imagePath, int rotate90){
 	formImage = imread(imagePath, 0);
 	if(formImage.empty()) return false;
 	
+	//When using feature based alignment the rotate 90 thing might be unnecessairy.
 	if(rotate90 != 0){
 		Mat temp;
 		transpose(formImage, temp);
 		flip(temp,formImage, rotate90); //This might vary by phone... 1 is for Nexus.
 	}
-	JsonOutput["image_file"] = imagePath;
+	JsonOutput["image_path"] = imagePath;
 	#ifdef DEBUG_PROCESSOR
 	cout << "loaded" << endl;
 	#endif
 	return true;
 }
-//TODO: Maybe add a JSON template field for alignedImageOutputPath
-//TODO: Definately add one for the alignment quad and come up with a way to compare quads.
 bool alignForm(const char* alignedImageOutputPath){
 
 	#ifdef DEBUG_PROCESSOR
@@ -212,6 +214,7 @@ bool alignForm(const char* alignedImageOutputPath){
 
 	if( form_sz.width <= 0 || form_sz.height <= 0) return false;
 	
+	//TODO: For scaling just resize the picture so that it is aprox 20% more area than the template image.
 	Mat straightenedImage;
 	if( !alignFormImage( formImage, straightenedImage,
 									templPath,
@@ -220,6 +223,7 @@ bool alignForm(const char* alignedImageOutputPath){
 	if(straightenedImage.empty()) return false;
 
 	formImage = straightenedImage;	
+	JsonOutput["aligned_image_path"] = alignedImageOutputPath;
 	
 	#ifdef DEBUG_PROCESSOR
 	cout << "aligned" << endl;
@@ -230,8 +234,9 @@ bool processForm(const char* outputPath) {
 	#ifdef  DEBUG_PROCESSOR
 	cout << "Processing form" << flush;
 	#endif
+	
 	if( !root || formImage.empty() || !classifier.trained()){
-		cout << "Unable to process form. Err code: " <<
+		cout << "Unable to process form. Error code: " <<
 				(int)!root << (int)formImage.empty() << (int)!classifier.trained() << endl;
 		return false;
 	}
@@ -256,9 +261,7 @@ bool processForm(const char* outputPath) {
 		JsonOutputFields.append(fieldJsonOut);
 	}
 	
-	JsonOutput["form_type"] = root.get("form_type", "NA");
 	JsonOutput["form_scale"] = Json::Value(SCALEPARAM);
-	JsonOutput["form_image_path"] = Json::Value("NA");
 	JsonOutput["fields"] = JsonOutputFields;
 	#ifdef  DEBUG_PROCESSOR
 	cout << "done" << endl;
@@ -274,6 +277,9 @@ bool processForm(const char* outputPath) {
 }
 //Writes the form image to a file.
 bool writeFormImage(const char* outputPath){
+	//string path(outputPath);
+	//TODO: Made this create directory paths if one does not already exist
+	//see http://stackoverflow.com/questions/675039/how-can-i-create-directory-tree-in-c-linux
 	return imwrite(outputPath, formImage);
 }
 
