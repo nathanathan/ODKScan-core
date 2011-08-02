@@ -18,15 +18,6 @@
 using namespace std;
 using namespace cv;
 
-
-Scalar getColor(bool filled){
-	if(filled){
-		return Scalar(20, 20, 255);
-	}
-	else{
-		return Scalar(255, 20, 20);
-	}
-}
 //Marks up formImage based on the specifications of a bubble-vals JSON file at the given path.
 //Then output the form to the given locaiton.
 //Could add functionality for alignment markup to this but is it worth it?

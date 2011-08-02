@@ -5,6 +5,15 @@
 using namespace std;
 using namespace cv;
 
+//TODO: maybe move to markup form
+Scalar getColor(bool filled) {
+	if(filled){
+		return Scalar(20, 20, 255);
+	}
+	else{
+		return Scalar(255, 20, 20);
+	}
+}
 Size operator * (float lhs, Size rhs) {
 	return Size(lhs*rhs.width, lhs*rhs.height);
 }
@@ -14,7 +23,7 @@ Rect operator * (float lhs, Rect rhs) {
 Rect expandRect(const Rect& r, const float expansionPercentage){
 	Point diag = r.tl() - r.br();
 	return Rect(expansionPercentage * diag + r.tl(), 
-				-expansionPercentage * diag + r.br());
+				- expansionPercentage * diag + r.br());
 }
 
 Json::Value pointToJson(const Point p){

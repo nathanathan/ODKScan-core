@@ -15,6 +15,7 @@ It's a kind of random mix of stuff and it if grows a lot should probably be spli
 #include <json/value.h>
 
 //OpenCV oriented functions:
+cv::Scalar getColor(bool filled);
 cv::Size operator * (float lhs, cv::Size rhs);
 cv::Rect operator * (float lhs, cv::Rect rhs);
 cv::Rect expandRect(const cv::Rect& r, const float expansionPercentage);
