@@ -1,5 +1,6 @@
 #include "configuration.h"
 #include "Processor.h"
+#include "FileUtils.h"
 #include "PCA_classifier.h"
 #include "FormAlignment.h"
 #include "Addons.h"
@@ -22,7 +23,7 @@
 // I think .5 is the largest value that won't cause ambiguous cases.
 #define SEGMENT_BUFFER .25
 
-
+//#define DO_BUBBLE_INFERENCE
 
 #ifdef OUTPUT_SEGMENT_IMAGES
 #include "NameGenerator.h"
@@ -57,38 +58,24 @@ Json::Value classifyBubbles(const Mat& segment, const Json::Value& bubbleLocatio
 		Point bubbleLocation = SCALEPARAM * jsonToPoint(bubbleLocations[i]);
 		Point refined_location = classifier.bubble_align(segment, bubbleLocation);
 		
-		bubble_val current_bubble = classifier.classifyBubble(segment, refined_location);
+		bool bubbleVal = classifier.classifyBubble(segment, refined_location);
 		
 		Mat actualLocation = transformation * Mat(Point3d(refined_location.x, refined_location.y, 1.f));
 		
 		Json::Value bubble;
-		bubble["value"] = Json::Value(current_bubble > NUM_BUBBLE_VALS/2);
+		bubble["value"] = Json::Value( bubbleVal );
 		//I'm thinking I should compute the transformations in the markup function and
 		//just record relative point locations here.
 		//On the other hand that makes the output data less portable.
 		//(1.f/SCALEPARAM)* this is probably a bad idea (unless I shrink the output aligned image...)
-		bubble["location"] = pointToJson((Point(actualLocation.at<double>(0,0)/actualLocation.at<double>(2, 0),
-											   actualLocation.at<double>(1,0)/actualLocation.at<double>(2, 0)) + offset));
+		bubble["location"] = pointToJson((Point(actualLocation.at<double>(0,0) / actualLocation.at<double>(2, 0),
+											   actualLocation.at<double>(1,0) / actualLocation.at<double>(2, 0)) + offset));
 		bubblesJsonOut.append(bubble);
 		
 		#ifdef OUTPUT_SEGMENT_IMAGES
-		Scalar color(0, 0, 0);
-		switch(current_bubble) {
-			case EMPTY_BUBBLE:
-				color = Scalar(255, 255, 0);
-				break;
-			case PARTIAL_BUBBLE:
-				color = Scalar(255, 0, 255);
-				break;
-			case FILLED_BUBBLE:
-				color = Scalar(0, 255, 255);
-				break;
-			default:
-				cout << "invalid bubble value" << endl;
-		}
-		rectangle(dbg_out, bubbleLocation-Point(classifier.exampleSize.width/2,classifier.exampleSize.height/2),
-						   bubbleLocation+Point(classifier.exampleSize.width/2,classifier.exampleSize.height/2),
-						   color);
+		rectangle(dbg_out, bubbleLocation-Point(classifier.exampleSize.width / 2, classifier.exampleSize.height/2),
+						   bubbleLocation+Point(classifier.exampleSize.width / 2, classifier.exampleSize.height/2),
+						   getColor(bubbleVal));
 		
 		circle(dbg_out, refined_location, 1, Scalar(255, 2555, 255), -1);
 		#endif
@@ -152,7 +139,6 @@ public:
 //Constructor:
 //TODO: rewrite this so it is a separate function that can return an error if it fails to find a template.
 ProcessorImpl(const char* templatePath){
-	classifier = PCA_classifier(22);
 	templPath = string(templatePath);
 	if(templPath.find(".") != string::npos){
 		templPath = templPath.substr(0, templPath.find_last_of("."));
@@ -163,26 +149,32 @@ ProcessorImpl(const char* templatePath){
 }
 bool trainClassifier(const char* trainingImageDir){
 	#ifdef DEBUG_PROCESSOR
-	cout << "training classifier..." << flush;
+	cout << "training classifier..." << endl;
 	#endif
 	const Json::Value defaultSize = pointToJson(Point(8,12));
 	Json::Value bubbleSize = root.get("bubble_size", defaultSize);
-	bool success = classifier.train_PCA_classifier(string(trainingImageDir), 
-													SCALEPARAM * Size(bubbleSize[0u].asInt(), bubbleSize[1u].asInt()),
-													true);//flip training examples. TODO: test this
+	
+	vector<string> filepaths;
+	CrawlFileTree(string(trainingImageDir), filepaths);
+	bool success = classifier.train_PCA_classifier( filepaths, SCALEPARAM * Size(bubbleSize[0u].asInt(),
+																				 bubbleSize[1u].asInt()),
+													7, true);//flip training examples.
 	if (!success) return false;
 	
 	classifier.set_search_window(Size(5,5));
-	JsonOutput["training_image_directory"] = Json::Value(trainingImageDir);
+	JsonOutput["training_image_directory"] = Json::Value( trainingImageDir );
 	#ifdef DEBUG_PROCESSOR
 	cout << "trained" << endl;
 	#endif
 	return true;
 }
 void setClassifierWeight(float weight){
+	/*
 	classifier.set_weight(FILLED_BUBBLE, weight);
 	classifier.set_weight(PARTIAL_BUBBLE, 1-weight);
 	classifier.set_weight(EMPTY_BUBBLE, 1-weight);
+	*/
+	return;
 }
 
 bool loadForm(const char* imagePath, int rotate90){
@@ -258,7 +250,7 @@ bool processForm(const char* outputPath) {
 			fieldJsonOut["segments"].append(segmentJsonOut);
 		}
 		fieldJsonOut["key"] = field.get("key", -1);
-		#define DO_BUBBLE_INFERENCE
+		
 		#ifdef DO_BUBBLE_INFERENCE
 		inferBubbles(fieldJsonOut);
 		#endif

@@ -1,6 +1,5 @@
 #include "configuration.h"
 #include "PCA_classifier.h"
-#include "FileUtils.h"
 #include "NameGenerator.h"
 
 #include <opencv2/highgui/highgui.hpp>
@@ -29,12 +28,16 @@ NameGenerator exampleNamer("example_images_used/");
 using namespace std;
 using namespace cv;
 
-PCA_classifier::PCA_classifier():eigenvalues(4) {
-	weights = (Mat_<float>(3,1) << 1, 1, 1);
+template <class Tp>
+int vectorFind(const vector<Tp>& vec, const Tp& element) {
+	for(size_t i = 0; i < vec.size(); i++) {
+		if( vec[i] == element ) {
+			return i;
+		}
+	}
+	return -1;
 }
-PCA_classifier::PCA_classifier(int eigenvalues):eigenvalues(eigenvalues) {
-	weights = (Mat_<float>(3,1) << 1, 1, 1);
-}
+
 void PCA_classifier::update_gaussian_weights(){
 	float sigma = 1.0; //.5 gets best contrast
 
@@ -55,16 +58,27 @@ void PCA_classifier::update_gaussian_weights(){
 	minMaxLoc(temp, NULL, &temp_max);
 	gaussian_weights = temp_max - temp + .001;//.001 is to avoid roundoff problems, it might not be necessiary.
 }
-void PCA_classifier::set_weight(bubble_val classification, float weight) {
-	weights.at<float>((int)classification, 0) = weight;
-}
 void PCA_classifier::set_search_window(Size sw) {
 	search_window = sw;
 	update_gaussian_weights();
 }
+int PCA_classifier::getClassificationIdx(const string& filepath){
+	int nameIdx = filepath.find_last_of("/");
+	string filename = filepath.substr(nameIdx + 1, filepath.size() - nameIdx);
+	string classification = filename.substr(0, filename.find_first_of("_"));
+	int classificationIdx = vectorFind(classifications, classification);
+	
+	if(vectorFind(classifications, classification) < 0) {
+		classifications.push_back(classification);
+		classificationIdx = classifications.size();
+		cout << "Adding classification: " << classification << endl;
+	}
+	
+	return classificationIdx;
+}
 //Add an image Mat to a PCA_set performing the 
 //necessairy reshaping and type conversion.
-void PCA_classifier::PCA_set_add(Mat& PCA_set, const Mat& img) {
+void PCA_classifier::PCA_set_push_back(Mat& PCA_set, const Mat& img) {
 	Mat PCA_set_row;
     
 	img.convertTo(PCA_set_row, CV_32F);
@@ -80,22 +94,8 @@ void PCA_classifier::PCA_set_add(Mat& PCA_set, const Mat& img) {
 }
 //Loads a image with the specified filename and adds it to the PCA set.
 //Classifications are inferred from the filename and added to training_bubble_values.
-void PCA_classifier::PCA_set_add(Mat& PCA_set, const string& filename, bool flipExamples) {
-	//Infer classification
-	bubble_val classification;
-	if( filename.find("filled") != string::npos ) {
-		classification = FILLED_BUBBLE;
-	}
-	else if( filename.find("partial") != string::npos ) {
-		classification = PARTIAL_BUBBLE;
-	}
-	else if( filename.find("empty") != string::npos ) {
-		classification = EMPTY_BUBBLE;
-	}
-	else{
-		return;
-	}
-	//Add example to PCA_set
+void PCA_classifier::PCA_set_add(Mat& PCA_set, vector<int>& trainingBubbleValues, const string& filename, bool flipExamples) {
+
 	Mat example = imread(filename, 0);
 	if (example.data == NULL) {
         cerr << "could not read " << filename << endl;
@@ -110,50 +110,46 @@ void PCA_classifier::PCA_set_add(Mat& PCA_set, const string& filename, bool flip
 	imwrite(outfilename, aptly_sized_example);
 	#endif
 	
-	PCA_set_add(PCA_set, aptly_sized_example);
-	training_bubble_values.push_back(classification);
+	int classificationIdx = getClassificationIdx(filename);
+	
+	PCA_set_push_back(PCA_set, aptly_sized_example);
+	trainingBubbleValues.push_back(classificationIdx);
 	
 	if(flipExamples){
 		for(int i = -1; i < 2; i++){
 			Mat temp;
 			flip(aptly_sized_example, temp, i);
-			PCA_set_add(PCA_set, temp);
-			training_bubble_values.push_back(classification);
+			PCA_set_push_back(PCA_set, temp);
+			trainingBubbleValues.push_back(classificationIdx);
 		}
 	}
 }
-//This trains the PCA classifer by query.
-//A predicate can be supplied for filtering out undesireable filenames
-bool PCA_classifier::train_PCA_classifier(const string& dirPath, Size myExampleSize,
-											bool flipExamples,  bool (*pred)(string&)) {
-	//Maybe put this in the initializer?
+bool PCA_classifier::train_PCA_classifier(const vector<string>& examplePaths, const Size& myExampleSize,
+											int eigenvalues, bool flipExamples) {
+	
+	weights = (Mat_<float>(3,1) << 1, 1, 1);
 	exampleSize = myExampleSize;
 	search_window = myExampleSize;
 	update_gaussian_weights();
-	
-	vector<string> filenames;
-	CrawlFileTree(dirPath, filenames);
 
 	Mat PCA_set;
-	vector<string>::iterator it;
-	for(it = filenames.begin(); it != filenames.end(); ++it) {
-		if( pred((*it)) ) {
-			PCA_set_add(PCA_set, (*it), flipExamples);
-		}
+	vector<int> trainingBubbleValues;
+	for(size_t i = 0; i < examplePaths.size(); i++) {
+		PCA_set_add(PCA_set, trainingBubbleValues, examplePaths[i], flipExamples);
 	}
 
 	if(PCA_set.rows < eigenvalues) return false;//Not completely sure about this...
 
 	my_PCA = PCA(PCA_set, Mat(), CV_PCA_DATA_AS_ROW, eigenvalues);
-	comparison_vectors = my_PCA.project(PCA_set);
+	Mat comparisonVectors = my_PCA.project(PCA_set);
 	
-	Mat trainClasses(1,1,CV_32SC1);
-	trainClasses.at<int>(0) = (int)training_bubble_values[0];
-	for(size_t i = 1; i < training_bubble_values.size(); i++){
-		trainClasses.push_back( (int)training_bubble_values[i] );
+	Mat trainingBubbleValuesMat(1,1,CV_32SC1);
+	trainingBubbleValuesMat.at<int>(0) = trainingBubbleValues[0];
+	for(size_t i = 1; i < trainingBubbleValues.size(); i++){
+		trainingBubbleValuesMat.push_back( trainingBubbleValues[i] );
 	}
-	
-	statClassifier.train(comparison_vectors, trainClasses);
+
+	statClassifier.train_auto(comparisonVectors, trainingBubbleValuesMat, Mat(), Mat(), CvSVMParams());
 	
 	return true;
 }
@@ -206,50 +202,11 @@ Point PCA_classifier::bubble_align(const Mat& det_img_gray, const Point& bubble_
 	
 	return min_location + offset;
 }
-/*
-void bubbleAlignHelper(const Mat& det_img_gray, const Point& bubble_location, Mat& computed, int iterations) {
-
-	Point directions[8] = {	Point(-1,1),  Point(0,1),  Point(1,1),
-							Point(-1,0), 			   Point(1,0),
-							Point(-1,-1), Point(0,-1), Point(1,-1) };
-							
-	Point offset(bubble_location);
-	
-	Point currentLocation(bubble_location);
-	
-	while( iterations >= 0 ){
-		for(size_t i = 0; i < (size_t)computed.cols; i++) {
-			for(size_t j = 0; j < (size_t)computed.rows; j++) {
-				if(computed.at<double>(j, i) == 0 ){
-					computed.at<double>(j, i) = rateBubble(det_img_gray, Point(j, i) + offset);
-				}
-				
-			}
-		}
-		
-		iterations--;
-	}
-	
-	Point offset = Point(bubble_location.x - search_window.width/2, bubble_location.y - search_window.height/2);
-	
-	for(size_t i = 0; int(i) < search_window.width; i++) {
-		for(size_t j = 0; int(j) < search_window.height; j++) {
-			out.col(i).row(j) += rateBubble(det_img_gray, Point(i,j) + offset);
-		}
-	}
-	out = out.mul(gaussian_weights);
-	Point min_location;
-	minMaxLoc(out, NULL,NULL, &min_location);
-	
-	return min_location + offset;
+inline bool isFilled( int val ){
+	return val != 1;
 }
-Point PCA_classifier::bubble_align(const Mat& det_img_gray, const Point& bubble_location){
-	Mat mask = Mat::zeros(search_window, CV_32F);
-	bubbleAlignHelper(det_img_gray, bubble_location, mask, 10);
-}*/
-
 //Compare the specified bubble with all the training bubbles via PCA.
-bubble_val PCA_classifier::classifyBubble(const Mat& det_img_gray, const Point& bubble_location) {
+bool PCA_classifier::classifyBubble(const Mat& det_img_gray, const Point& bubble_location) {
 	Mat query_pixels;
 
     #ifdef USE_GET_RECT_SUB_PIX
@@ -272,31 +229,10 @@ bubble_val PCA_classifier::classifyBubble(const Mat& det_img_gray, const Point& 
 	#ifdef NORMALIZE
 	normalize(query_pixels, query_pixels);
 	#endif
-	bubble_val returnVal = (bubble_val) statClassifier.predict( my_PCA.project(query_pixels) );
-	return returnVal;
-	/*
-	//Here we find the best filled and empty matches in the PCA training set.
-	Mat responce, out;
-	matchTemplate(comparison_vectors, my_PCA.project(query_pixels), responce, CV_TM_CCOEFF_NORMED);
-	reduce(responce, out, 1, CV_REDUCE_MAX);
-	
-	vector<float> max_responces(NUM_BUBBLE_VALS, 0);
-	for(size_t i = 0; i < training_bubble_values.size(); i+=1) {
-	
-		float current_responce = sum(out.row(i)).val[0]; //This only uses the sum function for convenience
-		
-		if(current_responce > max_responces[training_bubble_values[i]]) {
-			max_responces[training_bubble_values[i]] = current_responce;
-		}
-	}
-	//Here we weight and compare the responces for all classifications,
-	//returning the classification with the maximum weighted responce.
-	//To use neighboring bubbles in classification we will probably want this method
-	//to return the scores without comparing them.
-	Point max_location;
-	minMaxLoc(Mat(max_responces).mul(weights), NULL, NULL, NULL, &max_location);
-	return (bubble_val) max_location.y;*/
+	int returnVal = statClassifier.predict( my_PCA.project(query_pixels) );
+	return isFilled( returnVal );
+
 }
-bool PCA_classifier::trained(){
+bool PCA_classifier::trained() {
 	return my_PCA.mean.data != NULL;
 }
