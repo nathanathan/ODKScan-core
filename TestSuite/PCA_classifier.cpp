@@ -14,8 +14,6 @@ NameGenerator classifierNamer("bubble_images/");
 NameGenerator exampleNamer("example_images_used/");
 #endif
 
-//Normalizing everything that goes into the PCA *might* help with lighting problems
-//But so far just seems to hurt accuracy.
 #define NORMALIZE
 
 //getRectSubPix might slow things down, but provides 2 advanges over the roi method
@@ -24,6 +22,13 @@ NameGenerator exampleNamer("example_images_used/");
 //2. If the rectangle crosses the image boundary (because of a large search window)
 //   it won't give an error.
 //#define USE_GET_RECT_SUB_PIX
+
+//#define USE_MASK
+//Using a mask seems to slightly help bubble alignment in the average case but cause some additional misses.
+
+//#define DISABLE_PCA
+//So PCA definately does help, but only by a few percent and speedwise...
+
 
 using namespace std;
 using namespace cv;
@@ -37,9 +42,9 @@ int vectorFind(const vector<Tp>& vec, const Tp& element) {
 	}
 	return -1;
 }
-
+//The gaussian intensity isn't correctly scaling...
 void PCA_classifier::update_gaussian_weights(){
-	float sigma = 1.0; //.5 gets best contrast
+	float sigma = .5; //increasing decreases spread.
 
 	//This precomputes the gaussian for subbbubble alignment.
 	int height = search_window.height;
@@ -104,10 +109,14 @@ void PCA_classifier::PCA_set_add(Mat& PCA_set, vector<int>& trainingBubbleValues
     Mat aptly_sized_example;
 	resize(example, aptly_sized_example, Size(exampleSize.width, exampleSize.height), 0, 0, INTER_AREA);
 
+	#ifdef USE_MASK
+		aptly_sized_example = aptly_sized_example & cMask;
+	#endif
+
 	#ifdef OUTPUT_EXAMPLES
-	string outfilename = exampleNamer.get_unique_name("bubble_");
-	outfilename.append(".jpg");
-	imwrite(outfilename, aptly_sized_example);
+		string outfilename = exampleNamer.get_unique_name("bubble_");
+		outfilename.append(".jpg");
+		imwrite(outfilename, aptly_sized_example);
 	#endif
 	
 	int classificationIdx = getClassificationIdx(filename);
@@ -132,6 +141,25 @@ bool PCA_classifier::train_PCA_classifier(const vector<string>& examplePaths, co
 	search_window = myExampleSize;
 	update_gaussian_weights();
 
+	#ifdef USE_MASK
+		cMask = gaussian_weights < .002;
+		/*
+		namedWindow("outliers", CV_WINDOW_NORMAL);
+		imshow( "outliers", cMask );
+		
+		for(;;)
+		{
+		    char c = (char)waitKey(0);
+		    if( c == '\x1b' ) // esc
+		    {
+		    	cvDestroyWindow("inliers");
+		    	cvDestroyWindow("outliers");
+		        break;
+		    }
+		}
+		*/
+	#endif
+
 	Mat PCA_set;
 	vector<int> trainingBubbleValues;
 	for(size_t i = 0; i < examplePaths.size(); i++) {
@@ -149,6 +177,11 @@ bool PCA_classifier::train_PCA_classifier(const vector<string>& examplePaths, co
 		trainingBubbleValuesMat.push_back( trainingBubbleValues[i] );
 	}
 
+	#ifdef DISABLE_PCA
+	statClassifier.train_auto(PCA_set, trainingBubbleValuesMat, Mat(), Mat(), CvSVMParams());
+	return true;
+	#endif
+	
 	statClassifier.train_auto(comparisonVectors, trainingBubbleValuesMat, Mat(), Mat(), CvSVMParams());
 	
 	return true;
@@ -156,8 +189,7 @@ bool PCA_classifier::train_PCA_classifier(const vector<string>& examplePaths, co
 //Rate a location on how likely it is to be a bubble.
 //The rating is the SSD of the queried pixels and their PCA back projection,
 //so lower ratings mean more bubble like.
-//TODO: Add an option to use correlation instead of SSD and see if we get an improvement.
-double PCA_classifier::rateBubble(const Mat& det_img_gray, const Point& bubble_location) {
+inline double PCA_classifier::rateBubble(const Mat& det_img_gray, const Point& bubble_location) {
 
     Mat query_pixels, pca_components;
 
@@ -168,17 +200,82 @@ double PCA_classifier::rateBubble(const Mat& det_img_gray, const Point& bubble_l
 		query_pixels = Mat::zeros(exampleSize, det_img_gray.type());
 		query_pixels(Rect(Point(0,0), window.size())) += det_img_gray(window);
 	#endif
+
+	#ifdef USE_MASK
+		query_pixels = query_pixels & cMask;
+	#endif
 	
 	query_pixels.reshape(0,1).convertTo(query_pixels, CV_32F);
 
 	#ifdef NORMALIZE
 		normalize(query_pixels, query_pixels);
 	#endif
+	
+	pca_components = my_PCA.project(query_pixels);
 
-    pca_components = my_PCA.project(query_pixels);
-    Mat out = my_PCA.backProject(pca_components) - query_pixels;
-    return sum(out.mul(out)).val[0];
+	#if 0
+		Mat out;
+		matchTemplate(pca_components, my_PCA.backProject(pca_components), out, CV_TM_SQDIFF_NORMED);
+		return out.at<float>(0,0);
+    #endif
+	Mat out = my_PCA.backProject(pca_components) - query_pixels;
+	return sum(out.mul(out)).val[0];
 }
+#define USE_HILLCLIMBING
+#ifdef USE_HILLCLIMBING
+//This using a hillclimbing algorithm to find the location with the highest bubble rating.
+//It might only find a local instead of global minimum but it is much faster.
+Point PCA_classifier::bubble_align(const Mat& det_img_gray, const Point& bubble_location) {
+	int iterations = 10;
+
+	Mat sofar = Mat::zeros(Size(2*iterations+1, 2*iterations+1), CV_8UC1);
+	Point offset = Point(bubble_location.x - iterations, bubble_location.y - iterations);
+	Point loc = Point(iterations, iterations);
+	
+	double minDirVal = 100.;
+	while( iterations > 0 ){
+		Point minDir(0,0);
+		for(int i = loc.x-1; i <= loc.x+1; i++) {
+			for(int j = loc.y-1; j <= loc.y+1; j++) {
+				if(sofar.at<uchar>(j,i) != 123) {
+					sofar.at<uchar>(j,i) = 123;
+					
+					double rating = rateBubble(det_img_gray, Point(i,j) + offset);
+					rating *= MAX(1, norm(loc - Point(iterations, iterations)));
+					
+					if(rating <= minDirVal){
+						minDirVal = rating;
+						minDir = Point(i,j) - loc;
+					}
+					
+				}
+			}
+		}
+		if(minDir.x == 0 && minDir.y == 0){
+			break;
+		}
+		loc += minDir;
+		iterations--;
+	}
+	#if 0
+	namedWindow("outliers", CV_WINDOW_NORMAL);
+	imshow( "outliers", sofar );
+	
+	for(;;)
+	{
+	    char c = (char)waitKey(0);
+	    if( c == '\x1b' ) // esc
+	    {
+	    	cvDestroyWindow("inliers");
+	    	cvDestroyWindow("outliers");
+	        break;
+	    }
+	}
+	#endif
+	return loc + offset;
+}
+
+#else
 //This bit of code finds the location in the search_window most likely to be a bubble
 //then it checks that rather than the exact specified location.
 //This section probably slows things down by quite a bit and it might not provide significant
@@ -188,20 +285,30 @@ Point PCA_classifier::bubble_align(const Mat& det_img_gray, const Point& bubble_
 		return bubble_location;
 	}
 
-	Mat out = Mat::zeros(search_window, CV_32F);
+	Mat out(search_window, CV_32F);
 	Point offset = Point(bubble_location.x - search_window.width/2, bubble_location.y - search_window.height/2);
 	
-	for(size_t i = 0; int(i) < search_window.width; i++) {
-		for(size_t j = 0; int(j) < search_window.height; j++) {
-			out.col(i).row(j) += rateBubble(det_img_gray, Point(i,j) + offset);
+	for(int i = 0; i < search_window.width; i++) {
+		for(int j = 0; j < search_window.height; j++) {
+			out.at<float>(j,i) = rateBubble(det_img_gray, Point(i,j) + offset);
 		}
 	}
 	out = out.mul(gaussian_weights);
+	
+	/*
+	out = out.mul(gaussian_weights);
+	Mat temp;
+	medianBlur(out, temp, 5);
+	out = temp;
+	*/
+	
 	Point min_location;
 	minMaxLoc(out, NULL,NULL, &min_location);
 	
 	return min_location + offset;
 }
+#endif
+
 inline bool isFilled( int val ){
 	return val != 1;
 }
@@ -210,25 +317,34 @@ bool PCA_classifier::classifyBubble(const Mat& det_img_gray, const Point& bubble
 	Mat query_pixels;
 
     #ifdef USE_GET_RECT_SUB_PIX
-	getRectSubPix(det_img_gray, Size(exampleSize.width, exampleSize.height), bubble_location, query_pixels);
+		getRectSubPix(det_img_gray, Size(exampleSize.width, exampleSize.height), bubble_location, query_pixels);
 	#else									 
-	Rect window = Rect(bubble_location - Point(exampleSize.width/2, exampleSize.height/2), exampleSize) & Rect(Point(0,0), det_img_gray.size());
-	query_pixels = Mat::zeros(exampleSize, det_img_gray.type());
-	query_pixels(Rect(Point(0,0), window.size())) += det_img_gray(window);
+		Rect window = Rect(bubble_location - Point(exampleSize.width/2, exampleSize.height/2), exampleSize) & Rect(Point(0,0), det_img_gray.size());
+		query_pixels = Mat::zeros(exampleSize, det_img_gray.type());
+		query_pixels(Rect(Point(0,0), window.size())) += det_img_gray(window);
+	#endif
+	
+	#ifdef USE_MASK
+		query_pixels = query_pixels & cMask;
 	#endif
 	
 	#ifdef OUTPUT_BUBBLE_IMAGES
-	string segfilename = classifierNamer.get_unique_name("bubble_");
-	segfilename.append(".jpg");
-	imwrite(segfilename, query_pixels);
+		string segfilename = classifierNamer.get_unique_name("bubble_");
+		segfilename.append(".jpg");
+		imwrite(segfilename, query_pixels);
 	#endif
 	
 	query_pixels.convertTo(query_pixels, CV_32F);
 	query_pixels = query_pixels.reshape(0,1);
 	
 	#ifdef NORMALIZE
-	normalize(query_pixels, query_pixels);
+		normalize(query_pixels, query_pixels);
 	#endif
+	
+	#ifdef DISABLE_PCA
+		return isFilled( statClassifier.predict( query_pixels ) );
+	#endif
+	
 	int returnVal = statClassifier.predict( my_PCA.project(query_pixels) );
 	return isFilled( returnVal );
 

@@ -26,6 +26,8 @@ class PCA_classifier
 		//Each element corresponds to a classification.
 		cv::Mat weights;
 		
+		cv::Mat cMask;
+		
 		void update_gaussian_weights();
 		
 		int getClassificationIdx(const std::string& filepath);
