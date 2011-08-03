@@ -107,22 +107,32 @@ public class AfterPhotoTaken extends Activity {
 			{
 				//Untested:
 				toastMessage = getResources().getString(R.string.DetectFormFailed);
+				//TODO: display something where the webview would be.
 			}
 			Toast.makeText(getApplicationContext(), toastMessage,
 					Toast.LENGTH_LONG).show();
 		}
 
 		// Run the C++ code that detects the form in the photo
+		// Does this have priority associated with it?
 		@Override
 		protected Void doInBackground(Void... arg) {
-			Processor mProcessor = new Processor(getResources().getString(com.bubblebot.R.string.templatePath));
-			Log.i("Nathan","Loading: " + capturedDir + imageFilename + ".jpg");
-			if(mProcessor.loadForm(capturedDir + imageFilename + ".jpg", 1)){
-				detectResult = mProcessor.alignForm(alignmentOutputImage);
-				Log.i("Nathan","aligned");
+			
+			Processor mProcessor = new Processor();
+			String templatePath = getResources().getString(com.bubblebot.R.string.templatePath);
+			
+			if(mProcessor.loadForm(capturedDir + imageFilename + ".jpg")){
+				Log.i("Nathan","Loading: " + capturedDir + imageFilename + ".jpg");
+				if(mProcessor.loadTemplate(templatePath)){
+					detectResult = mProcessor.alignForm(alignmentOutputImage);
+					Log.i("Nathan","aligned");
+				}
+				else{
+					Log.i("Nathan","FAILED TO LOAD TEMPLATE: " + templatePath);
+				}
 			}
 			else{
-				Log.i("Nathan","FAILED TO LOAD IMAGE.");
+				Log.i("Nathan","FAILED TO LOAD IMAGE: " + capturedDir + imageFilename + ".jpg");
 			}
 			return null;
 		}

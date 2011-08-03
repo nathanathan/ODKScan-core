@@ -71,10 +71,11 @@ public class BubbleProcess extends Activity  {
 		@Override
 		protected Void doInBackground(Void... arg) {
 			Log.d("Nathan","PICTURE NAME: " + pictureName);
-			Processor mProcessor = new Processor(getResources().getString(com.bubblebot.R.string.templatePath));
-			mProcessor.trainClassifier("/sdcard/mScan/training_examples");
-			mProcessor.loadForm(pictureName);
-			mProcessor.processForm("sdcard/BubbleBot/output.json");
+			Processor mProcessor = new Processor();
+			if( !mProcessor.loadForm(pictureName) ) return null;
+			if( !mProcessor.loadTemplate(getResources().getString(com.bubblebot.R.string.templatePath))) return null;
+			if( !mProcessor.trainClassifier("/sdcard/mScan/training_examples")) return null;
+			if( !mProcessor.processForm("sdcard/BubbleBot/output.json")) return null;
 			//This is a big hacky and should be fixed eventually...
 			//Do I have to instantiate something to use it's methods?
 			(new MarkupForm()).markupForm("sdcard/BubbleBot/output.json", pictureName, "sdcard/BubbleBot/markedup.jpg");

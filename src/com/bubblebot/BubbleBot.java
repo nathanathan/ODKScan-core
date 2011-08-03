@@ -23,13 +23,21 @@ import android.widget.Button;
 public class BubbleBot extends Activity {
 	public static final String PREFS_NAME = "mScanPrefs";
 	//The version variable is used to reextract assets after they are modified.
-	//TODO: Make feature data dependent on this
-	public static final int version = 9;
+	public static final int version = 11;
 	// Initialize the application
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.bubble_bot); // Setup the UI
+		
+		if( (new File("/sdcard")).getUsableSpace() < 1000){
+			Log.i("Nathan", "Not enough space");
+			//TODO: make a message to this effect that offers to remove saved images.
+			return;
+		}
+		
+		//Extract all the necessary assets.
+		//TODO: this can take a few seconds so add a dialog window.
 		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
 		int currentVersion = settings.getInt("version", 0);
 		if(currentVersion < version){
