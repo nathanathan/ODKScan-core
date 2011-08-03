@@ -8,7 +8,8 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/legacy/compat.hpp>
+//#include <opencv2/legacy/compat.hpp>
+#include <opencv2/calib3d/calib3d.hpp>
 
 #include <json/json.h>
 
@@ -43,10 +44,38 @@ PCA_classifier classifier;
 string templPath;
 Mat formImage;
 
-Json::Value classifyBubbles(const Mat& segment, const Json::Value& bubbleLocations, const Mat& transformation, const Point& offset){
+vector<Point> getBubbleLocations(const Mat& segment, const Json::Value& bubbleLocationsJSON){
+	vector<Point2f> points1, points2;
+	vector <Point> bubbleLocations;
+	
+	if( bubbleLocationsJSON.size() < 25){
+		for (size_t i = 0; i < bubbleLocationsJSON.size(); i++) {
+			bubbleLocations.push_back( classifier.bubble_align(segment, SCALEPARAM * jsonToPoint(bubbleLocationsJSON[i]) ) );
+		}
+		return bubbleLocations;
+	}
+	
+	for (size_t i = 0; i < bubbleLocationsJSON.size(); i++) {
+		bubbleLocations.push_back( SCALEPARAM * jsonToPoint(bubbleLocationsJSON[i]) );
+		if(i % 2 == 1) {
+			Point refinedLocation = classifier.bubble_align(segment, bubbleLocations.back());
+			points1.push_back(Point2f(bubbleLocations.back().x, bubbleLocations.back().y));
+			points2.push_back(Point2f(refinedLocation.x, refinedLocation.y));
+		}
+	}
+	
+	Mat H = findHomography( Mat(points1), Mat(points2), CV_LMEDS );
+	
+	for (size_t i = 0; i < bubbleLocations.size(); i++) {
+		Mat actualLocation = H * Mat(Point3d(bubbleLocations[i].x, bubbleLocations[i].y, 1.f));
+		bubbleLocations[i] = Point( actualLocation.at<double>(0,0) / actualLocation.at<double>(2, 0),
+									actualLocation.at<double>(1,0) / actualLocation.at<double>(2, 0));
+	}
+	return bubbleLocations;
+}
+Json::Value classifyBubbles(const Mat& segment, const Json::Value& bubbleLocationsJSON, const Mat& transformation, const Point& offset){
 	#ifdef OUTPUT_SEGMENT_IMAGES
-	//TODO: This should become perminant functionality.
-	//		My idea is to have Java code that displays segment images as the form is being processed.
+	//Maybe add Java code that displays segment images as the form is being processed.
 	Mat dbg_out;
 	cvtColor(segment, dbg_out, CV_GRAY2RGB);
 	dbg_out.copyTo(dbg_out);
@@ -54,30 +83,28 @@ Json::Value classifyBubbles(const Mat& segment, const Json::Value& bubbleLocatio
 	
 	Json::Value bubblesJsonOut;
 	
+	vector<Point> bubbleLocations = getBubbleLocations(segment, bubbleLocationsJSON);
+	
 	for (size_t i = 0; i < bubbleLocations.size(); i++) {
-		Point bubbleLocation = SCALEPARAM * jsonToPoint(bubbleLocations[i]);
-		Point refined_location = classifier.bubble_align(segment, bubbleLocation);
-		
-		bool bubbleVal = classifier.classifyBubble(segment, refined_location);
-		
-		Mat actualLocation = transformation * Mat(Point3d(refined_location.x, refined_location.y, 1.f));
-		
+
+		bool bubbleVal = classifier.classifyBubble(segment, bubbleLocations[i]);
 		Json::Value bubble;
 		bubble["value"] = Json::Value( bubbleVal );
 		//I'm thinking I should compute the transformations in the markup function and
 		//just record relative point locations here.
 		//On the other hand that makes the output data less portable.
 		//(1.f/SCALEPARAM)* this is probably a bad idea (unless I shrink the output aligned image...)
+		Mat actualLocation = transformation * Mat(Point3d(bubbleLocations[i].x, bubbleLocations[i].y, 1.f));
 		bubble["location"] = pointToJson((Point(actualLocation.at<double>(0,0) / actualLocation.at<double>(2, 0),
 											   actualLocation.at<double>(1,0) / actualLocation.at<double>(2, 0)) + offset));
 		bubblesJsonOut.append(bubble);
 		
 		#ifdef OUTPUT_SEGMENT_IMAGES
-		rectangle(dbg_out, bubbleLocation-Point(classifier.exampleSize.width / 2, classifier.exampleSize.height/2),
-						   bubbleLocation+Point(classifier.exampleSize.width / 2, classifier.exampleSize.height/2),
+		rectangle(dbg_out, bubbleLocations[i] - Point(classifier.exampleSize.width / 2, classifier.exampleSize.height/2),
+						   bubbleLocations[i] + Point(classifier.exampleSize.width / 2, classifier.exampleSize.height/2),
 						   getColor(bubbleVal));
 		
-		circle(dbg_out, refined_location, 1, Scalar(255, 2555, 255), -1);
+		circle(dbg_out, bubbleLocations[i], 1, Scalar(255, 2555, 255), -1);
 		#endif
 	}
 	#ifdef OUTPUT_SEGMENT_IMAGES
