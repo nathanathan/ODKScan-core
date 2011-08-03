@@ -1,29 +1,36 @@
 This is a testing suite for the form scanning procedure.
-You will need to provide your own form images in a "form_images" folder.
+None of the tests work out of the box.
+You will need to have a form image and form template, and to specify their respective paths in the code for the test you are running.
+In addition you will need to provide your own form images in a "form_images" folder.
 
 Source file information
 ______________________________
 
 	Core Files:
 
-* Processor - 		Handles JSON parsing and provides an interface.
-* FormAlignment - 	Contains functions for aligning forms and segments.
-* PCA_classifier - 	Classifies bubbles using principal component analysis.
-					Contains code for reading training data from directories and refining bubble positions.
-* Addons - 			Misc. utility functions that are useful in multiple places.
-* NameGenerator - 	A utility for generating unique names.
-* FileUtils - 		A utility for crawling file tree and returning all the file names.
-* MarkupForm - 		Contains a function for marking up a form using a JSON form template or bubble vals file.
+* Processor (.h|.cpp) 		-Handles JSON parsing and provides an interface.
+* FormAlignment (.h|.cpp) 	 Contains functions for aligning forms and segments.
+* PCA_classifier (.h|.cpp)	-Classifies bubbles using principal component analysis.
+							 Contains code for reading training data from directories and refining bubble positions.
+* Addons (.h|.cpp) 			-Misc. utility functions that are useful in multiple places.
+* NameGenerator (.h|.cpp) 	-A utility for generating unique names.
+* FileUtils (.h|.cpp) 		-A utility for crawling file trees and returning all the file names.
+* MarkupForm (.h|.cpp) 		-Contains a function for marking up a form using a JSON form template or bubble vals file.
 
 	note:
 	Core Files can be swapped with those in the jni directory.
 	The command "make jni-transfer" will do this swapping for you.
 
 	Test Suite Specific Files:
-	
-* TestTools - 		Code for use in test programs. Prints out stats.
-* ROC_plot_script - Plots ROC curves using the resultant data from tests with varying parameters.
-					In order to generate plots you will have to install [R] the statisical programming language.
+
+* TestTools.cpp				-Code for use in test programs. Prints out stats.
+* ROC_plot_script			-Plots ROC curves using the resultant data from tests with varying parameters.
+							 In order to generate plots you will have to install [R] the statisical programming language.
+* TemplateEditor.cpp		-This is some code that might be useful for editing JSON templates.
+							 It's pretty messy so I don't know if it will be of much use to anyone but me.
+* configuration.h			-The jni folder has a configuration file as well, but they are *not* interchangable.
+							 This file is used to define macros that enable test suite specific funtionality.
+							 (For example outputting debug text/images).
 
 The tests folder contains the actual test code.
 Each cpp file in there should have a make corresponding make target you can use.
