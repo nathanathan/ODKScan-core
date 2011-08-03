@@ -24,8 +24,6 @@
 //#define ALWAYS_COMPUTE_TEMPLATE_FEATURES
 //#define SHOW_MATCHES_WINDOW
 
-
-
 #ifdef OUTPUT_DEBUG_IMAGES
 #include "NameGenerator.h"
 NameGenerator alignmentNamer("debug_segment_images/");
@@ -46,7 +44,7 @@ vector<Point> orderCorners(const vector<Point>& corners){
 	Mat p0 = (Mat_<double>(1,3) << corners[0].x, corners[0].y, 0 );
 	Mat p1 = (Mat_<double>(1,3) << corners[1].x, corners[1].y, 0 );
 
-	if((center - p0).cross(p1 - p0).at<double>(0,2) < 0){ //Check this math just in case
+	if((center - p0).cross(p1 - p0).at<double>(0,2) < 0){ //Double-check this math just in case
 		orderedCorners = vector<Point>(corners.begin(), corners.end());
 	}
 	else{
@@ -164,7 +162,7 @@ void findLinesHelper(const Mat& img, int& start, int& end, const Rect& roi, bool
 
 	int vSpan, hSpan;
 	int range, midpoint;
-	float maxSlope = .2;
+	float maxSlope = .15;
 
 	if(transpose){
 		vSpan = img.cols - 1;
@@ -180,7 +178,7 @@ void findLinesHelper(const Mat& img, int& start, int& end, const Rect& roi, bool
 	}
 	
 	//The param limits the weigting to a certain magnitude, in this case 10% of the max.
-	int param = .11 * 255 * (hSpan + 1);
+	int param = .15 * 255 * (hSpan + 1);
 	float maxSsdFromMidpoint = 2*range*range;
 	
 	int minLs = INT_MAX;
@@ -259,7 +257,7 @@ vector<Point> findQuad(const Mat& img, int blurSize, float buffer = 0.0){
 	float actual_height_multiple = float(img.cols) / temp_img.cols;
 	
 	temp_img.copyTo(temp_img2);
-	#if 0
+	#if 1
 	blur(temp_img2, temp_img, 2*Size(2*blurSize+1, 2*blurSize+1));
 	#else
 	//Not sure if this had advantages or not...
@@ -325,8 +323,6 @@ vector<Point> findQuad(const Mat& img, int blurSize, float buffer = 0.0){
 	}
 	#endif
 	
-	//TODO: Use OpenCV subpixel corner finding function here.
-	
 	#ifdef OUTPUT_DEBUG_IMAGES
 	Mat dbg_out, dbg_out2;
 	imgThresh.copyTo(dbg_out);
@@ -361,8 +357,6 @@ vector<Point> transformationToQuad(const Mat& H, const Size& out_image_sz){
 										 1,	1,					1, 					 1);
 
 	Mat out_img_rect =  H.inv() * img_rect;
-
-	//cout << img_rect << endl;
 	
 	vector<Point> quad;
 	for(size_t i = 0; i < 4; i++){
@@ -461,54 +455,63 @@ Mat makeFieldMask(const string& jsonTemplate){
 	}
 	return mask;
 }
+bool checkForSavedFeatures( const string& featuresFile, Size& templImageSize,
+							vector<KeyPoint>& templKeypoints, Mat& templDescriptors){
+	if( fileExists(featuresFile) ) {
+		try {
+			FileStorage fs(featuresFile, FileStorage::READ);
+			if( !fs["templwidth"].empty() && !fs["templheight"].empty() &&
+				!fs["templKeypoints"].empty() && !fs["templDescriptors"].empty()){
 
+				fs["templwidth"] >> templImageSize.width;
+				fs["templheight"] >> templImageSize.height; 
+
+				read(fs["templKeypoints"], templKeypoints);
+				fs["templDescriptors"] >> templDescriptors;
+			}
+			else{
+				return false;
+			}
+		}
+		catch( cv::Exception& e ) {
+			const char* err_msg = e.what();
+			cout << err_msg << endl;
+			return false;
+		}
+	}
+	return !templKeypoints.empty() && !templDescriptors.empty();
+}
 //Tries to read feature data (presumably for the template) from templPath + ".yml" .
 //If none is found it is generated for the image templPath + ".jpg"
 bool loadFeatureData(const string& templPath, Ptr<FeatureDetector>& detector,
 					Ptr<DescriptorExtractor>& descriptorExtractor, vector<KeyPoint>& templKeypoints,
 					Mat& templDescriptors, Size& templImageSize) {
 			
+	bool featuresFound = false;
+	#ifndef ALWAYS_COMPUTE_TEMPLATE_FEATURES
+		featuresFound = checkForSavedFeatures(templPath + ".yml", templImageSize, templKeypoints, templDescriptors);
+	#endif
+	
 	//detector = Ptr<FeatureDetector>(new SurfFeatureDetector(800, 4, 1));
 	//detector = Ptr<FeatureDetector>(new GoodFeaturesToTrackDetector( 800, .2, 10));
 	//MSER is pretty fast. Grid seems to help limit number but messes up more.
 	//descriptorExtractor = Ptr<DescriptorExtractor>(new SurfDescriptorExtractor( 4, 1, true ));
 	//descriptorExtractor = Ptr<DescriptorExtractor>(new SurfDescriptorExtractor( 4, 3, true ));
 	//detector = FeatureDetector::create( "SURF" ); 
-	detector = FeatureDetector::create( "GridSURF" );
+	//detector = FeatureDetector::create( "GridSURF" );
+	
+	//#define SHOW_MATCHES_WINDOW
+	//#define ALWAYS_COMPUTE_TEMPLATE_FEATURES
+	detector = Ptr<FeatureDetector>(new GridAdaptedFeatureDetector(
+										new SurfFeatureDetector( 400., 1, 3), //Adding octaves while shrinking the image might speed things up.
+										500, 4, 4));//4,4 grid size seems to be bizzarly more effective than other sizes.
+	
 	descriptorExtractor = DescriptorExtractor::create( "SURF" );
 	
-	bool checkForSavedFeatures = true;
+	if(detector.empty() || descriptorExtractor.empty()) return false;
 	
-	#ifdef ALWAYS_COMPUTE_TEMPLATE_FEATURES
-	checkForSavedFeatures = false;
-	#endif
-	
-	if( checkForSavedFeatures && fileExists(templPath + ".yml") ) {
-		try
-		{
-			FileStorage fs(templPath + ".yml", FileStorage::READ);
-			/*if( !fs["fdtype"].empty () && !fs["detype"].empty() && !fs["detector"].empty() && 
-				!fs["descriptorExtractor"].empty() && !fs["templKeypoints"].empty() && !fs["templDescriptors"].empty() ){
-			*/
-				detector->read(fs["detector"]);
-				descriptorExtractor->read(fs["descriptorExtractor"]);
-				
-				fs["templwidth"] >> templImageSize.width;
-				fs["templheight"] >> templImageSize.height; 
-
-				read(fs["templKeypoints"], templKeypoints);
-				fs["templDescriptors"] >> templDescriptors;
-			//}
-		}
-		catch( cv::Exception& e )
-		{
-			const char* err_msg = e.what();
-			cerr << err_msg << endl;
-		}
-	}
-	if( detector.empty() || descriptorExtractor.empty() || templKeypoints.empty() || templDescriptors.empty()){
+	if( !featuresFound  ){
 		//if there is no file to read descriptors and keypoints from make one.
-	
 		Mat templImage, temp;
 		templImage = imread( templPath + ".jpg", 0 );
 		resize(templImage, temp, templImage.size(), 0, 0, INTER_AREA);
@@ -522,7 +525,7 @@ bool loadFeatureData(const string& templPath, Ptr<FeatureDetector>& detector,
 		
 		Mat mask = makeFieldMask(templPath + ".json");
 		resize(mask, temp, templImage.size(), 0, 0, INTER_AREA);
-		erode(temp, mask, Mat(), Point(-1,-1), 5);
+		erode(temp, mask, Mat(), Point(-1,-1), 6);
 		//mask = temp;
 		/*
 		imshow( "outliers", templImage & mask);
@@ -547,23 +550,23 @@ bool loadFeatureData(const string& templPath, Ptr<FeatureDetector>& detector,
 		#endif
 		descriptorExtractor->compute( templImage, templKeypoints, templDescriptors );
 		
-		// write feature data to a file.
-		FileStorage fs(templPath + ".yml", FileStorage::WRITE);
-		fs << "detector" << "{:"; detector->write(fs); fs << "}";
-		fs << "descriptorExtractor" << "{:"; descriptorExtractor->write(fs); fs << "}";
+		//TODO: Maybe put this in a function
+		try {
+			// write feature data to a file.
+			FileStorage fs(templPath + ".yml", FileStorage::WRITE);
 		
-		fs << "templwidth" << templImageSize.width;
-		fs << "templheight" << templImageSize.height;
+			fs << "templwidth" << templImageSize.width;
+			fs << "templheight" << templImageSize.height;
 		
-		write(fs, "templKeypoints", templKeypoints);
-		fs << "templDescriptors" << templDescriptors;
+			write(fs, "templKeypoints", templKeypoints);
+			fs << "templDescriptors" << templDescriptors;
+		}
+		catch( cv::Exception& e ) {
+			const char* err_msg = e.what();
+			cout << err_msg << endl;
+			return false;
+		}
 	}
-	if( detector.empty() || descriptorExtractor.empty() )
-	{
-		cerr << "Can not create/load detector or descriptor extractor" << endl;
-		return false;
-	}	
-	
 	return true;
 }
 bool alignFormImageByFeatures(const Mat& img, Mat& aligned_img, const string& templPath, 
@@ -607,7 +610,7 @@ bool alignFormImageByFeatures(const Mat& img, Mat& aligned_img, const string& te
 	cout << "Matching descriptors..." << endl;
 	#endif
 	
-	#if 0
+	#if 1
 	Ptr<DescriptorMatcher> descriptorMatcher = DescriptorMatcher::create( "BruteForce" );
 	#else
 	Ptr<DescriptorMatcher> descriptorMatcher = DescriptorMatcher::create( "FlannBased" );
@@ -638,7 +641,7 @@ bool alignFormImageByFeatures(const Mat& img, Mat& aligned_img, const string& te
 	Mat Hscaled = Mat::diag(Mat(sc)) * H * Mat::diag(Mat(trueEfficiencyScale));
 
 	aligned_img = Mat(0,0, CV_8U);
-	warpPerspective( img, aligned_img, Hscaled, aligned_img_sz); //, INTER_LINEAR, BORDER_CONSTANT, Scalar(255));
+	warpPerspective( img, aligned_img, Hscaled, aligned_img_sz);
 	
 	vector<Point> quad = transformationToQuad(Hscaled, aligned_img_sz);
 	
@@ -670,8 +673,10 @@ bool alignFormImageByFeatures(const Mat& img, Mat& aligned_img, const string& te
 		
         for( size_t i1 = 0; i1 < matchesMask.size(); i1++ )
             matchesMask[i1] = !matchesMask[i1];
+            
         drawMatches( img_resized, keypoints1, img2, templKeypoints, filteredMatches, drawImg,
-        			CV_RGB(0, 0, 255), CV_RGB(255, 0, 0), matchesMask, DrawMatchesFlags::DRAW_OVER_OUTIMG | DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
+        			CV_RGB(0, 0, 255), CV_RGB(255, 0, 0), matchesMask,
+        			DrawMatchesFlags::DRAW_OVER_OUTIMG | DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
 		
 		namedWindow("outliers", CV_WINDOW_NORMAL);
 		imshow( "outliers", drawImg );
