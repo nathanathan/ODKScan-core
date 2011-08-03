@@ -43,7 +43,7 @@ int vectorFind(const vector<Tp>& vec, const Tp& element) {
 	return -1;
 }
 //The gaussian intensity isn't correctly scaling...
-void PCA_classifier::update_gaussian_weights(){
+void PCA_classifier::update_gaussian_weights() {
 	float sigma = .5; //increasing decreases spread.
 
 	//This precomputes the gaussian for subbbubble alignment.
@@ -67,7 +67,7 @@ void PCA_classifier::set_search_window(Size sw) {
 	search_window = sw;
 	update_gaussian_weights();
 }
-int PCA_classifier::getClassificationIdx(const string& filepath){
+int PCA_classifier::getClassificationIdx(const string& filepath) {
 	int nameIdx = filepath.find_last_of("/");
 	string filename = filepath.substr(nameIdx + 1, filepath.size() - nameIdx);
 	string classification = filename.substr(0, filename.find_first_of("_"));
@@ -76,7 +76,9 @@ int PCA_classifier::getClassificationIdx(const string& filepath){
 	if(vectorFind(classifications, classification) < 0) {
 		classifications.push_back(classification);
 		classificationIdx = classifications.size();
-		cout << "Adding classification: " << classification << endl;
+		#ifdef DEBUG_CLASSIFIER
+			cout << "Adding classification: " << classification << endl;
+		#endif
 	}
 	
 	return classificationIdx;
@@ -136,7 +138,7 @@ void PCA_classifier::PCA_set_add(Mat& PCA_set, vector<int>& trainingBubbleValues
 bool PCA_classifier::train_PCA_classifier(const vector<string>& examplePaths, const Size& myExampleSize,
 											int eigenvalues, bool flipExamples) {
 	
-	weights = (Mat_<float>(3,1) << 1, 1, 1);
+	weights = (Mat_<float>(3,1) << 1, 1, 1);//TODO: fix the weighting stuff 
 	exampleSize = myExampleSize;
 	search_window = myExampleSize;
 	update_gaussian_weights();
@@ -189,7 +191,7 @@ bool PCA_classifier::train_PCA_classifier(const vector<string>& examplePaths, co
 //Rate a location on how likely it is to be a bubble.
 //The rating is the SSD of the queried pixels and their PCA back projection,
 //so lower ratings mean more bubble like.
-inline double PCA_classifier::rateBubble(const Mat& det_img_gray, const Point& bubble_location) {
+inline double PCA_classifier::rateBubble(const Mat& det_img_gray, const Point& bubble_location) const {
 
     Mat query_pixels, pca_components;
 
@@ -225,7 +227,7 @@ inline double PCA_classifier::rateBubble(const Mat& det_img_gray, const Point& b
 #ifdef USE_HILLCLIMBING
 //This using a hillclimbing algorithm to find the location with the highest bubble rating.
 //It might only find a local instead of global minimum but it is much faster.
-Point PCA_classifier::bubble_align(const Mat& det_img_gray, const Point& bubble_location) {
+Point PCA_classifier::bubble_align(const Mat& det_img_gray, const Point& bubble_location) const {
 	int iterations = 10;
 
 	Mat sofar = Mat::zeros(Size(2*iterations+1, 2*iterations+1), CV_8UC1);
@@ -280,7 +282,7 @@ Point PCA_classifier::bubble_align(const Mat& det_img_gray, const Point& bubble_
 //then it checks that rather than the exact specified location.
 //This section probably slows things down by quite a bit and it might not provide significant
 //improvement to accuracy. We will need to run some tests to find out if it's worth using.
-Point PCA_classifier::bubble_align(const Mat& det_img_gray, const Point& bubble_location) {
+Point PCA_classifier::bubble_align(const Mat& det_img_gray, const Point& bubble_location) const {
 	if(search_window.width == 0 || search_window.height == 0){
 		return bubble_location;
 	}
@@ -309,11 +311,11 @@ Point PCA_classifier::bubble_align(const Mat& det_img_gray, const Point& bubble_
 }
 #endif
 
-inline bool isFilled( int val ){
+inline bool isFilled( int val ) {
 	return val != 1;
 }
 //Compare the specified bubble with all the training bubbles via PCA.
-bool PCA_classifier::classifyBubble(const Mat& det_img_gray, const Point& bubble_location) {
+bool PCA_classifier::classifyBubble(const Mat& det_img_gray, const Point& bubble_location) const {
 	Mat query_pixels;
 
     #ifdef USE_GET_RECT_SUB_PIX

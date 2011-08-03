@@ -22,6 +22,7 @@ It is used to set the value of switches like USE_ANDROID_HEADERS_AND_IO
 #define OUTPUT_DEBUG_IMAGES
 //#define ALWAYS_COMPUTE_TEMPLATE_FEATURES
 //PCA_classifier.cpp
+#define DEBUG_CLASSIFIER
 #define OUTPUT_BUBBLE_IMAGES
 #define OUTPUT_EXAMPLES
 
