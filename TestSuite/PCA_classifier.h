@@ -13,7 +13,7 @@ class PCA_classifier
 		
 		CvSVM statClassifier;
 		//TODO: try SVM without PCA
-		vector<string> classifications; 
+		std::vector<std::string> classifications; 
 		
 		cv::PCA my_PCA;
 	
@@ -38,13 +38,13 @@ class PCA_classifier
 		cv::Size exampleSize; //Can I make this immutable to clients (without an accesor function)?
 
 		void set_search_window(cv::Size sw);
-		double rateBubble(const cv::Mat& det_img_gray, const cv::Point& bubble_location);
+		double rateBubble(const cv::Mat& det_img_gray, const cv::Point& bubble_location) const;
 		bool train_PCA_classifier(	const std::vector<std::string>& examplePaths,
-									const cv::Size& myExampleSize = cv::Size(14,18),
+									const cv::Size& myExampleSize,
 									int eigenvalues = 7,
 									bool flipExamples = false);
-		cv::Point bubble_align(const cv::Mat& det_img_gray, const cv::Point& bubble_location);
-		bool classifyBubble(const cv::Mat& det_img_gray, const cv::Point& bubble_location);
+		cv::Point bubble_align(const cv::Mat& det_img_gray, const cv::Point& bubble_location) const;
+		bool classifyBubble(const cv::Mat& det_img_gray, const cv::Point& bubble_location) const;
 		
 		bool trained();
 

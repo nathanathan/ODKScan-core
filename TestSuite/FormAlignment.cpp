@@ -84,7 +84,6 @@ vector<Point> expandCorners(const vector<Point>& corners, double expansionPercen
 	}
 	return out;
 }
-
 // Try to distil the maximum quad (4 point contour) from a convex contour of many points.
 // if none is found maxQuad will not be altered.
 // TODO: Find out what happens when you try to simplify a contour that already has just 4 points.
@@ -127,8 +126,8 @@ vector<Point> findMaxQuad(Mat& img, float approx_p_seed = 0){
 	}
 	return maxRect;
 }
-
-int lineSum(const Mat& img, int start, int end, bool transpose){
+//Sum the pixels that lie on a line starting and ending in the specified rows.
+int lineSum(const Mat& img, int start, int end, bool transpose) {
 
 	int hSpan;
 	if(transpose){
@@ -159,7 +158,6 @@ int lineSum(const Mat& img, int start, int end, bool transpose){
 	return sum;
 }
 void findLinesHelper(const Mat& img, int& start, int& end, const Rect& roi, bool flip, bool transpose) {
-
 	int vSpan, hSpan;
 	int range, midpoint;
 	float maxSlope = .15;
@@ -201,6 +199,8 @@ void findLinesHelper(const Mat& img, int& start, int& end, const Rect& roi, bool
 		}
 	}
 }
+//Find the minimum energy lines crossing the image.
+//A and B are the start and end points of the line.
 void findLines(const Mat& img, Point& A, Point& B, const Rect& roi, bool flip, bool transpose) {
 	int start, end;
 	

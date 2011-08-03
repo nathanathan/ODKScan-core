@@ -8,7 +8,6 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-//#include <opencv2/legacy/compat.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
 
 #include <json/json.h>
@@ -23,6 +22,8 @@
 // Creates a buffer around segments porpotional to their size.
 // I think .5 is the largest value that won't cause ambiguous cases.
 #define SEGMENT_BUFFER .25
+
+#define REFINE_ALL_BUBBLE_LOCATIONS false
 
 //#define DO_BUBBLE_INFERENCE
 
@@ -48,7 +49,7 @@ vector<Point> getBubbleLocations(const Mat& segment, const Json::Value& bubbleLo
 	vector<Point2f> points1, points2;
 	vector <Point> bubbleLocations;
 	
-	if( bubbleLocationsJSON.size() < 25){
+	if(REFINE_ALL_BUBBLE_LOCATIONS || bubbleLocationsJSON.size() < 25){
 		for (size_t i = 0; i < bubbleLocationsJSON.size(); i++) {
 			bubbleLocations.push_back( classifier.bubble_align(segment, SCALEPARAM * jsonToPoint(bubbleLocationsJSON[i]) ) );
 		}
@@ -57,14 +58,14 @@ vector<Point> getBubbleLocations(const Mat& segment, const Json::Value& bubbleLo
 	
 	for (size_t i = 0; i < bubbleLocationsJSON.size(); i++) {
 		bubbleLocations.push_back( SCALEPARAM * jsonToPoint(bubbleLocationsJSON[i]) );
-		if(i % 2 == 1) {
+		if(i % 3 == 2) {
 			Point refinedLocation = classifier.bubble_align(segment, bubbleLocations.back());
 			points1.push_back(Point2f(bubbleLocations.back().x, bubbleLocations.back().y));
 			points2.push_back(Point2f(refinedLocation.x, refinedLocation.y));
 		}
 	}
 	
-	Mat H = findHomography( Mat(points1), Mat(points2), CV_LMEDS );
+	Mat H = findHomography( Mat(points1), Mat(points2), CV_RANSAC); //CV_LMEDS is suprisingly bad
 	
 	for (size_t i = 0; i < bubbleLocations.size(); i++) {
 		Mat actualLocation = H * Mat(Point3d(bubbleLocations[i].x, bubbleLocations[i].y, 1.f));
@@ -75,10 +76,10 @@ vector<Point> getBubbleLocations(const Mat& segment, const Json::Value& bubbleLo
 }
 Json::Value classifyBubbles(const Mat& segment, const Json::Value& bubbleLocationsJSON, const Mat& transformation, const Point& offset){
 	#ifdef OUTPUT_SEGMENT_IMAGES
-	//Maybe add Java code that displays segment images as the form is being processed.
-	Mat dbg_out;
-	cvtColor(segment, dbg_out, CV_GRAY2RGB);
-	dbg_out.copyTo(dbg_out);
+		//Maybe add Java code that displays segment images as the form is being processed.
+		Mat dbg_out;
+		cvtColor(segment, dbg_out, CV_GRAY2RGB);
+		dbg_out.copyTo(dbg_out);
 	#endif
 	
 	Json::Value bubblesJsonOut;
@@ -100,18 +101,18 @@ Json::Value classifyBubbles(const Mat& segment, const Json::Value& bubbleLocatio
 		bubblesJsonOut.append(bubble);
 		
 		#ifdef OUTPUT_SEGMENT_IMAGES
-		rectangle(dbg_out, bubbleLocations[i] - Point(classifier.exampleSize.width / 2, classifier.exampleSize.height/2),
-						   bubbleLocations[i] + Point(classifier.exampleSize.width / 2, classifier.exampleSize.height/2),
-						   getColor(bubbleVal));
+			rectangle(dbg_out, bubbleLocations[i] - Point(classifier.exampleSize.width / 2, classifier.exampleSize.height/2),
+							   bubbleLocations[i] + Point(classifier.exampleSize.width / 2, classifier.exampleSize.height/2),
+							   getColor(bubbleVal));
 		
-		circle(dbg_out, bubbleLocations[i], 1, Scalar(255, 2555, 255), -1);
+			circle(dbg_out, bubbleLocations[i], 1, Scalar(255, 2555, 255), -1);
 		#endif
 	}
 	#ifdef OUTPUT_SEGMENT_IMAGES
-	//TODO: name by field and segment# instead.
-	string segfilename = namer.get_unique_name("marked_");
-	segfilename.append(".jpg");
-	imwrite(segfilename, dbg_out);
+		//TODO: name by field and segment# instead.
+		string segfilename = namer.get_unique_name("marked_");
+		segfilename.append(".jpg");
+		imwrite(segfilename, dbg_out);
 	#endif
 	return bubblesJsonOut;
 }
@@ -137,9 +138,9 @@ Json::Value processSegment(const Json::Value &segmentTemplate){
 				
 	if(quad.size() == 4){
 		#ifdef DEBUG_PROCESSOR
-		//This makes a stream of dots so we can see how fast things are going.
-		//we get a ! when things go wrong.
-		cout << '.' << flush;
+			//This makes a stream of dots so we can see how fast things are going.
+			//we get a ! when things go wrong.
+			cout << '.' << flush;
 		#endif
 		Mat transformation = quadToTransformation(quad, imageRect.size());
 		Mat alignedSegment(0, 0, CV_8U);
@@ -154,7 +155,7 @@ Json::Value processSegment(const Json::Value &segmentTemplate){
 	}
 	else{
 		#ifdef DEBUG_PROCESSOR
-		cout << "!" << flush;
+			cout << "!" << flush;
 		#endif
 		Json::Value segmentJsonOut;
 		segmentJsonOut["quad"] = quadToJsonArray(quad, expandedRect.tl());
@@ -163,23 +164,25 @@ Json::Value processSegment(const Json::Value &segmentTemplate){
 }
 
 public:
-//Constructor:
-//TODO: rewrite this so it is a separate function that can return an error if it fails to find a template.
-ProcessorImpl(const char* templatePath){
+
+bool loadTemplate(const char* templatePath){
 	templPath = string(templatePath);
+	//We don't need a file extension so remove it if one is provided.
 	if(templPath.find(".") != string::npos){
 		templPath = templPath.substr(0, templPath.find_last_of("."));
 	}
-	cout << templPath << endl;
-	parseJsonFromFile(templPath + ".json", root);
+	if(!parseJsonFromFile(templPath + ".json", root)) return false;
 	JsonOutput["template_path"] = templPath;
+	return true;
 }
 bool trainClassifier(const char* trainingImageDir){
 	#ifdef DEBUG_PROCESSOR
 	cout << "training classifier..." << endl;
 	#endif
-	const Json::Value defaultSize = pointToJson(Point(8,12));
-	Json::Value bubbleSize = root.get("bubble_size", defaultSize);
+	
+	if(!root.isMember("bubble_size")) return false;
+	
+	Json::Value bubbleSize = root["bubble_size"];
 	
 	vector<string> filepaths;
 	CrawlFileTree(string(trainingImageDir), filepaths);
@@ -195,31 +198,24 @@ bool trainClassifier(const char* trainingImageDir){
 	#endif
 	return true;
 }
-void setClassifierWeight(float weight){
-	/*
-	classifier.set_weight(FILLED_BUBBLE, weight);
-	classifier.set_weight(PARTIAL_BUBBLE, 1-weight);
-	classifier.set_weight(EMPTY_BUBBLE, 1-weight);
-	*/
-	return;
-}
 
 bool loadForm(const char* imagePath, int rotate90){
 	#ifdef DEBUG_PROCESSOR
-	cout << "loading form image..." << flush;
+		cout << "loading form image..." << flush;
 	#endif
 	formImage = imread(imagePath, 0);
 	if(formImage.empty()) return false;
 	
-	//When using feature based alignment the rotate 90 thing might be unnecessairy.
+	//When using feature based alignment the rotate 90 thing is unnecessairy.
 	if(rotate90 != 0){
 		Mat temp;
 		transpose(formImage, temp);
 		flip(temp,formImage, rotate90); //This might vary by phone... 1 is for Nexus.
 	}
+	
 	JsonOutput["image_path"] = imagePath;
 	#ifdef DEBUG_PROCESSOR
-	cout << "loaded" << endl;
+		cout << "loaded" << endl;
 	#endif
 	return true;
 }
@@ -251,7 +247,7 @@ bool alignForm(const char* alignedImageOutputPath){
 }
 bool processForm(const char* outputPath) {
 	#ifdef  DEBUG_PROCESSOR
-	cout << "Processing form" << flush;
+		cout << "Processing form" << flush;
 	#endif
 	
 	if( !root || formImage.empty() || !classifier.trained()){
@@ -279,7 +275,7 @@ bool processForm(const char* outputPath) {
 		fieldJsonOut["key"] = field.get("key", -1);
 		
 		#ifdef DO_BUBBLE_INFERENCE
-		inferBubbles(fieldJsonOut);
+			inferBubbles(fieldJsonOut, INFER_LTR_TTB);
 		#endif
 		
 		JsonOutputFields.append(fieldJsonOut);
@@ -287,11 +283,11 @@ bool processForm(const char* outputPath) {
 	JsonOutput["form_scale"] = Json::Value(SCALEPARAM);
 	JsonOutput["fields"] = JsonOutputFields;
 	#ifdef  DEBUG_PROCESSOR
-	cout << "done" << endl;
+		cout << "done" << endl;
 	#endif
 	
 	#ifdef  DEBUG_PROCESSOR
-	cout << "outputting bubble vals... " << endl;
+		cout << "outputting bubble vals... " << endl;
 	#endif
 	ofstream outfile(outputPath, ios::out | ios::binary);
 	outfile << JsonOutput;
@@ -310,12 +306,12 @@ bool writeFormImage(const char* outputPath){
 
 
 /* This stuff hooks the Processor class up to the implementation class: */
-Processor::Processor(const char* templatePath) : processorImpl(new ProcessorImpl(templatePath)){}
+Processor::Processor() : processorImpl(new ProcessorImpl){}
+bool Processor::loadTemplate(const char* templatePath){
+	return processorImpl->loadTemplate(templatePath);
+}
 bool Processor::trainClassifier(const char* trainingImageDir){
 	return processorImpl->trainClassifier(trainingImageDir);
-}
-void Processor::setClassifierWeight(float weight){
-	processorImpl->setClassifierWeight(weight);
 }
 bool Processor::loadForm(const char* imagePath, int rotate90){
 	return processorImpl->loadForm(imagePath, rotate90);

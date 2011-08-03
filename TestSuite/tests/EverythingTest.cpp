@@ -25,13 +25,10 @@ int main(int argc, char *argv[]) {
 	int errors = 0;
 	int numImages = 0;
 
-	string inputDir("form_images/booklet_form/");
-	string outputDir("aligned_forms/booklet_form/");
+	string inputDir("form_images/using_box/");
+	string outputDir("aligned_forms/using_box/");
 
 	string templatePath("form_templates/SIS-A01.json");
-
-	Processor myProcessor(templatePath.c_str());
-	myProcessor.trainClassifier("training_examples/android_training_examples");
 
 	vector<string> filenames;
 	CrawlFileTree(inputDir, filenames);
@@ -46,11 +43,19 @@ int main(int argc, char *argv[]) {
 			string markedupFormOutfile(outputDir + relativePathMinusExt + "_marked.jpg");
 			string jsonOutfile(outputDir + relativePathMinusExt + ".json");
 			cout << "Processing image: " << (*it) << endl;
+			
+			Processor myProcessor;
+			
 			if( !myProcessor.loadForm((*it).c_str()) ) {
 				cout << "\E[31m" <<  "Could not load. Arg: " << "\e[0m" << (*it) << endl;
 				errors++;
 				continue;
 			}
+			if( !myProcessor.loadTemplate(templatePath.c_str()) ) {
+				cout << "Could not load. Arg: " << templatePath << endl;
+				continue;
+			}
+			myProcessor.trainClassifier("training_examples/android_training_examples");
 			cout << "Outputting aligned image to: " << imgOutputPath << endl;
 			if( !myProcessor.alignForm(imgOutputPath.c_str()) ) {
 				cout << "\E[31m" <<  "Could not align. Arg: " << "\e[0m" << imgOutputPath  << endl;

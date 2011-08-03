@@ -24,7 +24,7 @@ int main(int argc, char *argv[]) {
 	string imageName("A0");
 	string jsonTrueVals("form_images/booklet_form/A.json");
 	#else
-	string imageDir("form_images/booklet_form/");
+	string imageDir("form_images/using_box/");
 	string imageName("G7");
 	string jsonTrueVals("form_images/booklet_form/G.json");
 	#endif
@@ -45,8 +45,7 @@ int main(int argc, char *argv[]) {
 	string alignedFormOutfile(outputName+"_straightened.jpg");
 	string markedupFormOutfile(outputName+"_markedup.jpg");
 
-	Processor myProcessor(templatePath.c_str());
-	myProcessor.trainClassifier("training_examples/android_training_examples");
+	Processor myProcessor;
 
 	float i;
 	// testing loop, currently iterates over weight_param
@@ -55,16 +54,20 @@ int main(int argc, char *argv[]) {
 	#else
 	for (i = 0.0; i <= 1.0; i += 0.05) {
 	#endif
-		myProcessor.setClassifierWeight(i);
 		
 		if( !myProcessor.loadForm(imagePath.c_str()) ) {
 			cout << "Could not load. Arg: " << imagePath << endl;
+			return 0;
+		}
+		if( !myProcessor.loadTemplate(templatePath.c_str()) ) {
+			cout << "Could not load. Arg: " << templatePath << endl;
 			return 0;
 		}
 		if( !myProcessor.alignForm(alignedFormOutfile.c_str()) ) {
 			cout << "Could not align. Arg: " << alignedFormOutfile << endl;
 			return 0;
 		}
+		myProcessor.trainClassifier("training_examples/android_training_examples");
 		if( !myProcessor.processForm(jsonOutfile.c_str()) ) {
 			cout << "Could not process. Arg: " << jsonOutfile << endl;
 			return 0;

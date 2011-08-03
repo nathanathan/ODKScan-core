@@ -16,12 +16,12 @@ int main(int argc, char *argv[]) {
 	
 	int errors = 0, numImages = 0;
 
-	string inputDir("form_images/booklet_form");
-	string outputDir("aligned_forms/booklet_form");
+	string inputDir("form_images/using_box");
+	string outputDir("aligned_forms/using_box");
 
 	string templatePath("form_templates/SIS-A01.json");
 
-	Processor myProcessor(templatePath.c_str());
+	Processor myProcessor;
 
 	vector<string> filenames;
 	CrawlFileTree(inputDir, filenames);
@@ -34,6 +34,10 @@ int main(int argc, char *argv[]) {
 			cout << "Processing form from: " << (*it) << endl << "to: " << outputPath << endl;
 			if( !myProcessor.loadForm((*it).c_str()) ) {
 				cout << "Could not load. Arg: " << (*it) << endl;
+				return 0;
+			}
+			if( !myProcessor.loadTemplate(templatePath.c_str()) ) {
+				cout << "Could not load. Arg: " << templatePath << endl;
 				return 0;
 			}
 			if( !myProcessor.alignForm(outputPath.c_str()) ) {
