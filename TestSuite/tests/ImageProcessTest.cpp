@@ -11,6 +11,10 @@ In the future it will vary a parameter and record performance to a csv file.
 #include <fstream>
 #include <string>
 
+#ifndef EIGENBUBBLES
+int EIGENBUBBLES = 7;
+#endif
+
 using namespace std;
 
 //The reason to use JSON for the bubble-vals files is that other code, like java code can parse them
@@ -19,15 +23,16 @@ int main(int argc, char *argv[]) {
 
 	MarkupForm marker;
 
-	#if 0
-	string imageDir("form_images/unbounded_form/");
-	string imageName("A0");
-	string jsonTrueVals("form_images/booklet_form/A.json");
+	#if 1
+	string imageDir("form_images/booklet_form/");
+	string imageName("C2");
 	#else
 	string imageDir("form_images/using_box/");
-	string imageName("G7");
-	string jsonTrueVals("form_images/booklet_form/G.json");
+	string imageName("C0");
 	#endif
+	
+	string jsonTrueVals(imageDir + imageName.substr(0, imageName.find_first_of("0123456789")) + ".json");
+	
 	string imagePath = imageDir + imageName +".jpg";
 	
 	// Template to use:
@@ -47,14 +52,14 @@ int main(int argc, char *argv[]) {
 
 	Processor myProcessor;
 
-	float i;
 	// testing loop, currently iterates over weight_param
-	#if 1
-	for (i = 0.5; i <= .5; i += 0.05) {
+	#ifndef EIGENBUBBLES
+	for (int i = 3; i <= 20; i ++) {
+		EIGENBUBBLES = i;
+		outfile << "eigenbubbles, " << i << ", ";
 	#else
-	for (i = 0.0; i <= 1.0; i += 0.05) {
+	for (int i = 0; i < 1; i ++) {
 	#endif
-		
 		if( !myProcessor.loadForm(imagePath.c_str()) ) {
 			cout << "Could not load. Arg: " << imagePath << endl;
 			return 0;
@@ -80,7 +85,6 @@ int main(int argc, char *argv[]) {
 		compareFiles(jsonOutfile, jsonTrueVals, tp, fp, tn, fn);
 		printData(tp, fp, tn, fn);
 		
-		outfile << "\"weight parameter\", " << i << ", ";
 		outfile << tp << ", " << fp << ", ";
 		outfile << tn << ", " << fn << endl;
 	}

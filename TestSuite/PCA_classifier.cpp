@@ -1,17 +1,19 @@
 #include "configuration.h"
 #include "PCA_classifier.h"
-#include "NameGenerator.h"
+#include "FileUtils.h"
 
 #include <opencv2/highgui/highgui.hpp>
 
 #include <iostream>
 
 #ifdef OUTPUT_BUBBLE_IMAGES
-NameGenerator classifierNamer("bubble_images/");
+#include "NameGenerator.h"
+extern NameGenerator namer;
 #endif
 
 #ifdef OUTPUT_EXAMPLES
-NameGenerator exampleNamer("example_images_used/");
+#include "NameGenerator.h"
+NameGenerator exampleNamer;
 #endif
 
 #define NORMALIZE
@@ -116,9 +118,8 @@ void PCA_classifier::PCA_set_add(Mat& PCA_set, vector<int>& trainingBubbleValues
 	#endif
 
 	#ifdef OUTPUT_EXAMPLES
-		string outfilename = exampleNamer.get_unique_name("bubble_");
-		outfilename.append(".jpg");
-		imwrite(outfilename, aptly_sized_example);
+		string outfilename = filename.substr(filename.find_last_of("/"), filename.size() - filename.find_last_of("/"));
+		imwrite("example_images_used" + outfilename, aptly_sized_example);
 	#endif
 	
 	int classificationIdx = getClassificationIdx(filename);
@@ -135,11 +136,74 @@ void PCA_classifier::PCA_set_add(Mat& PCA_set, vector<int>& trainingBubbleValues
 		}
 	}
 }
+template <class Tp>
+void writeVector(FileStorage& fs, const string& label, const vector<Tp>& vec) {
+	fs << label << "[";
+	for(size_t i = 0; i < vec.size(); i++) {
+		fs << vec[i];
+	}
+	fs << "]";
+}
+vector<string> readVector(FileStorage& fs, const string& label) {
+	FileNode fn = fs[label];
+	vector<string> vec(fn.size());
+	if(fn[0].isString()){
+		for(size_t i = 0; i < fn.size(); i++) {
+			fn[i] >> vec[i];
+		}
+	}
+	return vec;
+}
+bool PCA_classifier::save(const string& outputPath) const {
+
+	try {
+		FileStorage fs(outputPath, FileStorage::WRITE);
+		fs << "exampleSizeWidth" << exampleSize.width;
+		fs << "exampleSizeHeight" << exampleSize.height;
+		fs << "PCAmean" << my_PCA.mean;
+		fs << "PCAeigenvectors" << my_PCA.eigenvectors;
+		fs << "PCAeigenvalues" << my_PCA.eigenvalues;
+		writeVector(fs, "classifications", classifications);
+		statClassifier.write(*fs, "classifierData" );
+	}
+	catch( cv::Exception& e ) {
+		const char* err_msg = e.what();
+		cout << err_msg << endl;
+		return false;
+	}
+	return true;
+}
+bool PCA_classifier::load(const string& inputPath, const Size& requiredExampleSize) {
+	if( !fileExists(inputPath) ) return false;
+	try {
+		FileStorage fs(inputPath, FileStorage::READ);
+		fs["exampleSizeWidth"] >> exampleSize.width;
+		fs["exampleSizeHeight"] >> exampleSize.height;
+		if(requiredExampleSize != exampleSize){
+			return false; //is this ok in a try expression?
+		}
+		fs["PCAmean"] >> my_PCA.mean;
+		fs["PCAeigenvectors"] >> my_PCA.eigenvectors;
+		fs["PCAeigenvalues"] >> my_PCA.eigenvalues;
+		
+		classifications = readVector(fs, "classifications");
+		search_window = exampleSize;
+		update_gaussian_weights();
+		statClassifier.clear();
+		statClassifier.read(*fs, cvGetFileNodeByName(*fs, cvGetRootFileNode(*fs), "classifierData") );
+	}
+	catch( cv::Exception& e ) {
+		const char* err_msg = e.what();
+		cout << err_msg << endl;
+		return false;
+	}
+	return true;
+}
 bool PCA_classifier::train_PCA_classifier(const vector<string>& examplePaths, const Size& myExampleSize,
 											int eigenvalues, bool flipExamples) {
-	
+	statClassifier.clear();
 	weights = (Mat_<float>(3,1) << 1, 1, 1);//TODO: fix the weighting stuff 
-	exampleSize = myExampleSize;
+	exampleSize = Size(myExampleSize);//the copy constructor might be necessairy.
 	search_window = myExampleSize;
 	update_gaussian_weights();
 
@@ -180,8 +244,8 @@ bool PCA_classifier::train_PCA_classifier(const vector<string>& examplePaths, co
 	}
 
 	#ifdef DISABLE_PCA
-	statClassifier.train_auto(PCA_set, trainingBubbleValuesMat, Mat(), Mat(), CvSVMParams());
-	return true;
+		statClassifier.train_auto(PCA_set, trainingBubbleValuesMat, Mat(), Mat(), CvSVMParams());
+		return true;
 	#endif
 	
 	statClassifier.train_auto(comparisonVectors, trainingBubbleValuesMat, Mat(), Mat(), CvSVMParams());
@@ -317,7 +381,6 @@ inline bool isFilled( int val ) {
 //Compare the specified bubble with all the training bubbles via PCA.
 bool PCA_classifier::classifyBubble(const Mat& det_img_gray, const Point& bubble_location) const {
 	Mat query_pixels;
-
     #ifdef USE_GET_RECT_SUB_PIX
 		getRectSubPix(det_img_gray, Size(exampleSize.width, exampleSize.height), bubble_location, query_pixels);
 	#else									 
@@ -331,9 +394,8 @@ bool PCA_classifier::classifyBubble(const Mat& det_img_gray, const Point& bubble
 	#endif
 	
 	#ifdef OUTPUT_BUBBLE_IMAGES
-		string segfilename = classifierNamer.get_unique_name("bubble_");
-		segfilename.append(".jpg");
-		imwrite(segfilename, query_pixels);
+		string bubbleName = namer.get_unique_name("bubble_");
+		imwrite("bubble_images/" + bubbleName + ".jpg", query_pixels);
 	#endif
 	
 	query_pixels.convertTo(query_pixels, CV_32F);
@@ -349,7 +411,6 @@ bool PCA_classifier::classifyBubble(const Mat& det_img_gray, const Point& bubble
 	
 	int returnVal = statClassifier.predict( my_PCA.project(query_pixels) );
 	return isFilled( returnVal );
-
 }
 bool PCA_classifier::trained() {
 	return my_PCA.mean.data != NULL;

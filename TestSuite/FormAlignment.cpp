@@ -26,7 +26,7 @@
 
 #ifdef OUTPUT_DEBUG_IMAGES
 #include "NameGenerator.h"
-NameGenerator alignmentNamer("debug_segment_images/");
+NameGenerator alignmentNamer("debug_segment_images/", false);
 NameGenerator dbgNamer("debug_form_images/", true);
 #endif
 

@@ -23,13 +23,13 @@
 // I think .5 is the largest value that won't cause ambiguous cases.
 #define SEGMENT_BUFFER .25
 
-#define REFINE_ALL_BUBBLE_LOCATIONS false
+#define REFINE_ALL_BUBBLE_LOCATIONS true
 
 //#define DO_BUBBLE_INFERENCE
 
 #ifdef OUTPUT_SEGMENT_IMAGES
 #include "NameGenerator.h"
-NameGenerator namer("debug_segment_images/");
+NameGenerator namer;
 #endif
 
 using namespace std;
@@ -45,10 +45,15 @@ PCA_classifier classifier;
 string templPath;
 Mat formImage;
 
-vector<Point> getBubbleLocations(const Mat& segment, const Json::Value& bubbleLocationsJSON){
-	vector<Point2f> points1, points2;
+vector<Point> getBubbleLocations(const Mat& segment, const Json::Value& bubbleLocationsJSON, bool refine){
 	vector <Point> bubbleLocations;
-	
+	vector<Point2f> points1, points2;
+	if(!refine){
+		for (size_t i = 0; i < bubbleLocationsJSON.size(); i++) {
+			bubbleLocations.push_back( SCALEPARAM * jsonToPoint(bubbleLocationsJSON[i]) );
+		}
+		return bubbleLocations;
+	}
 	if(REFINE_ALL_BUBBLE_LOCATIONS || bubbleLocationsJSON.size() < 25){
 		for (size_t i = 0; i < bubbleLocationsJSON.size(); i++) {
 			bubbleLocations.push_back( classifier.bubble_align(segment, SCALEPARAM * jsonToPoint(bubbleLocationsJSON[i]) ) );
@@ -74,7 +79,7 @@ vector<Point> getBubbleLocations(const Mat& segment, const Json::Value& bubbleLo
 	}
 	return bubbleLocations;
 }
-Json::Value classifyBubbles(const Mat& segment, const Json::Value& bubbleLocationsJSON, const Mat& transformation, const Point& offset){
+Json::Value classifyBubbles(const Mat& segment, const Json::Value& segmentJSON, const Mat& transformation, const Point& offset){
 	#ifdef OUTPUT_SEGMENT_IMAGES
 		//Maybe add Java code that displays segment images as the form is being processed.
 		Mat dbg_out;
@@ -82,9 +87,11 @@ Json::Value classifyBubbles(const Mat& segment, const Json::Value& bubbleLocatio
 		dbg_out.copyTo(dbg_out);
 	#endif
 	
+	const Json::Value bubbleLocationsJSON = segmentJSON["bubble_locations"];
 	Json::Value bubblesJsonOut;
 	
-	vector<Point> bubbleLocations = getBubbleLocations(segment, bubbleLocationsJSON);
+	vector<Point> bubbleLocationSpeced = getBubbleLocations(segment, bubbleLocationsJSON, false);
+	vector<Point> bubbleLocations = getBubbleLocations(segment, bubbleLocationsJSON, true);
 	
 	for (size_t i = 0; i < bubbleLocations.size(); i++) {
 
@@ -101,8 +108,8 @@ Json::Value classifyBubbles(const Mat& segment, const Json::Value& bubbleLocatio
 		bubblesJsonOut.append(bubble);
 		
 		#ifdef OUTPUT_SEGMENT_IMAGES
-			rectangle(dbg_out, bubbleLocations[i] - Point(classifier.exampleSize.width / 2, classifier.exampleSize.height/2),
-							   bubbleLocations[i] + Point(classifier.exampleSize.width / 2, classifier.exampleSize.height/2),
+			rectangle(dbg_out, bubbleLocationSpeced[i] - Point(classifier.exampleSize.width / 2, classifier.exampleSize.height/2),
+							   bubbleLocationSpeced[i] + Point(classifier.exampleSize.width / 2, classifier.exampleSize.height/2),
 							   getColor(bubbleVal));
 		
 			circle(dbg_out, bubbleLocations[i], 1, Scalar(255, 2555, 255), -1);
@@ -111,8 +118,7 @@ Json::Value classifyBubbles(const Mat& segment, const Json::Value& bubbleLocatio
 	#ifdef OUTPUT_SEGMENT_IMAGES
 		//TODO: name by field and segment# instead.
 		string segfilename = namer.get_unique_name("marked_");
-		segfilename.append(".jpg");
-		imwrite(segfilename, dbg_out);
+		imwrite("debug_segment_images/" + segfilename + ".jpg", dbg_out);
 	#endif
 	return bubblesJsonOut;
 }
@@ -148,7 +154,7 @@ Json::Value processSegment(const Json::Value &segmentTemplate){
 
 		Json::Value segmentJsonOut;
 		segmentJsonOut["quad"] = quadToJsonArray(quad, expandedRect.tl());
-		segmentJsonOut["bubbles"] = classifyBubbles(alignedSegment, segmentTemplate["bubble_locations"],
+		segmentJsonOut["bubbles"] = classifyBubbles(alignedSegment, segmentTemplate,
 													transformation.inv(), expandedRect.tl());
 													
 		return segmentJsonOut;
@@ -167,7 +173,7 @@ public:
 
 bool loadTemplate(const char* templatePath){
 	templPath = string(templatePath);
-	//We don't need a file extension so remove it if one is provided.
+	//We don't need a file extension so this removes it if one is provided.
 	if(templPath.find(".") != string::npos){
 		templPath = templPath.substr(0, templPath.find_last_of("."));
 	}
@@ -180,19 +186,27 @@ bool trainClassifier(const char* trainingImageDir){
 	cout << "training classifier..." << endl;
 	#endif
 	
-	if(!root.isMember("bubble_size")) return false;
+	if (!root.isMember("bubble_size")) return false;
 	
 	Json::Value bubbleSize = root["bubble_size"];
+	Size requiredExampleSize = SCALEPARAM * Size(bubbleSize[0u].asInt(),
+												 bubbleSize[1u].asInt());
 	
-	vector<string> filepaths;
-	CrawlFileTree(string(trainingImageDir), filepaths);
-	bool success = classifier.train_PCA_classifier( filepaths, SCALEPARAM * Size(bubbleSize[0u].asInt(),
-																				 bubbleSize[1u].asInt()),
-													7, true);//flip training examples.
-	if (!success) return false;
+	JsonOutput["training_image_directory"] = Json::Value( trainingImageDir );
+	
+	string cachedDataPath = string(trainingImageDir) + "/cached_data.yml";
+
+	if (!classifier.load(cachedDataPath, requiredExampleSize) ) {
+		vector<string> filepaths;
+		CrawlFileTree(string(trainingImageDir), filepaths);
+		bool success = classifier.train_PCA_classifier( filepaths, requiredExampleSize,
+														EIGENBUBBLES, true);//flip training examples.
+		if (!success) return false;
+		classifier.save(cachedDataPath);
+	}
 	
 	classifier.set_search_window(Size(5,5));
-	JsonOutput["training_image_directory"] = Json::Value( trainingImageDir );
+	
 	#ifdef DEBUG_PROCESSOR
 	cout << "trained" << endl;
 	#endif
@@ -268,6 +282,9 @@ bool processForm(const char* outputPath) {
 		
 		for ( size_t j = 0; j < segments.size(); j++ ) {
 			const Json::Value segmentTemplate = segments[j];
+			#ifdef OUTPUT_SEGMENT_IMAGES
+				namer.setPrefix(field.get("label", "unlabeled").asString() + "_" + namer.intToString(j) + "_");
+			#endif
 			Json::Value segmentJsonOut = processSegment(segmentTemplate);
 			segmentJsonOut["key"] = segmentTemplate.get("key", -1);
 			fieldJsonOut["segments"].append(segmentJsonOut);
@@ -297,7 +314,8 @@ bool processForm(const char* outputPath) {
 //Writes the form image to a file.
 bool writeFormImage(const char* outputPath){
 	//string path(outputPath);
-	//TODO: Made this create directory paths if one does not already exist
+	//TODO: Make this create directory paths if one does not already exist
+	//		maybe make a function in addons to do that so it can be used for debug images as well.
 	//see http://stackoverflow.com/questions/675039/how-can-i-create-directory-tree-in-c-linux
 	return imwrite(outputPath, formImage);
 }

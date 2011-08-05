@@ -48,6 +48,8 @@ class PCA_classifier
 		
 		bool trained();
 
+		bool save(const std::string& outputPath) const;
+		bool load(const std::string& inputPath, const cv::Size& requiredExampleSize);
 };
 
 #endif
