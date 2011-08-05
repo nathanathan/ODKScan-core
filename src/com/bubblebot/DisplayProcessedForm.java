@@ -8,6 +8,9 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -22,7 +25,6 @@ import android.widget.TextView;
 public class DisplayProcessedForm extends Activity {
 	
 	TextView text;
-	Button data;
 	String dir = "/sdcard/mScan/";
 	String filename = "";
 	
@@ -61,16 +63,37 @@ public class DisplayProcessedForm extends Activity {
 		myWebView.loadDataWithBaseURL("file:////sdcard/BubbleBot/",
 								 html, "text/html", "utf-8", "");
 		
-		
-       data = (Button) findViewById(R.id.button);
-       data.setOnClickListener(new View.OnClickListener() {
-	       public void onClick(View v) {
+		/*
+       data = (MenuItem) findViewById(R.id.displayData);
+       data.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+	       public boolean onMenuItemClick(MenuItem v) {
+	    	   
 	    	   //Find a way to pass in the relevant filename - displaying a set image for now
 	    	   Intent intent = new Intent(getApplication(), DisplayProcessedData.class);
 	    	   //String fname = (filename.substring(0,filename.length()-4));
 	    	   //intent.putExtra("file", fname);
    			   startActivity(intent); 
+   			   
+   			   return true;
 	       }
-	    });
+	    });*/
+	}
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu) {
+	    MenuInflater inflater = getMenuInflater();
+	    inflater.inflate(R.menu.mscan_menu, menu);
+	    return true;
+	}
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+	    // Handle item selection
+	    switch (item.getItemId()) {
+	    case R.id.displayData:
+			Intent intent = new Intent(getApplication(), DisplayProcessedData.class);
+			startActivity(intent); 
+	        return true;
+	    default:
+	        return super.onOptionsItemSelected(item);
+	    }
 	}
 }

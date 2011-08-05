@@ -9,8 +9,12 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.View;
 import android.widget.Button;
 
@@ -21,9 +25,10 @@ import android.widget.Button;
  */
 
 public class BubbleBot extends Activity {
+
 	public static final String PREFS_NAME = "mScanPrefs";
 	//The version variable is used to reextract assets after they are modified.
-	public static final int version = 11;
+	public static final int version = 12;
 	// Initialize the application
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -66,8 +71,9 @@ public class BubbleBot extends Activity {
 		Button scanForm = (Button) findViewById(R.id.ScanButton);
 		scanForm.setOnClickListener(new View.OnClickListener() {
 			public void onClick(View v) {
-				Intent intent = new Intent(getApplication(), BubbleCollect.class);
-				startActivity(intent); 
+				//Intent intent = new Intent(getApplication(), BubbleCollect.class);
+				Intent intent = new Intent(getApplication(), BubbleCollect2.class);
+				startActivity(intent);
 			}
 		});
 
@@ -89,6 +95,7 @@ public class BubbleBot extends Activity {
 			}
 		});
 	}
+	
 	protected void clearDir(String dirPath){
 		File dir = new File(dirPath);
 		if(dir.exists()){
