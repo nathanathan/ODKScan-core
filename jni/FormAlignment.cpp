@@ -1,6 +1,7 @@
 #include "configuration.h"
 #include "FormAlignment.h"
 #include "Addons.h"
+#include "FileUtils.h"
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -10,46 +11,63 @@
 #include <iostream>
 #include <fstream>
 
-#ifdef OUTPUT_DEBUG_IMAGES
-#include "NameGenerator.h"
-NameGenerator alignmentNamer("debug_segment_images/");
-NameGenerator dbgNamer("debug_form_images/", true);
-#endif
-
 //image_align constants
 #define THRESH_OFFSET_LB -.3
 #define THRESH_DECR_SIZE .05
 
 #define EXPANSION_PERCENTAGE .04
 
+#define USE_FEATURE_BASED_FORM_ALIGNMENT
+//vaying the reproject threshold can make a big difference in performance.
+#define FH_REPROJECT_THRESH 3.0
+
+//#define ALWAYS_COMPUTE_TEMPLATE_FEATURES
+//#define SHOW_MATCHES_WINDOW
+
+#ifdef OUTPUT_DEBUG_IMAGES
+#include "NameGenerator.h"
+NameGenerator alignmentNamer("debug_segment_images/", false);
+NameGenerator dbgNamer("debug_form_images/", true);
+#endif
+
 using namespace std;
 using namespace cv;
 
-//Takes a vector of found corners, and an array of destination corners they should map to
-//and replaces each corner in the dest_corners with the nearest unmatched found corner.
-template <class Tp>
-void configCornerArray(vector<Tp>& found_corners, Point2f* dest_corners) {
-	float min_dist;
-	int min_idx;
-	float dist;
+//Order a 4 point vector clockwise with the 0 index at the most top-left corner
+vector<Point> orderCorners(const vector<Point>& corners){
 
-	vector<Point2f> corners;
+	vector<Point> orderedCorners;
 
-	for(size_t i = 0; i < found_corners.size(); i++ ){
-		corners.push_back(Point2f(float(found_corners[i].x), float(found_corners[i].y)));
+	Moments m = moments(Mat(corners));
+
+	Mat center = (Mat_<double>(1,3) << m.m10/m.m00, m.m01/m.m00, 0 );
+	Mat p0 = (Mat_<double>(1,3) << corners[0].x, corners[0].y, 0 );
+	Mat p1 = (Mat_<double>(1,3) << corners[1].x, corners[1].y, 0 );
+
+	if((center - p0).cross(p1 - p0).at<double>(0,2) < 0){ //Double-check this math just in case
+		orderedCorners = vector<Point>(corners.begin(), corners.end());
 	}
-	for(size_t i = 0; i < 4; i++) {
-		min_dist = FLT_MAX;
-		for(size_t j = 0; j < corners.size(); j++ ){
-			dist = norm(corners[j]-dest_corners[i]);
-			if(dist < min_dist){
-				min_dist = dist;
-				min_idx = j;
-			}
+	else{
+		orderedCorners = vector<Point>(corners.rbegin(), corners.rend());
+	}
+
+	int shift = 0;
+	double tlMax = 0;
+	Mat B = (Mat_<double>(1,2) << -1, -1);
+	for(size_t i = 0; i < orderedCorners.size(); i++ ){
+		Mat A = (Mat_<double>(1,2) << orderedCorners[i].x - m.m10/m.m00, orderedCorners[i].y - m.m01/m.m00);
+		double tlProj = A.dot(B);
+		if(tlProj > tlMax){
+			shift = i;
+			tlMax = tlProj;
 		}
-		dest_corners[i]=corners[min_idx]; // + expand * (dest_corners[i] - corners[min_idx]);
-		corners.erase(corners.begin()+min_idx);
 	}
+
+	vector<Point> temp = vector<Point>(orderedCorners.begin(), orderedCorners.end());
+	for(size_t i = 0; i < orderedCorners.size(); i++ ){
+		orderedCorners[i] = temp[(i + shift) % orderedCorners.size()];
+	}
+	return orderedCorners;
 }
 //Creates a new vector with all the points expanded about the average of the first vector.
 vector<Point> expandCorners(const vector<Point>& corners, double expansionPercent){
@@ -65,35 +83,6 @@ vector<Point> expandCorners(const vector<Point>& corners, double expansionPercen
 		out[i] += expansionPercent * (corners[i] - center);
 	}
 	return out;
-}
-//Finds two vertical or horizontal lines that have the minimal gradient sum.
-void find_bounding_lines(Mat& img, int* upper, int* lower, bool vertical) {
-	Mat grad_img, out;
-	
-	int center_size;
-	if( vertical ){
-		// Watch out, I haven't tested to make sure these aren't backwards.
-		center_size = img.cols/4;
-	}
-	else{
-		center_size = img.rows/4;
-	}
-	
-	Sobel(img, grad_img, 0, int(!vertical), int(vertical));
-
-	reduce(grad_img, out, int(!vertical), CV_REDUCE_SUM, CV_32F);
-	
-	//GaussianBlur(out, out, Size(1, center_size/4), 1.0);
-
-	if( vertical )
-		transpose(out,out);
-
-	Point min_location_top;
-	Point min_location_bottom;
-	minMaxLoc(out(Range(3, out.rows/2 - center_size), Range(0,1)), NULL,NULL,&min_location_top);
-	minMaxLoc(out(Range(out.rows/2 + center_size,out.rows - 3), Range(0,1)), NULL,NULL,&min_location_bottom);
-	*upper = min_location_top.y;
-	*lower = min_location_bottom.y + out.rows/2 + center_size;
 }
 // Try to distil the maximum quad (4 point contour) from a convex contour of many points.
 // if none is found maxQuad will not be altered.
@@ -137,21 +126,127 @@ vector<Point> findMaxQuad(Mat& img, float approx_p_seed = 0){
 	}
 	return maxRect;
 }
+//Sum the pixels that lie on a line starting and ending in the specified rows.
+int lineSum(const Mat& img, int start, int end, bool transpose) {
+
+	int hSpan;
+	if(transpose){
+		hSpan = img.rows - 1;
+	}
+	else{
+		hSpan = img.cols - 1;
+	}
+	
+	int sum = 0;
+	double slope = (double)(end - start)/hSpan;
+	
+	for(int i = 0; i<=hSpan; i++) {
+		int j = start + slope*i;
+
+		if(j < 0){
+			sum+=127;
+		}
+		else{
+			if(transpose){
+				sum += img.at<uchar>(i, j);
+			}
+			else{
+				sum += img.at<uchar>(j, i);
+			}
+		}
+	}
+	return sum;
+}
+void findLinesHelper(const Mat& img, int& start, int& end, const Rect& roi, bool flip, bool transpose) {
+	int vSpan, hSpan;
+	int range, midpoint;
+	float maxSlope = .15;
+
+	if(transpose){
+		vSpan = img.cols - 1;
+		hSpan = img.rows - 1;
+		midpoint = roi.x;
+		range = roi.y;
+	}
+	else{		
+		vSpan = img.rows - 1;
+		hSpan = img.cols - 1;
+		midpoint = roi.y;
+		range = roi.y;
+	}
+	
+	//The param limits the weigting to a certain magnitude, in this case 10% of the max.
+	int param = .15 * 255 * (hSpan + 1);
+	float maxSsdFromMidpoint = 2*range*range;
+	
+	int minLs = INT_MAX;
+	for(int i = midpoint - range; i < midpoint + range; i++) {
+		for(int j = MAX(i-hSpan*maxSlope, midpoint - range); j < MIN(i+hSpan*maxSlope, midpoint + range); j++) {
+
+			float ssdFromMidpoint = (i - midpoint)*(i - midpoint) + (j - midpoint)*(j - midpoint);
+			int ls = param * ssdFromMidpoint / maxSsdFromMidpoint;
+			if(flip){
+				ls += lineSum(img, vSpan - i, vSpan - j, transpose);
+			}
+			else{
+				ls += lineSum(img, i, j, transpose);
+			}
+			if( ls < minLs ){
+				start = i;
+				end = j;
+				minLs = ls;
+			}
+		}
+	}
+}
+//Find the minimum energy lines crossing the image.
+//A and B are the start and end points of the line.
+void findLines(const Mat& img, Point& A, Point& B, const Rect& roi, bool flip, bool transpose) {
+	int start, end;
+	
+	findLinesHelper(img, start, end, roi, flip, transpose);
+	
+	if(flip && transpose){
+		A = Point(img.cols - 1 - start, img.rows-1);
+		B = Point(img.cols - 1 - end, 0);
+	}
+	else if(!flip && transpose){
+		A = Point(start, 0);
+		B = Point(end, img.rows -1);
+	}
+	else if(flip && !transpose){
+		A = Point(0, img.rows - 1 - start);
+		B = Point(img.cols-1, img.rows - 1 - end);
+	}
+	else{
+		A = Point(0, start);
+		B = Point(img.cols-1, end);
+	}
+}
+inline Point findIntersection(const Point& P1, const Point& P2,
+						const Point& P3, const Point& P4){
+	// From determinant formula here:
+	// http://en.wikipedia.org/wiki/Line_intersection
+	int denom = (P1.x - P2.x) * (P3.y - P4.y) - (P1.y - P2.y) * (P3.x - P4.x);
+	return Point(
+		( (P1.x * P2.y - P1.y * P2.x) * (P3.x - P4.x) -
+		  (P1.x - P2.x) * (P3.x * P4.y - P3.y * P4.x) ) / denom,
+		( (P1.x * P2.y - P1.y * P2.x) * (P3.y - P4.y) -
+		  (P1.y - P2.y) * (P3.x * P4.y - P3.y * P4.x) ) / denom);
+}
 
 //TODO: The blurSize param is sort of a hacky solution to the problem of contours being too large
 //		in certain cases. It fixes the problem on some form images because they can be blurred a lot
 //		and produce good results for contour finding. This is not the case with segments.
 //		I think a better solution might be to alter maxQuad somehow... I haven't figured out how though.
-//TODO: I'm considering an alternative implementation where I do segmentation seeded around the center of the image.
-//		then find a bounding rectangle.
-vector<Point> findQuad(Mat& img, int blurSize){
+vector<Point> findQuad(const Mat& img, int blurSize, float buffer = 0.0){
 	Mat imgThresh, temp_img, temp_img2;
 	
 	//Shrink the image down for efficiency
 	//and so we don't have to worry about filters behaving differently on large images
 	int multiple = img.cols / 256;
 	if(multiple > 1){
-		resize(img, temp_img, Size(img.cols/multiple, img.rows/multiple));
+		resize(img, temp_img, (1.f / multiple) * img.size(), 0, 0, INTER_AREA);
 	}
 	else{
 		multiple = 1;
@@ -162,94 +257,106 @@ vector<Point> findQuad(Mat& img, int blurSize){
 	float actual_height_multiple = float(img.cols) / temp_img.cols;
 	
 	temp_img.copyTo(temp_img2);
-	blur(temp_img2, temp_img, Size(2*blurSize+1, 2*blurSize+1));
+	#if 1
+	blur(temp_img2, temp_img, 2*Size(2*blurSize+1, 2*blurSize+1));
+	#else
+	//Not sure if this had advantages or not...
+	//My theory is that it is slower but more accurate,
+	//but I don't know if either difference is significant enough to notice.
+	//Will need to test.
+	GaussianBlur(temp_img2, temp_img, Size(9, 9), 3, 3);
+	#endif
+	
+	//erode(temp_img2, temp_img, (Mat_<uchar>(3,3) << 1,0,1,0,1,0,1,0,1));
 	//This threshold might be tweakable
-	imgThresh = temp_img2 - temp_img > 0;
+	imgThresh = (temp_img2 - temp_img) > 0;
+
+	float bufferChoke = buffer/(1 + 2*buffer);
+	Rect roi(bufferChoke * Point(temp_img.cols, temp_img.rows), (1.f - 2*bufferChoke) * temp_img.size());
+	
+	//Blocking out a chunk in the middle of the segment can help in cases with densely filled bubbles.
+	float extendedChoke = bufferChoke + .2;
+	Rect contractedRoi(extendedChoke * Point(temp_img.cols, temp_img.rows), (1.f - 2*extendedChoke) * temp_img.size());
+	imgThresh(contractedRoi) = Scalar::all(255);
+
+	Point A1, B1, A2, B2, A3, B3, A4, B4;
+	findLines(imgThresh, A1, B1, roi, false, true);
+	findLines(imgThresh, A2, B2, roi, false, false);
+	findLines(imgThresh, A3, B3, roi, true, true);
+	findLines(imgThresh, A4, B4, roi, true, false);
+	
+	#define USE_INTERSECTIONS
+	#ifdef USE_INTERSECTIONS
+	vector <Point> quad;
+	quad.push_back(findIntersection(A1, B1, A2, B2));
+	quad.push_back(findIntersection(A2, B2, A3, B3));
+	quad.push_back(findIntersection(A3, B3, A4, B4));
+	quad.push_back(findIntersection(A4, B4, A1, B1));
+	#else
+	line( imgThresh, A1, B1, Scalar(130), 1, 4);
+	line( imgThresh, A2, B2, Scalar(130), 1, 4);
+	line( imgThresh, A3, B3, Scalar(130), 1, 4);
+	line( imgThresh, A4, B4, Scalar(130), 1, 4);
+	
+	vector<Point> quad = findMaxQuad(imgThresh, 0);
+	
+	quad = expandCorners(quad, EXPANSION_PERCENTAGE);
+	#endif
+	
+	#if 0 
+	//refine corner locations
+	//This seems to actually do worse
+	vector <Point2f> fquad;
+	for(size_t i = 0; i<quad.size(); i++){
+		fquad.push_back(Point2f(actual_width_multiple * quad[i].x, actual_height_multiple * quad[i].y));
+	}
+	TermCriteria termcrit(CV_TERMCRIT_ITER|CV_TERMCRIT_EPS,20,0.03);
+	cornerSubPix(img, fquad, Size(3,3), Size(2, 2), termcrit);
+	
+	for(size_t i = 0; i<quad.size(); i++){
+		quad[i] = Point(fquad[i].x, fquad[i].y);
+	}
+	#else
+	//Resize the contours for the full size image:
+	for(size_t i = 0; i<quad.size(); i++){
+		quad[i] = Point(actual_width_multiple * quad[i].x, actual_height_multiple * quad[i].y);
+	}
+	#endif
 	
 	#ifdef OUTPUT_DEBUG_IMAGES
-	Mat dbg_out;
+	Mat dbg_out, dbg_out2;
 	imgThresh.copyTo(dbg_out);
 	string segfilename = alignmentNamer.get_unique_name("alignment_debug_");
 	segfilename.append(".jpg");
 	imwrite(segfilename, dbg_out);
 	#endif
-	
-	vector<Point> quad = findMaxQuad(imgThresh, 0);
-	
-	imgThresh.release();
-	
-	//Resize the contours for the full size image:
-	for(size_t i = 0; i<quad.size(); i++){
-		quad[i] = Point(actual_width_multiple * quad[i].x, actual_height_multiple * quad[i].y);
-	}
-	/*
-	Moments m = moments(Mat(quad));
-	//Mat Z = (Mat_<double>(1,3) << m.m20, m.m02, 0 );
-	Point center(m.m10/m.m00, m.m01/m.m00);
-	vector<Point> quad2(4);
-	for(size_t i = 0; i<4; i++){
-		Point d = quad[i]-center;
-		if(d.y > 0){
-			if(d.x < 0){
-				quad2[0] = quad[i];
-			}
-			else{
-				quad2[1] = quad[i];
-			}
-		}
-		else{
-			if(d.x > 0){
-				quad2[2] = quad[i];
-			}
-			else{
-				quad2[3] = quad[i];
-			}
-		}
-		cout << d.x << endl;
-	}
-	quad = quad2; */
-	/*
-	Moments m = moments(Mat(quad));
-	//Point center(m.m10/m.m00, m.m01/m.m00);
-	Mat center = (Mat_<double>(1,3) << m.m10/m.m00, m.m01/m.m00, 0 );
-	Mat p0 = (Mat_<double>(1,3) << quad[0].x, quad[0].y, 0 );
-	Mat p1 = (Mat_<double>(1,3) << quad[1].x, quad[1].y, 0 );
-	if((center - p0).cross(p1 - p0).at<double>(0,2) > 0){
-		quad = vector<Point>(quad.rbegin(), quad.rend());
-	}
-	*/
-	
-	return expandCorners(quad, EXPANSION_PERCENTAGE);
-}
-//TODO: This routine could be "simplified" by taking out init_image_sz and using angle from center to order vertices.
-//		Reverse is probably also unnecessiary since it can probably be accomplished with inversion.
-//		And quadToTransformation might then be a more consistent name.
-Mat getMyTransform(vector<Point>& foundCorners, Size init_image_sz, Size out_image_sz, bool reverse){
-	Point2f corners_a[4] = {Point2f(0, 0), Point2f(init_image_sz.width, 0), Point2f(0, init_image_sz.height),
-							Point2f(init_image_sz.width, init_image_sz.height)};
-	Point2f out_corners[4] = {Point2f(0, 0),Point2f(out_image_sz.width, 0), Point2f(0, out_image_sz.height),
-							Point2f(out_image_sz.width, out_image_sz.height)};
 
-	configCornerArray(foundCorners, corners_a);
-	
-	if(reverse){
-		return getPerspectiveTransform(out_corners, corners_a);
-	}
-	else{
-		return getPerspectiveTransform(corners_a, out_corners);
-	}
+	return quad;
 }
+Mat quadToTransformation(const vector<Point>& foundCorners, const Size& out_image_sz){
+
+	Point2f out_corners[4] = {Point2f(0, 0), Point2f(out_image_sz.width, 0),
+							  Point2f(out_image_sz.width, out_image_sz.height), Point2f(0, out_image_sz.height)};
+
+	vector<Point> orderedCorners = orderCorners(foundCorners);
+	
+	Point2f corners_a[4];
+	
+	for(size_t i = 0; i<orderedCorners.size(); i++){
+		corners_a[i] = Point2f(orderedCorners[i].x, orderedCorners[i].y);
+	}
+	
+	return getPerspectiveTransform(corners_a, out_corners);
+}
+//Takes a 3x3 transformation matrix H and a transformed output image size and returns
+//a quad representing the location of the output image in a image to be transformed by H.
 vector<Point> transformationToQuad(const Mat& H, const Size& out_image_sz){
 										
 	Mat img_rect = (Mat_<double>(3,4) << 0, out_image_sz.width, (double)out_image_sz.width,	 0,
 										 0, 0,					(double)out_image_sz.height, out_image_sz.height,
 										 1,	1,					1, 					 1);
-	//cout << img_rect.at<double>(3, 0) <<", " << img_rect.at<double>(3, 1) << endl;
-	//cout << img_rect << endl;
 
 	Mat out_img_rect =  H.inv() * img_rect;
-
-	//cout << img_rect << endl;
 	
 	vector<Point> quad;
 	for(size_t i = 0; i < 4; i++){
@@ -259,173 +366,6 @@ vector<Point> transformationToQuad(const Mat& H, const Size& out_image_sz){
 		//cout << out_img_rect.at<double>(2, i) << endl;
 	}
 	return quad;
-}
-//TODO: Refactor this so that it only does the alignment. The else stuff can be added to quad finding,
-//		however I'm not sure it's going to be worth keeping at all.
-void alignImage(Mat& img, Mat& aligned_image, vector<Point>& maxRect, Size aligned_image_sz){
-	
-	if ( maxRect.size() == 4 && isContourConvex(Mat(maxRect)) ){
-		/*
-		//TODO:Possibly remove this
-		cvtColor(img, dbg_out, CV_GRAY2RGB);
-		const Point* p = &maxRect[0];
-		int n = (int) maxRect.size();
-		polylines(dbg_out, &p, &n, 1, true, 200, 2, CV_AA);
-		string segfilename = alignmentNamer.get_unique_name("alignment_debug_");
-		segfilename.append(".jpg");
-		imwrite(segfilename, dbg_out);
-		*/
-		Mat H = getMyTransform(maxRect, img.size(), aligned_image_sz);
-		warpPerspective(img, aligned_image, H, aligned_image_sz);
-	}
-	else{//use the bounding line method if the contour method fails
-		int top = 0, bottom = 0, left = 0, right = 0;
-		find_bounding_lines(img, &top, &bottom, false);
-		find_bounding_lines(img, &left, &right, true);
-
-		/*
-		img.copyTo(dbg_out);
-		const Point* p = &maxRect[0];
-		int n = (int) maxRect.size();
-		polylines(dbg_out, &p, &n, 1, true, 200, 2, CV_AA);
-
-		dbg_out.row(top)+=200;
-		dbg_out.row(bottom)+=200;
-		dbg_out.col(left)+=200;
-		dbg_out.col(right)+=200;
-		string segfilename = alignmentNamer.get_unique_name("alignment_debug_");
-		segfilename.append(".jpg");
-		imwrite(segfilename, dbg_out);
-		*/
-		
-		float bounding_lines_threshold = .2;
-		if ((abs((bottom - top) - aligned_image.rows) < bounding_lines_threshold * aligned_image.rows) &&
-			(abs((right - left) - aligned_image.cols) < bounding_lines_threshold * aligned_image.cols) &&
-			top + aligned_image.rows < img.rows &&  top + aligned_image.cols < img.cols) {
-
-			img(Rect(left, top, aligned_image.cols, aligned_image.rows)).copyTo(aligned_image);
-
-		}
-		else{
-			int seg_buffer_w = (img.cols - aligned_image.cols) / 2;
-			int seg_buffer_h = (img.rows - aligned_image.rows) / 2;
-			img(Rect(seg_buffer_w, seg_buffer_h,
-				aligned_image.cols, aligned_image.rows)).copyTo(aligned_image);
-		}
-	}
-}
-
-void crossCheckMatching( Ptr<DescriptorMatcher>& descriptorMatcher,
-                         const Mat& descriptors1, const Mat& descriptors2,
-                         vector<DMatch>& filteredMatches12, int knn=1 )
-{
-    filteredMatches12.clear();
-    vector<vector<DMatch> > matches12, matches21;
-    descriptorMatcher->knnMatch( descriptors1, descriptors2, matches12, knn );
-    descriptorMatcher->knnMatch( descriptors2, descriptors1, matches21, knn );
-    for( size_t m = 0; m < matches12.size(); m++ )
-    {
-        bool findCrossCheck = false;
-        for( size_t fk = 0; fk < matches12[m].size(); fk++ )
-        {
-            DMatch forward = matches12[m][fk];
-
-            for( size_t bk = 0; bk < matches21[forward.trainIdx].size(); bk++ )
-            {
-                DMatch backward = matches21[forward.trainIdx][bk];
-                if( backward.trainIdx == forward.queryIdx )
-                {
-                    filteredMatches12.push_back(forward);
-                    findCrossCheck = true;
-                    break;
-                }
-            }
-            if( findCrossCheck ) break;
-        }
-    }
-}
-bool fileexists(const string& filename){
-  ifstream ifile(filename.c_str());
-  return ifile;
-}
-//Tries to read feature data (presumably for the template) from featureDataPath + ".yml" .
-//If none is found it is generated for the image featureDataPath + ".jpg"
-bool loadFeatureData(const string& featureDataPath, Ptr<FeatureDetector>& detector,
-					Ptr<DescriptorExtractor>& descriptorExtractor, vector<KeyPoint>& templKeypoints,
-					Mat& templDescriptors, Size& templImageSize) {
-			
-	//detector = Ptr<FeatureDetector>(new SurfFeatureDetector(300));
-	//MSER is pretty fast. Grid seems to help limit number but messes up more.
-	detector = FeatureDetector::create( "SURF" ); 
-	descriptorExtractor = DescriptorExtractor::create( "SURF" );
-	
-	bool checkForSavedFeatures = true;
-	#ifdef ALWAYS_COMPUTE_TEMPLATE_FEATURES
-	checkForSavedFeatures = false;
-	#endif
-	if( checkForSavedFeatures && fileexists(featureDataPath + ".yml") ) {
-		try
-		{
-			FileStorage fs(featureDataPath + ".yml", FileStorage::READ);
-			/*if( !fs["fdtype"].empty () && !fs["detype"].empty() && !fs["detector"].empty() && 
-				!fs["descriptorExtractor"].empty() && !fs["templKeypoints"].empty() && !fs["templDescriptors"].empty() ){
-			*/
-				detector->read(fs["detector"]);
-				descriptorExtractor->read(fs["descriptorExtractor"]);
-				
-				fs["templwidth"] >> templImageSize.width;
-				fs["templheight"] >> templImageSize.height; 
-
-				read(fs["templKeypoints"], templKeypoints);
-				fs["templDescriptors"] >> templDescriptors;
-			//}
-		}
-		catch( cv::Exception& e )
-		{
-			const char* err_msg = e.what();
-			cerr << err_msg << endl;
-		}
-	}
-	if( detector.empty() || descriptorExtractor.empty() || templKeypoints.empty() || templDescriptors.empty()){
-		//if there is no file to read descriptors and keypoints from make one.
-		//cout << featureDataPath + ".yml " << fileexists(featureDataPath + ".yml") << endl;
-		
-		Mat templImage, temp;
-		templImage = imread( featureDataPath + ".jpg", 0 );
-		resize(templImage, temp, templImage.size(), 0, 0, INTER_AREA);
-		templImage  = temp;
-		templImageSize = templImage.size();
-
-		#ifdef DEBUG_ALIGN_IMAGE
-		cout << endl << "Extracting keypoints from template image..." << endl;
-		#endif
-		detector->detect( templImage, templKeypoints );
-		#ifdef DEBUG_ALIGN_IMAGE
-		cout << "\t" << templKeypoints.size() << " points" << endl;
-		cout << "Computing descriptors for keypoints from template image..." << endl;
-		#endif
-		descriptorExtractor->compute( templImage, templKeypoints, templDescriptors );
-		
-		// write feature data to a file.
-		FileStorage fs(featureDataPath + ".yml", FileStorage::WRITE);
-		fs << "detector" << "{:"; detector->write(fs); fs << "}";
-		fs << "descriptorExtractor" << "{:"; descriptorExtractor->write(fs); fs << "}";
-		
-		fs << "templwidth" << templImageSize.width;
-		fs << "templheight" << templImageSize.height;
-		
-		write(fs, "templKeypoints", templKeypoints);
-		fs << "templDescriptors" << templDescriptors;
-		
-		//imwrite("t2.jpg", templImage);
-	}
-	if( detector.empty() || descriptorExtractor.empty() )
-	{
-		cerr << "Can not create/load detector or descriptor extractor" << endl;
-		return false;
-	}	
-	
-	return true;
 }
 //Check if the contour has four points, does not self-intersect and is convex.
 bool testQuad(const vector<Point>& quad){
@@ -458,10 +398,180 @@ bool testQuad(const vector<Point>& quad){
 			sign*C.cross(D).at<double>(0, 2) > 0 &&
 			sign*A.cross(E).at<double>(0, 2) > 0;
 }
-//Aligns a image of a form.
-bool alignFormImage(Mat& img, Mat& aligned_img, const string& featureDataPath, 
-					const Size& aligned_img_sz, float efficiencyScale ){
-					
+//This is from the OpenCV descriptor matcher example.
+void crossCheckMatching( Ptr<DescriptorMatcher>& descriptorMatcher,
+                         const Mat& descriptors1, const Mat& descriptors2,
+                         vector<DMatch>& filteredMatches12, int knn=1 )
+{
+    filteredMatches12.clear();
+    vector<vector<DMatch> > matches12, matches21;
+    descriptorMatcher->knnMatch( descriptors1, descriptors2, matches12, knn );
+    descriptorMatcher->knnMatch( descriptors2, descriptors1, matches21, knn );
+    for( size_t m = 0; m < matches12.size(); m++ )
+    {
+        bool findCrossCheck = false;
+        for( size_t fk = 0; fk < matches12[m].size(); fk++ )
+        {
+            DMatch forward = matches12[m][fk];
+
+            for( size_t bk = 0; bk < matches21[forward.trainIdx].size(); bk++ )
+            {
+                DMatch backward = matches21[forward.trainIdx][bk];
+                if( backward.trainIdx == forward.queryIdx )
+                {
+                    filteredMatches12.push_back(forward);
+                    findCrossCheck = true;
+                    break;
+                }
+            }
+            if( findCrossCheck ) break;
+        }
+    }
+}
+//I think the proper way to do this would be to make a FormAlignment class
+//then pass in the mask from Processor.cpp
+Mat makeFieldMask(const string& jsonTemplate){
+	
+	cout << jsonTemplate;
+	//Should there be a file that has all the JSON functions?
+	Json::Value myRoot;
+	parseJsonFromFile(jsonTemplate, myRoot);
+	
+	Mat mask(myRoot.get("height", 0).asInt(), myRoot.get("width", 0).asInt(),
+			CV_8UC1, Scalar::all(255));
+	const Json::Value fields = myRoot["fields"];
+	for ( size_t i = 0; i < fields.size(); i++ ) {
+		const Json::Value field = fields[i];
+		const Json::Value segments = field["segments"];
+		for ( size_t j = 0; j < segments.size(); j++ ) {
+			const Json::Value segmentTemplate = segments[j];
+
+			Rect segRect( Point( segmentTemplate.get("x", INT_MIN ).asInt(),
+								   segmentTemplate.get("y", INT_MIN).asInt()),
+							Size(segmentTemplate.get("width", INT_MIN).asInt(),
+							segmentTemplate.get("height", INT_MIN).asInt()));
+			rectangle(mask, segRect.tl(), segRect.br(), Scalar::all(0), -1);				
+		}
+	}
+	return mask;
+}
+bool checkForSavedFeatures( const string& featuresFile, Size& templImageSize,
+							vector<KeyPoint>& templKeypoints, Mat& templDescriptors){
+	if( fileExists(featuresFile) ) {
+		try {
+			FileStorage fs(featuresFile, FileStorage::READ);
+			if( !fs["templwidth"].empty() && !fs["templheight"].empty() &&
+				!fs["templKeypoints"].empty() && !fs["templDescriptors"].empty()){
+
+				fs["templwidth"] >> templImageSize.width;
+				fs["templheight"] >> templImageSize.height; 
+
+				read(fs["templKeypoints"], templKeypoints);
+				fs["templDescriptors"] >> templDescriptors;
+			}
+			else{
+				return false;
+			}
+		}
+		catch( cv::Exception& e ) {
+			const char* err_msg = e.what();
+			cout << err_msg << endl;
+			return false;
+		}
+	}
+	return !templKeypoints.empty() && !templDescriptors.empty();
+}
+//Tries to read feature data (presumably for the template) from templPath + ".yml" .
+//If none is found it is generated for the image templPath + ".jpg"
+bool loadFeatureData(const string& templPath, Ptr<FeatureDetector>& detector,
+					Ptr<DescriptorExtractor>& descriptorExtractor, vector<KeyPoint>& templKeypoints,
+					Mat& templDescriptors, Size& templImageSize) {
+			
+	bool featuresFound = false;
+	#ifndef ALWAYS_COMPUTE_TEMPLATE_FEATURES
+		featuresFound = checkForSavedFeatures(templPath + ".yml", templImageSize, templKeypoints, templDescriptors);
+	#endif
+	
+	//detector = Ptr<FeatureDetector>(new SurfFeatureDetector(800, 4, 1));
+	//detector = Ptr<FeatureDetector>(new GoodFeaturesToTrackDetector( 800, .2, 10));
+	//MSER is pretty fast. Grid seems to help limit number but messes up more.
+	//descriptorExtractor = Ptr<DescriptorExtractor>(new SurfDescriptorExtractor( 4, 1, true ));
+	//descriptorExtractor = Ptr<DescriptorExtractor>(new SurfDescriptorExtractor( 4, 3, true ));
+	//detector = FeatureDetector::create( "SURF" ); 
+	//detector = FeatureDetector::create( "GridSURF" );
+	
+	//#define SHOW_MATCHES_WINDOW
+	//#define ALWAYS_COMPUTE_TEMPLATE_FEATURES
+	detector = Ptr<FeatureDetector>(new GridAdaptedFeatureDetector(
+										new SurfFeatureDetector( 400., 1, 3), //Adding octaves while shrinking the image might speed things up.
+										500, 4, 4));//4,4 grid size seems to be bizzarly more effective than other sizes.
+	
+	descriptorExtractor = DescriptorExtractor::create( "SURF" );
+	
+	if(detector.empty() || descriptorExtractor.empty()) return false;
+	
+	if( !featuresFound  ){
+		//if there is no file to read descriptors and keypoints from make one.
+		Mat templImage, temp;
+		templImage = imread( templPath + ".jpg", 0 );
+		resize(templImage, temp, templImage.size(), 0, 0, INTER_AREA);
+		templImage = temp;
+		temp.release();
+		templImageSize = templImage.size();
+
+		#ifdef DEBUG_ALIGN_IMAGE
+		cout << "Extracting keypoints from template image..." << endl;
+		#endif
+		
+		Mat mask = makeFieldMask(templPath + ".json");
+		resize(mask, temp, templImage.size(), 0, 0, INTER_AREA);
+		erode(temp, mask, Mat(), Point(-1,-1), 6);
+		//mask = temp;
+		/*
+		imshow( "outliers", templImage & mask);
+		for(;;)
+		{
+		    char c = (char)waitKey(0);
+		    if( c == '\x1b' ) // esc
+		    {
+		    	cvDestroyWindow("inliers");
+		    	cvDestroyWindow("outliers");
+		        break;
+		    }
+		}
+		*/
+		
+		temp.release();
+		detector->detect( templImage, templKeypoints, mask );
+
+		#ifdef DEBUG_ALIGN_IMAGE
+		cout << "\t" << templKeypoints.size() << " points" << endl;
+		cout << "Computing descriptors for keypoints from template image..." << endl;
+		#endif
+		descriptorExtractor->compute( templImage, templKeypoints, templDescriptors );
+		
+		//TODO: Maybe put this in a function
+		try {
+			// write feature data to a file.
+			FileStorage fs(templPath + ".yml", FileStorage::WRITE);
+		
+			fs << "templwidth" << templImageSize.width;
+			fs << "templheight" << templImageSize.height;
+		
+			write(fs, "templKeypoints", templKeypoints);
+			fs << "templDescriptors" << templDescriptors;
+		}
+		catch( cv::Exception& e ) {
+			const char* err_msg = e.what();
+			cout << err_msg << endl;
+			return false;
+		}
+	}
+	return true;
+}
+bool alignFormImageByFeatures(const Mat& img, Mat& aligned_img, const string& templPath, 
+					const Size& aligned_img_sz, float efficiencyScale ) {
+
 	Ptr<FeatureDetector> detector;
 	Ptr<DescriptorExtractor> descriptorExtractor;
 	
@@ -470,21 +580,19 @@ bool alignFormImage(Mat& img, Mat& aligned_img, const string& featureDataPath,
 	
 	Size templImageSize;
 	
-	bool success = loadFeatureData(featureDataPath, detector, descriptorExtractor,
+	bool success = loadFeatureData(templPath, detector, descriptorExtractor,
 									templKeypoints, templDescriptors, templImageSize);
 	if(!success) return false;
 	
 	// Be careful when resizing, aliasing can completely break this function.
 	Mat img_resized;
-	resize(img, img_resized, efficiencyScale*img.size(), 0, 0, INTER_AREA);
-	Point3d trueEfficiencyScale(double(img_resized.cols) / img.cols, double(img_resized.rows) / img.rows, 1);
-	//cvtColor(temp, img1, CV_GRAY2RGB);
-	//GaussianBlur(temp, img1, Size(1, 1), 1.0);
-	
-	//imwrite("t1.jpg", img_resized);
+	resize(img, img_resized, efficiencyScale * img.size(), 0, 0, INTER_AREA);
+	Point3d trueEfficiencyScale(double(img_resized.cols) / img.cols,
+								double(img_resized.rows) / img.rows,
+								1.0);
 	
 	#ifdef DEBUG_ALIGN_IMAGE
-	cout << endl << "Extracting keypoints from unaligned image..." << endl;
+	cout << "Extracting keypoints from unaligned image..." << endl;
 	#endif
 	
 	vector<KeyPoint> keypoints1;
@@ -502,14 +610,18 @@ bool alignFormImage(Mat& img, Mat& aligned_img, const string& featureDataPath,
 	cout << "Matching descriptors..." << endl;
 	#endif
 	
+	#if 1
 	Ptr<DescriptorMatcher> descriptorMatcher = DescriptorMatcher::create( "BruteForce" );
+	#else
+	Ptr<DescriptorMatcher> descriptorMatcher = DescriptorMatcher::create( "FlannBased" );
+	#endif
+	
 	if( descriptorMatcher.empty()  ) {
 		cerr << "Can not create descriptor matcher of given type" << endl;
 		return false;
 	}
 	vector<DMatch> filteredMatches;
 	crossCheckMatching( descriptorMatcher, descriptors1, templDescriptors, filteredMatches, 1 );
-	cout << ">" << endl;
 
 	vector<int> queryIdxs( filteredMatches.size() ), trainIdxs( filteredMatches.size() );
 	for( size_t i = 0; i < filteredMatches.size(); i++ )
@@ -520,50 +632,159 @@ bool alignFormImage(Mat& img, Mat& aligned_img, const string& featureDataPath,
 
 	vector<Point2f> points1; KeyPoint::convert(keypoints1, points1, queryIdxs);
 	vector<Point2f> points2; KeyPoint::convert(templKeypoints, points2, trainIdxs);
+
+	Point3d sc = Point3d( ((double)aligned_img_sz.width) / templImageSize.width,
+						  ((double)aligned_img_sz.height) / templImageSize.height,
+						  1.0);
 	
-	Point3d sc = Point3d( double(aligned_img_sz.width) / templImageSize.width,
-						  double(aligned_img_sz.height) / templImageSize.height,
-						  1);
-	Mat H = findHomography( Mat(points1), Mat(points2), CV_RANSAC, 5.0 );
-	Mat ScalingMat = (Mat::diag(Mat(trueEfficiencyScale)) * Mat::diag(Mat(sc)));
+	Mat H = findHomography( Mat(points1), Mat(points2), CV_RANSAC, FH_REPROJECT_THRESH );//CV_LMEDS
+	Mat Hscaled = Mat::diag(Mat(sc)) * H * Mat::diag(Mat(trueEfficiencyScale));
+
+	aligned_img = Mat(0,0, CV_8U);
+	warpPerspective( img, aligned_img, Hscaled, aligned_img_sz);
 	
-	warpPerspective( img, aligned_img, H*ScalingMat, aligned_img_sz );
-	
-	
-	vector<Point> quad = transformationToQuad(H*ScalingMat, aligned_img_sz);
+	vector<Point> quad = transformationToQuad(Hscaled, aligned_img_sz);
 	
 	bool alignSuccess = false;
-	if( testQuad(quad) ){ 
+	if( testQuad(quad) ) {
 		float area = contourArea(Mat(quad));
-		float expected_area = .8 * .8 * img.size().area();
+		float expected_area = (.8 * img.size()).area();
 		float tolerence = .4;
 		alignSuccess =  area > (1. - tolerence) * expected_area &&
 						area < (1. + tolerence) * expected_area;
 	}
-	#ifdef OUTPUT_DEBUG_IMAGES
-	string qiname = dbgNamer.get_unique_name("alignment_debug_") + ".jpg";
-	const Point* p = &quad[0];
-	int n = (int) quad.size();
-	if( alignSuccess ){
-		polylines(img, &p, &n, 1, true, 250, 3, CV_AA);
-	}
-	else{
-		polylines(img, &p, &n, 1, true, 0, 5, CV_AA);
-		cout << "Form alignment failed" << endl;
-	}
-	imwrite(qiname, img);
+	#ifdef SHOW_MATCHES_WINDOW
+		//This code creates a window to show matches:
+		vector<char> matchesMask( filteredMatches.size(), 0 );
+		Mat points1t; perspectiveTransform(Mat(points1), points1t, H);
+		for( size_t i1 = 0; i1 < points1.size(); i1++ )
+		{
+		    if( norm(points2[i1] - points1t.at<Point2f>((int)i1,0)) < 4 ) // inlier
+		        matchesMask[i1] = 1;
+		}
+	
+		Mat drawImg;
+		Mat img2 = imread("lfdImage.jpg");
+		drawMatches( img_resized, keypoints1, img2, templKeypoints, filteredMatches, drawImg,
+					CV_RGB(0, 255, 0), CV_RGB(255, 0, 255), matchesMask, DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
+	
+		namedWindow("inliers", CV_WINDOW_NORMAL);
+		imshow( "inliers", drawImg );
+		
+        for( size_t i1 = 0; i1 < matchesMask.size(); i1++ )
+            matchesMask[i1] = !matchesMask[i1];
+            
+        drawMatches( img_resized, keypoints1, img2, templKeypoints, filteredMatches, drawImg,
+        			CV_RGB(0, 0, 255), CV_RGB(255, 0, 0), matchesMask,
+        			DrawMatchesFlags::DRAW_OVER_OUTIMG | DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
+		
+		namedWindow("outliers", CV_WINDOW_NORMAL);
+		imshow( "outliers", drawImg );
+		
+		for(;;)
+		{
+		    char c = (char)waitKey(0);
+		    if( c == '\x1b' ) // esc
+		    {
+		    	cvDestroyWindow("inliers");
+		    	cvDestroyWindow("outliers");
+		        break;
+		    }
+		}
 	#endif
+	#ifdef OUTPUT_DEBUG_IMAGES
+		Mat dbg;
+		img.copyTo(dbg);
+		string qiname = dbgNamer.get_unique_name("alignment_debug_") + ".jpg";
+		const Point* p = &quad[0];
+		int n = (int) quad.size();
+		if( alignSuccess ){
+			polylines(dbg, &p, &n, 1, true, 250, 3, CV_AA);
+		}
+		else{
+			polylines(dbg, &p, &n, 1, true, 0, 5, CV_AA);
+			cout << "Form alignment failed" << endl;
+		}
+		imwrite(qiname, dbg);
+	#endif
+	
 	return alignSuccess;
 }
-//Aligns a region bounded by black lines (i.e. a bubble segment)
-//It might be necessiary for some of the black lines to touch the edge of the image...
-//TODO: see if that's the case, and try to do something about it if it is.
-void alignBoundedRegion(Mat& img, Mat& aligned_image, Size aligned_image_sz){
-	return;
-}
-vector<Point> findFormQuad(Mat& img){
+vector<Point> findFormQuad(const Mat& img){
 	return findQuad(img, 12);
 }
-vector<Point> findBoundedRegionQuad(Mat& img){
-	return findQuad(img, 4);
+vector<Point> findBoundedRegionQuad(const Mat& img, float buffer){
+	return findQuad(img, 9, buffer);
 }
+//Aligns a image of a form.
+bool alignFormImage(const Mat& img, Mat& aligned_img, const string& templPath, 
+					const Size& aligned_img_sz, float efficiencyScale ) {
+	#ifdef USE_FEATURE_BASED_FORM_ALIGNMENT
+	return alignFormImageByFeatures(img, aligned_img, templPath,  aligned_img_sz, efficiencyScale );
+	#else
+	vector<Point> quad = findQuad(formImage);
+	Mat transformation = quadToTransformation(quad, aligned_img_sz);
+	Mat alignedSegment(0, 0, CV_8U);
+	warpPerspective(segment, alignedSegment, transformation, aligned_img_sz);
+	return !alignedSegment.empty();
+	#endif
+}
+//GrabCut stuff that doesn't work particularly well
+// I will probably get rid of it eventually but it might be help for
+// improving feature finding by masking out the form and using a minimum rectangle.
+Mat makeGCMask(const Size& mask_size, float buffer){
+	Mat mask(mask_size, CV_8UC1, Scalar::all(GC_BGD));
+	Point mask_sz_pt( mask_size.width-1, mask_size.height-1);
+	
+	/*
+	float bgd_width = .01;
+	float pr_bgd_width = buffer - .01;
+	float pr_fgd_width = .1;
+	*/
+	float bgd_width = buffer + .08;
+	float pr_bgd_width = .02;
+	float pr_fgd_width = .05;
+	
+	rectangle( mask, bgd_width * mask_sz_pt, (1.f - bgd_width) * mask_sz_pt, GC_PR_BGD, -1);
+	rectangle( mask, (bgd_width + pr_bgd_width) * mask_sz_pt,
+					 (1.f - bgd_width - pr_bgd_width) * mask_sz_pt, GC_PR_FGD, -1);
+ 	rectangle( mask, (bgd_width + pr_bgd_width + pr_fgd_width) * mask_sz_pt,
+					 (1.f - bgd_width - pr_bgd_width - pr_fgd_width) * mask_sz_pt, GC_FGD, -1);
+	return mask;
+}
+
+//Looks for a bounded rectanular quadrilateral
+vector<Point> findSegment(const Mat& img, float buffer){
+	Mat img2, fgdModel, bgdModel;
+	cvtColor(img, img2, CV_GRAY2RGB);
+	/*
+	vector<Mat> components;
+	components.push_back(img);
+	Mat temp, temp2;
+	erode(img, temp, Mat());
+	components.push_back(temp);
+	Laplacian(img, temp2, -1, 3, 5);
+	components.push_back(temp2);
+	//merge(components, img2);
+	cvtColor(temp2, img2, CV_GRAY2RGB);
+	*/
+	Mat mask = makeGCMask(img.size(), buffer/(1 + 2*buffer));
+	
+	grabCut( img2, mask, Rect(), bgdModel, fgdModel, 1, GC_INIT_WITH_MASK );
+	//watershed(img2, mask);
+
+	//imwrite(segfilename, mask*50);
+	
+	mask = mask & GC_FGD;// | (mask & GC_PR_FGD));
+	
+	#ifdef OUTPUT_DEBUG_IMAGES
+	string segfilename = alignmentNamer.get_unique_name("alignment_debug_");
+	segfilename.append(".jpg");
+	Mat dbg_out;
+	img2.copyTo( dbg_out , mask); 
+	imwrite(segfilename, dbg_out);
+	#endif
+	
+	return findMaxQuad(mask, 0);
+}
+

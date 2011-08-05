@@ -16,17 +16,4 @@
 
 /** Processor - for processing images that are stored in an image pool
 */"
-class Processor{
-	public:
-		Processor(const char* templatePath);
-		bool trainClassifier(const char* exampleDir);
-		void setClassifierWeight(float weight);
-		bool loadForm(const char* imagePath, int rotate90 = 0);
-		bool alignForm(const char* alignedImageOutputPath);
-		bool processForm(const char* outPath);
-		bool writeFormImage(const char* outputPath);
-		
-	private:
-		class ProcessorImpl;
-    	std::tr1::shared_ptr<ProcessorImpl> processorImpl;
-};
+%include "Processor.h"

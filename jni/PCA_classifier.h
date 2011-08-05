@@ -2,26 +2,19 @@
 #define PCA_CLASSIFIER_H
 #include "configuration.h"
 
-#ifdef USE_ANDROID_HEADERS_AND_IO
-//I don't think i need this....
-//#include "image_pool.h"
-#endif
-
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/ml/ml.hpp>
 #include "Addons.h"
-
-//TODO: Add a 4th classification. The middle classification doesn't really help since it has to be entirely
-//		lumped with empty or full...
-enum bubble_val { EMPTY_BUBBLE = 0, PARTIAL_BUBBLE, FILLED_BUBBLE, NUM_BUBBLE_VALS };
 
 class PCA_classifier
 {
 	private:	
-		int eigenvalues;
 		
-		cv::Mat comparison_vectors;
-		std::vector <bubble_val> training_bubble_values;
+		CvSVM statClassifier;
+		//TODO: try SVM without PCA
+		std::vector<std::string> classifications; 
+		
 		cv::PCA my_PCA;
 	
 		cv::Size search_window;
@@ -33,33 +26,30 @@ class PCA_classifier
 		//Each element corresponds to a classification.
 		cv::Mat weights;
 		
-		void update_gaussian_weights();
-		void PCA_set_add(cv::Mat& PCA_set, cv::Mat& img);
-		void PCA_set_add(cv::Mat& PCA_set, std::string& filename, bool flipExamples);
-	public:
-		//TODO: I'm running into problems with the ex_width+height.
-		//		Should the width and height be measured from the edges of the bubble than have a additional buffer?
-		//		What if I want to specify arbitrary rectangles that should be resized then classified?
-		cv::Size exampleSize;
-		PCA_classifier();
-		PCA_classifier(int eigvenvalues);
+		cv::Mat cMask;
 		
-		void set_weight(bubble_val classification, float weight);
+		void update_gaussian_weights();
+		
+		int getClassificationIdx(const std::string& filepath);
+		
+		void PCA_set_push_back(cv::Mat& PCA_set, const cv::Mat& img);
+		void PCA_set_add(cv::Mat& PCA_set, std::vector<int>& trainingBubbleValues, const std::string& filename, bool flipExamples);
+	public:
+		cv::Size exampleSize; //Can I make this immutable to clients (without an accesor function)?
+
 		void set_search_window(cv::Size sw);
-		double rateBubble(const cv::Mat& det_img_gray, const cv::Point& bubble_location);
-		bool train_PCA_classifier(const std::string& dirPath, cv::Size myExampleSize = cv::Size(14,18),
-									bool flipExamples = false,
-									bool (*pred)(std::string& filename) = &returnTrue);
-		cv::Point bubble_align(const cv::Mat& det_img_gray, const cv::Point& bubble_location);
-		bubble_val classifyBubble(const cv::Mat& det_img_gray, const cv::Point& bubble_location);
+		double rateBubble(const cv::Mat& det_img_gray, const cv::Point& bubble_location) const;
+		bool train_PCA_classifier(	const std::vector<std::string>& examplePaths,
+									const cv::Size& myExampleSize,
+									int eigenvalues = 7,
+									bool flipExamples = false);
+		cv::Point bubble_align(const cv::Mat& det_img_gray, const cv::Point& bubble_location) const;
+		bool classifyBubble(const cv::Mat& det_img_gray, const cv::Point& bubble_location) const;
 		
 		bool trained();
-		
-		virtual ~PCA_classifier() {
-			//Not sure if I need to do anything here...
-			//Do the class variables above automatically get destructed?
-		}
 
+		bool save(const std::string& outputPath) const;
+		bool load(const std::string& inputPath, const cv::Size& requiredExampleSize);
 };
 
 #endif

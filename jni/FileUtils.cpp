@@ -15,14 +15,18 @@ extern "C" {
 #include <string.h>
 #include <errno.h>
 }
-
-#include "./FileUtils.h"
+#include <fstream>
+#include "FileUtils.h"
 
 using namespace std;
 
 // helper function that recursively searches directories for files
 static void HandleDir(char *dirpath, DIR *d, vector<string> &filenames);
 
+bool fileExists(const string& filename){
+  ifstream ifile(filename.c_str());
+  return (bool) ifile;
+}
 int CrawlFileTree(string rootdir, vector<string> &filenames) {
 	vector<char> writable(rootdir.begin(), rootdir.end());
 	writable.push_back('\0');

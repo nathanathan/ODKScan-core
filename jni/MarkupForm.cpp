@@ -1,7 +1,8 @@
+//TODO: renames this since it does more than just marking up forms now.
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/legacy/compat.hpp>
+#include <opencv2/legacy/compat.hpp> //I'm not sure why I need this
 
 #include <json/json.h>
 
@@ -12,8 +13,11 @@
 #include "FormAlignment.h"
 #include "Addons.h"
 
+//#define SHOW_MIN_ERROR_CUT
+
 using namespace std;
 using namespace cv;
+
 //Marks up formImage based on the specifications of a bubble-vals JSON file at the given path.
 //Then output the form to the given locaiton.
 //Could add functionality for alignment markup to this but is it worth it?
@@ -33,6 +37,12 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage) {
 	for ( size_t i = 0; i < fields.size(); i++ ) {
 		const Json::Value field = fields[i];
 		
+		#ifdef SHOW_MIN_ERROR_CUT
+		//Should this be specified in the template??
+		int cutIdx = minErrorCut(computedFilledIntegral(field));
+		int bubbleNum = 0;
+		#endif
+		
 		string fieldName = field.get("label", "Unlabeled").asString();
 		Scalar boxColor = colors[i%6];
 		
@@ -49,22 +59,20 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage) {
 				const Json::Value bubbles = segment["bubbles"];
 				for ( size_t k = 0; k < bubbles.size(); k++ ) {
 					const Json::Value bubble = bubbles[k];
-				
+					
 					// Draw dots on bubbles colored blue if empty and red if filled
 					Point bubbleLocation(jsonToPoint(bubble["location"]));
-					//cout << bubble["location"][0u].asInt() << "," << bubble["location"][1u].asInt() << endl;
-					Scalar color(0, 0, 0);
-					if(bubble["value"].asBool()){
-						color = Scalar(20, 20, 255);
-					}
-					else{
-						color = Scalar(255, 20, 20);
-					}
-					circle(markupImage, bubbleLocation, 1, color, -1);
+					
+					#ifdef SHOW_MIN_ERROR_CUT
+					circle(markupImage, bubbleLocation, 4, 	getColor(bubbleNum < cutIdx), 1, CV_AA);
+					bubbleNum++;
+					#endif
+					
+					circle(markupImage, bubbleLocation, 2, 	getColor(bubble["value"].asBool()), 1, CV_AA);
 				}
 			}
 			else{//If we're dealing with a regular form template
-				//Watch out for templates with double type points.
+				//TODO: Watch out for templates with double type points.
 				Point tl(segment["x"].asInt(), segment["y"].asInt());
 				rectangle(markupImage, tl, tl + Point(segment["width"].asInt(), segment["height"].asInt()),
 							boxColor, 2);
@@ -77,6 +85,40 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage) {
 			}
 		}
 	}
+	return true;
+}
+//Makes a JSON file that contains only the field counts.
+bool outputFieldCounts(const char* bubbleVals, const char* outputPath) {
+
+	Json::Value bvRoot;
+	
+	if( !parseJsonFromFile(bubbleVals, bvRoot) ) return false;
+	
+	Json::Value fields = bvRoot["fields"];
+	for ( size_t i = 0; i < fields.size(); i++ ) {
+
+		Json::Value field = fields[i];
+		Json::Value segments = field["segments"];
+		int counter = 0;
+		for ( size_t j = 0; j < segments.size(); j++ ) {
+			
+			Json::Value segment = segments[j];
+			const Json::Value bubbles = segment["bubbles"];
+			
+			for ( size_t k = 0; k < bubbles.size(); k++ ) {
+				const Json::Value bubble = bubbles[k];
+				if(bubble["value"].asBool()){
+					counter++;
+				}
+			}
+		}
+		field["count"] = counter;
+		field.removeMember("segments");
+	}
+	
+	ofstream outfile(outputPath, ios::out | ios::binary);
+	outfile << bvRoot;
+	outfile.close();
 	return true;
 }
 bool MarkupForm::markupForm(const char* markupPath, const char* formPath, const char* outputPath) {
