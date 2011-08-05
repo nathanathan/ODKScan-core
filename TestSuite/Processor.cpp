@@ -191,12 +191,17 @@ bool trainClassifier(const char* trainingImageDir){
 	Json::Value bubbleSize = root["bubble_size"];
 	Size requiredExampleSize = SCALEPARAM * Size(bubbleSize[0u].asInt(),
 												 bubbleSize[1u].asInt());
-	
+	//TODO: trainingImageDir should be specified in the template.
+	//		perhaps multiple dirs will be specified if the form needs multiple classifiers...
 	JsonOutput["training_image_directory"] = Json::Value( trainingImageDir );
 	
-	string cachedDataPath = string(trainingImageDir) + "/cached_data.yml";
-
-	if (!classifier.load(cachedDataPath, requiredExampleSize) ) {
+	string cachedDataPath = string(trainingImageDir) + "/cached_classifier_data.yml";
+	
+	bool createClassifier = true;
+	if( fileExists(cachedDataPath) ) {
+		createClassifier = !classifier.load(cachedDataPath, requiredExampleSize);
+	}
+	if ( createClassifier ) {
 		vector<string> filepaths;
 		CrawlFileTree(string(trainingImageDir), filepaths);
 		bool success = classifier.train_PCA_classifier( filepaths, requiredExampleSize,

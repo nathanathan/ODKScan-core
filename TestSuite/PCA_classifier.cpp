@@ -1,6 +1,5 @@
 #include "configuration.h"
 #include "PCA_classifier.h"
-#include "FileUtils.h"
 
 #include <opencv2/highgui/highgui.hpp>
 
@@ -174,7 +173,6 @@ bool PCA_classifier::save(const string& outputPath) const {
 	return true;
 }
 bool PCA_classifier::load(const string& inputPath, const Size& requiredExampleSize) {
-	if( !fileExists(inputPath) ) return false;
 	try {
 		FileStorage fs(inputPath, FileStorage::READ);
 		fs["exampleSizeWidth"] >> exampleSize.width;

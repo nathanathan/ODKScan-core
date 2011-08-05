@@ -6,11 +6,9 @@ It's a kind of random mix of stuff and it if grows a lot should probably be spli
 #define ADDONS_H
 #include "configuration.h"
 
-#ifdef USE_ANDROID_HEADERS_AND_IO
+
 #include <opencv2/core/core.hpp>
-#else
-#include "cv.h"
-#endif
+
 
 #include <json/value.h>
 

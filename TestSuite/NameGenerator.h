@@ -34,7 +34,7 @@ class NameGenerator {
 		//Returns prefix with a number concatinated to the end.
 		//Each call increments the number so that the resulting string will always be unique.
 		std::string get_unique_name(const std::string& prefix) {
-			string stringIdx = intToString(unique_name_counter);
+			std::string stringIdx = intToString(unique_name_counter);
 			unique_name_counter++;
 			return initial_prefix + prefix + stringIdx;
 		}
