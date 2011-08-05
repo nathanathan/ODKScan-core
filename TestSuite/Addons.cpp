@@ -63,7 +63,7 @@ bool parseJsonFromFile(const char* filePath, Json::Value& myRoot){
 bool parseJsonFromFile(const string& filePath, Json::Value& myRoot){
 	return parseJsonFromFile(filePath.c_str(), myRoot);
 }
-void inferBubbles(Json::Value& field){
+void inferBubbles(Json::Value& field, inferenceMethod method){
 
 	int cutIdx = minErrorCut(computedFilledIntegral(field));
 	int bubbleNum = 0;
@@ -114,4 +114,8 @@ vector<int> computedFilledIntegral(const Json::Value& field){
 		}
 	}
 	return filledIntegral;
+}
+string replaceFilename(const string& filepath, const string& newName ){
+	int nameIdx = filepath.find_last_of("/");
+	return filepath.substr(0,nameIdx + 1) + newName;
 }

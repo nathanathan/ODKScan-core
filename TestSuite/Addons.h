@@ -30,10 +30,13 @@ bool parseJsonFromFile(const std::string& filePath, Json::Value& myRoot);
 //Indexing is a little bit complicated here.
 //The first element of the filledIntegral is always 0.
 //A min error cut at 0 means no bubbles are considered filled.
-void inferBubbles(Json::Value& field);
+enum inferenceMethod{INFER_LTR_TTB, INFER_NEIGHBORS};
+//TODO: one idea is to infer that bubbles labeled barely are filled if their neighbors are.
+void inferBubbles(Json::Value& field, inferenceMethod method);
 int minErrorCut(const std::vector<int>& filledIntegral);
 std::vector<int> computedFilledIntegral(const Json::Value& field);
 //Misc:
+std::string replaceFilename(const std::string& filepath, const std::string& newName );
 template <class Tp>
 bool returnTrue(Tp& anything){
 	return true;
