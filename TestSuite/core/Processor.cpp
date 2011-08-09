@@ -2,7 +2,9 @@
 #include "Processor.h"
 #include "FileUtils.h"
 #include "PCA_classifier.h"
-#include "FormAlignment.h"
+#include "Aligner.h"
+#include "SegmentAligner.h"
+#include "AlignmentUtils.h"
 #include "Addons.h"
 
 #include <opencv2/core/core.hpp>
@@ -250,9 +252,15 @@ bool alignForm(const char* alignedImageOutputPath){
 	
 	//TODO: For scaling just resize the picture so that it is aprox 20% more area than the template image.
 	Mat straightenedImage;
-	if( !alignFormImage( formImage, straightenedImage,
-									templPath,
-									SCALEPARAM * form_sz, .5) ) return false;
+	try{
+		Aligner aligner;
+		aligner.loadFeatureData(templPath);
+		aligner.setImage(formImage);
+		aligner.alignFormImage( straightenedImage, SCALEPARAM * form_sz, 0);
+	}
+	catch(AlignmentException e){
+		return false;
+	}
 	
 	if(straightenedImage.empty()) return false;
 
