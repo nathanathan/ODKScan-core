@@ -2,7 +2,7 @@
  * include the headers required by the generated cpp code
  */
 %{
-#include "Processor.h"
+#include "core/Processor.h"
 %}
 
 //import the android-cv.i file so that swig is aware of all that has been previous defined
@@ -16,4 +16,4 @@
 
 /** Processor - for processing images that are stored in an image pool
 */"
-%include "Processor.h"
+%include "core/Processor.h"
