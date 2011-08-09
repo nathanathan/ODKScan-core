@@ -50,7 +50,7 @@ TemplateEditor: TemplateEditor.test
 	
 #This will move all the relevant files into the JNI folder.
 jni-transfer: $(CORE_SRCS) $(CORE_HEADERS)
-	cp -i $? ../jni
+	cp -i $? ../jni/core
 	@echo "You can delete this file. It just tells make the jni-transfer target is up-to-date." > jni-transfer
 .IGNORE: clean
 clean:
