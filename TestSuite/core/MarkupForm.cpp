@@ -10,7 +10,6 @@
 #include <fstream>
 
 #include "MarkupForm.h"
-#include "FormAlignment.h"
 #include "Addons.h"
 
 //#define SHOW_MIN_ERROR_CUT
@@ -88,7 +87,7 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage) {
 	return true;
 }
 //Makes a JSON file that contains only the field counts.
-bool outputFieldCounts(const char* bubbleVals, const char* outputPath) {
+bool MarkupForm::outputFieldCounts(const char* bubbleVals, const char* outputPath) {
 
 	Json::Value bvRoot;
 	
