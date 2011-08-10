@@ -4,17 +4,13 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Method;
 
 import android.app.Activity;
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.net.Uri;
 import android.os.Bundle;
-import android.provider.MediaStore;
 import android.util.Log;
-import android.view.Menu;
-import android.view.MenuInflater;
 import android.view.View;
 import android.widget.Button;
 
@@ -28,42 +24,47 @@ public class BubbleBot extends Activity {
 
 	public static final String PREFS_NAME = "mScanPrefs";
 	//The version variable is used to reextract assets after they are modified.
-	public static final int version = 12;
+	public static final int version = 13;
 	// Initialize the application
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.bubble_bot); // Setup the UI
 		
-		if( (new File("/sdcard")).getUsableSpace() < 1000){
-			Log.i("Nathan", "Not enough space");
-			//TODO: make a message to this effect that offers to remove saved images.
-			return;
+		//See if the sdcard has space for new pics
+		if(hasMethod(File.class, "getUsableSpace")){
+			//getUsableSpace() doesn't work on the Droid for some reason
+			if( (new File("/sdcard")).getUsableSpace() < 1000){
+				Log.i("Nathan", "Not enough space");
+				//TODO: make a message to this effect that offers to remove saved images.
+				return;
+			}
 		}
+
 		
 		//Extract all the necessary assets.
 		//TODO: this can take a few seconds so add a dialog window.
 		SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
 		int currentVersion = settings.getInt("version", 0);
-		if(currentVersion < version){
+		if(currentVersion < version) {
 			// Set up directories if they do not exist
 			File dir = new File("/sdcard/mScan");
 			dir.mkdirs();
 			try {
 				clearDir("/sdcard/mScan/training_examples");
 				clearDir("/sdcard/mScan/form_templates");
-				clearDir("/sdcard/mScan/nothing");
+				
 				extractAssets("training_examples", "/sdcard/mScan/training_examples");
 				extractAssets("form_templates", "/sdcard/mScan/form_templates");
+				
 				SharedPreferences sharedPrefs = getSharedPreferences(PREFS_NAME, 0);
 				SharedPreferences.Editor editor = sharedPrefs.edit();
 				editor.putInt("version", version);
-				// Commit the edits!
 				editor.commit();
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
+				// TODO: Terminate the app if this fails.
 				e.printStackTrace();
-				Log.i("Nathan", "ERROR");
+				Log.i("Nathan", "Extration Error");
 			}
 		}
 
@@ -73,6 +74,7 @@ public class BubbleBot extends Activity {
 			public void onClick(View v) {
 				//Intent intent = new Intent(getApplication(), BubbleCollect.class);
 				Intent intent = new Intent(getApplication(), BubbleCollect2.class);
+				intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
 				startActivity(intent);
 			}
 		});
@@ -95,7 +97,15 @@ public class BubbleBot extends Activity {
 			}
 		});
 	}
-	
+	public <T> boolean hasMethod(Class<T> c, String method){
+		Method methods[] = c.getMethods();
+		for(int i = 0; i < methods.length; i++){
+			if(methods[i].getName().equals(method)){
+				return true;
+			}
+		}
+		return false;
+	}
 	protected void clearDir(String dirPath){
 		File dir = new File(dirPath);
 		if(dir.exists()){
@@ -130,7 +140,7 @@ public class BubbleBot extends Activity {
 			}
 		}
 	}
-	protected void copyAsset(String assetLoc, String outputLoc) throws IOException{
+	protected void copyAsset(String assetLoc, String outputLoc) throws IOException {
 		//Log.i("Nathan", "copy from " + assetLoc + " to " + outputLoc);
 		InputStream fis = getAssets().open(assetLoc);
 		File trainingExampleFile = new File(outputLoc);

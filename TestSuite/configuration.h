@@ -14,6 +14,9 @@ It is used to set the value of switches like USE_ANDROID_HEADERS_AND_IO
 //makes cout or a similar function do logging.
 //#define USE_ANDROID_HEADERS_AND_IO
 
+//For printing errors
+#define LOGI printf
+
 //Processor.cpp
 #define DEBUG_PROCESSOR
 #define OUTPUT_SEGMENT_IMAGES

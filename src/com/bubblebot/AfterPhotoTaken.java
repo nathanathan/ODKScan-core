@@ -17,7 +17,6 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.widget.Button;
 import android.widget.RelativeLayout;
-import android.widget.Toast;
 
 public class AfterPhotoTaken extends Activity implements Runnable {
 	
@@ -37,7 +36,7 @@ public class AfterPhotoTaken extends Activity implements Runnable {
 	protected void onCreate(Bundle savedInstanceState) {
     	super.onCreate(savedInstanceState);
 		setContentView(R.layout.after_photo_taken);
-
+		
 		Bundle extras = getIntent().getExtras();
 		if (extras != null) {
 			photoPath = extras.getString("file");
@@ -56,8 +55,7 @@ public class AfterPhotoTaken extends Activity implements Runnable {
 		retake.setOnClickListener(new View.OnClickListener() {
 			public void onClick(View v) {
 				deletePhotoAndDataFile();
-				Intent intent = new Intent(getApplication(),
-						BubbleCollect2.class);
+				Intent intent = new Intent(getApplication(), BubbleCollect.class);
 				startActivity(intent);
 				finish();
 			}
@@ -79,19 +77,23 @@ public class AfterPhotoTaken extends Activity implements Runnable {
 		});
 		process.setEnabled(false);
 		
-        pd = ProgressDialog.show(this, "Working...", "Aligning Image", true,
-                false);
+        pd = ProgressDialog.show(this, "Working...", "Aligning Image", true, false);
+        
 		Thread thread = new Thread(this);
+		
 		thread.setPriority(Thread.MAX_PRIORITY);
+		
 		thread.start();
 	}
-    
 	@Override
 	public void onBackPressed() {
 		super.onBackPressed();
+		//I'm not so sure I should do this
 		if(!debugMode){
 			deletePhotoAndDataFile();
 		}
+		Intent intent = new Intent(getApplication(), BubbleBot.class);
+		startActivity(intent); 
 	}
 	
 	// Delete the last photo taken and its data file
@@ -105,11 +107,12 @@ public class AfterPhotoTaken extends Activity implements Runnable {
 		dataFile.delete();
 		*/
 	}
-
     public void run() {
 		Processor mProcessor = new Processor();
-		String templatePath = getResources().getString(com.bubblebot.R.string.templatePath);
 		
+		Log.i("Nathan", "point F");
+		
+		String templatePath = getResources().getString(com.bubblebot.R.string.templatePath);
 		if(mProcessor.loadForm(photoPath)){
 			Log.i("Nathan","Loading: " + photoPath);
 			if(mProcessor.loadTemplate(templatePath)){

@@ -337,7 +337,7 @@ bool writeFormImage(const char* outputPath){
 
 
 /* This stuff hooks the Processor class up to the implementation class: */
-Processor::Processor() : processorImpl(new ProcessorImpl){}
+Processor::Processor() : processorImpl(new ProcessorImpl){ LOGI("Hello World!\n"); }
 bool Processor::loadTemplate(const char* templatePath){
 	return processorImpl->loadTemplate(templatePath);
 }

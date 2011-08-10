@@ -11,7 +11,7 @@ LOCAL_C_INCLUDES +=  $(OPENCV_INCLUDES) $(ANDROID_OPENCV_INCLUDES)
 
 LOCAL_MODULE    := bubblebot
 
-CORE_SRCS := $(subst jni/,./, $(wildcard jni/core/*.cpp))
+CORE_SRCS := $(subst jni/, , $(wildcard jni/core/*.cpp))
 JSON_PARSER_SRCS := $(subst jsoncpp, ../jsoncpp,$(wildcard jsoncpp-src-0.5.0/src/lib_json/*.cpp))
 
 LOCAL_C_INCLUDES += jni/core

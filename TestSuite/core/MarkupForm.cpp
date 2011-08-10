@@ -17,9 +17,6 @@
 using namespace std;
 using namespace cv;
 
-//Marks up formImage based on the specifications of a bubble-vals JSON file at the given path.
-//Then output the form to the given locaiton.
-//Could add functionality for alignment markup to this but is it worth it?
 bool markupFormHelper(const char* bvPath, Mat& markupImage) {
 	Scalar colors[6] = {Scalar(0,   0,   255),
 						Scalar(0,   255, 255),
@@ -86,7 +83,7 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage) {
 	}
 	return true;
 }
-//Makes a JSON file that contains only the field counts.
+//Makes a JSON file that contains only the fieldnames and their corresponding bubble counts.
 bool MarkupForm::outputFieldCounts(const char* bubbleVals, const char* outputPath) {
 
 	Json::Value bvRoot;
@@ -120,6 +117,8 @@ bool MarkupForm::outputFieldCounts(const char* bubbleVals, const char* outputPat
 	outfile.close();
 	return true;
 }
+//Marks up formImage based on the specifications of a bubble-vals JSON file at the given path.
+//Then output the form to the given locaiton.
 bool MarkupForm::markupForm(const char* markupPath, const char* formPath, const char* outputPath) {
 	Mat markupImage = imread(formPath);
 	if(markupImage.empty()) return false;
