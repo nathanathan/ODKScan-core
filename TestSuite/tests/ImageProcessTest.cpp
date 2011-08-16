@@ -25,7 +25,7 @@ int main(int argc, char *argv[]) {
 
 	#if 1
 	string imageDir("form_images/booklet_form/");
-	string imageName("C2");
+	string imageName("G11");
 	#else
 	string imageDir("form_images/using_box/");
 	string imageName("C0");

@@ -13,8 +13,11 @@
 NameGenerator alignmentNamer("debug_segment_images/", false);
 #endif
 
-//#define USE_INTERSECTIONS
-#define EXPANSION_PERCENTAGE .05
+#define USE_INTERSECTIONS
+//There is a tradeoff with using intersections.
+//It seems to work better on messy segments, however,
+//on segments with multiple min energy lines we are more likely
+//to choose the wrong line than with the contour method.
 
 using namespace std;
 using namespace cv;
@@ -193,13 +196,13 @@ vector<Point> findQuad(const Mat& img, int blurSize, float buffer = 0.0){
 	
 	temp_img.copyTo(temp_img2);
 	#if 1
-	blur(temp_img2, temp_img, 2*Size(2*blurSize+1, 2*blurSize+1));
+		blur(temp_img2, temp_img, 2*Size(2*blurSize+1, 2*blurSize+1));
 	#else
-	//Not sure if this had advantages or not...
-	//My theory is that it is slower but more accurate,
-	//but I don't know if either difference is significant enough to notice.
-	//Will need to test.
-	GaussianBlur(temp_img2, temp_img, Size(9, 9), 3, 3);
+		//Not sure if this had advantages or not...
+		//My theory is that it is slower but more accurate,
+		//but I don't know if either difference is significant enough to notice.
+		//Will need to test.
+		GaussianBlur(temp_img2, temp_img, Size(9, 9), 3, 3);
 	#endif
 	
 	//erode(temp_img2, temp_img, (Mat_<uchar>(3,3) << 1,0,1,0,1,0,1,0,1));
@@ -222,21 +225,21 @@ vector<Point> findQuad(const Mat& img, int blurSize, float buffer = 0.0){
 	
 	
 	#ifdef USE_INTERSECTIONS
-	vector <Point> quad;
-	quad.push_back(findIntersection(A1, B1, A2, B2));
-	quad.push_back(findIntersection(A2, B2, A3, B3));
-	quad.push_back(findIntersection(A3, B3, A4, B4));
-	quad.push_back(findIntersection(A4, B4, A1, B1));
+		vector <Point> quad;
+		quad.push_back(findIntersection(A1, B1, A2, B2));
+		quad.push_back(findIntersection(A2, B2, A3, B3));
+		quad.push_back(findIntersection(A3, B3, A4, B4));
+		quad.push_back(findIntersection(A4, B4, A1, B1));
 	#else
-	line( imgThresh, A1, B1, Scalar(0), 1, 4);
-	line( imgThresh, A2, B2, Scalar(0), 1, 4);
-	line( imgThresh, A3, B3, Scalar(0), 1, 4);
-	line( imgThresh, A4, B4, Scalar(0), 1, 4);
-	Mat imgThresh2;
-	imgThresh.copyTo(imgThresh2);
-	vector<Point> quad = findMaxQuad(imgThresh2, 0);
-	
-	quad = expandCorners(quad, EXPANSION_PERCENTAGE);
+		#define EXPANSION_PERCENTAGE .05
+		line( imgThresh, A1, B1, Scalar::all(0), 1, 4);
+		line( imgThresh, A2, B2, Scalar::all(0), 1, 4);
+		line( imgThresh, A3, B3, Scalar::all(0), 1, 4);
+		line( imgThresh, A4, B4, Scalar::all(0), 1, 4);
+		Mat imgThresh2;
+		imgThresh.copyTo(imgThresh2);
+		vector<Point> quad = findMaxQuad(imgThresh2, 0);
+		quad = expandCorners(quad, EXPANSION_PERCENTAGE);
 	#endif
 	
 	#if 0 
@@ -273,65 +276,4 @@ vector<Point> findQuad(const Mat& img, int blurSize, float buffer = 0.0){
 
 vector<Point> findBoundedRegionQuad(const Mat& img, float buffer){
 	return findQuad(img, 9, buffer);
-}
-
-
-//TODO: Stuff below this point should probably be moved or removed
-//GrabCut stuff that doesn't work particularly well
-// I will probably get rid of it eventually but it might be help for
-// improving feature finding by masking out the form and using a minimum rectangle.
-Mat makeGCMask(const Size& mask_size, float buffer){
-	Mat mask(mask_size, CV_8UC1, Scalar::all(GC_BGD));
-	Point mask_sz_pt( mask_size.width-1, mask_size.height-1);
-	
-	/*
-	float bgd_width = .01;
-	float pr_bgd_width = buffer - .01;
-	float pr_fgd_width = .1;
-	*/
-	float bgd_width = buffer + .08;
-	float pr_bgd_width = .02;
-	float pr_fgd_width = .05;
-	
-	rectangle( mask, bgd_width * mask_sz_pt, (1.f - bgd_width) * mask_sz_pt, GC_PR_BGD, -1);
-	rectangle( mask, (bgd_width + pr_bgd_width) * mask_sz_pt,
-					 (1.f - bgd_width - pr_bgd_width) * mask_sz_pt, GC_PR_FGD, -1);
- 	rectangle( mask, (bgd_width + pr_bgd_width + pr_fgd_width) * mask_sz_pt,
-					 (1.f - bgd_width - pr_bgd_width - pr_fgd_width) * mask_sz_pt, GC_FGD, -1);
-	return mask;
-}
-
-//Looks for a bounded rectanular quadrilateral
-vector<Point> findSegment(const Mat& img, float buffer){
-	Mat img2, fgdModel, bgdModel;
-	cvtColor(img, img2, CV_GRAY2RGB);
-	/*
-	vector<Mat> components;
-	components.push_back(img);
-	Mat temp, temp2;
-	erode(img, temp, Mat());
-	components.push_back(temp);
-	Laplacian(img, temp2, -1, 3, 5);
-	components.push_back(temp2);
-	//merge(components, img2);
-	cvtColor(temp2, img2, CV_GRAY2RGB);
-	*/
-	Mat mask = makeGCMask(img.size(), buffer/(1 + 2*buffer));
-	
-	grabCut( img2, mask, Rect(), bgdModel, fgdModel, 1, GC_INIT_WITH_MASK );
-	//watershed(img2, mask);
-
-	//imwrite(segfilename, mask*50);
-	
-	mask = mask & GC_FGD;// | (mask & GC_PR_FGD));
-	
-	#ifdef OUTPUT_DEBUG_IMAGES
-		string segfilename = alignmentNamer.get_unique_name("alignment_debug_");
-		segfilename.append(".jpg");
-		Mat dbg_out;
-		img2.copyTo( dbg_out , mask); 
-		imwrite(segfilename, dbg_out);
-	#endif
-	
-	return findMaxQuad(mask, 0);
 }

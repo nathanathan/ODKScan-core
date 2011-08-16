@@ -1,6 +1,5 @@
 package com.bubblebot;
 
-import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.Bundle;
@@ -12,44 +11,47 @@ import android.widget.FrameLayout;
 import com.bubblebot.jni.Processor;
 import com.bubblebot.jni.MarkupForm;
 
-public class BubbleProcess extends Activity implements Runnable {
+public class BubbleProcess extends MScanExtendedActivity implements Runnable {
 	 
     private ProgressDialog pd;
-    private String pictureName;
+    String photoName;
     
     @Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		
-		// Extract the image filename from the activity parameters
-		Bundle extras = getIntent().getExtras(); 
-		if(extras !=null)
-	    {
-	   	   pictureName = extras.getString("file");
-	   	   //pictureName = (pictureName.substring(0,pictureName.length()-4));
-	    }
-		
-        pd = ProgressDialog.show(this, "Working..", "Processing Form", true,
+        pd = ProgressDialog.show(this, "Processing Form", "Did you know... \n " +
+        		"The MMR measles (sarampo) vaccination is generally not given to children younger " +
+        		"than 18 months because they usually retain antimeasles immunoglobulins (antibodies) " +
+        		"transmitted from the mother during pregnancy.", true,
                 false);
 
 		Thread thread = new Thread(this);
 		thread.setPriority(Thread.MAX_PRIORITY);
 		thread.start();
 		
-		//Not sure what this does exactly
+		//Not sure I need this
 		FrameLayout frame = new FrameLayout(this);
 		setContentView(frame);
 	}
 
     public void run() {
-    	Log.d("Nathan","PICTURE NAME: " + pictureName);
+		// Extract the image filename from the activity parameters
+		Bundle extras = getIntent().getExtras(); 
+		if(extras == null) return;
+   	    photoName = extras.getString("photoName");
+    	Log.d("mScan","PICTURE NAME: " + photoName);
+    	
 		Processor mProcessor = new Processor();
 		//I hope these args get evaluated in order... otherwise I'm in for some trouble.
-		if( mProcessor.loadForm(pictureName) &&
+		if( mProcessor.loadForm(getAlignedPhotoPath(photoName)) &&
 			mProcessor.loadTemplate(getResources().getString(com.bubblebot.R.string.templatePath)) &&
-			mProcessor.trainClassifier("/sdcard/mScan/training_examples") &&
-			mProcessor.processForm("sdcard/BubbleBot/output.json") ){
-			(new MarkupForm()).markupForm("sdcard/BubbleBot/output.json", pictureName, "sdcard/BubbleBot/markedup.jpg");
+			mProcessor.trainClassifier(getAppFolder() + "training_examples") &&
+			mProcessor.processForm(getJsonPath(photoName)) ) {
+			
+			(new MarkupForm()).markupForm(  getJsonPath(photoName), getAlignedPhotoPath(photoName),
+					 						getMarkedupPhotoPath(photoName));
+			
 		}
     	handler.sendEmptyMessage(0);
     }
@@ -59,6 +61,7 @@ public class BubbleProcess extends Activity implements Runnable {
             public void handleMessage(Message msg) {
                     pd.dismiss();
                     Intent intent = new Intent(getApplication(), DisplayProcessedForm.class);
+                    intent.putExtra("photoName", photoName);
                     startActivity(intent);
             }
     };

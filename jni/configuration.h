@@ -13,8 +13,6 @@ It is used to set the value of switches like USE_ANDROID_HEADERS_AND_IO
 
 #include <sys/stat.h>
 #include "log.h"
-#define LOG_COMPONENT "Nathan"
-//Note: LOGI doesn't yet transfer to the test suite
-//		Can I make it work like cout and use defines to switch between them?
+#define LOG_COMPONENT "mScan"
 
 #endif

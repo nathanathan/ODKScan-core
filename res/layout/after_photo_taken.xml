@@ -1,52 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical"
-    android:layout_width="fill_parent"
-    android:layout_height="fill_parent"
-    android:id="@+id/myLinearLayout"
-    >
-   	<LinearLayout
-          android:layout_width="fill_parent"
-          android:layout_height="wrap_content"
-          android:orientation="horizontal"
-          android:weightSum="1.0"
-          android:padding="4dp"
-          android:layout_gravity="center_horizontal|bottom|left">
-		<Button
-			android:layout_height="wrap_content"
-			android:layout_width="0px" 
-			android:id="@+id/retake_button"
-			android:text="Retake Picture"
-			android:gravity="center"
-			android:layout_weight=".50"/>
-		<Button
-			android:layout_height="wrap_content"
-			android:layout_width="0px" 
-			android:id="@+id/process_button"
-			android:text="Process Form"
-			android:gravity="center"
-			android:layout_weight=".50"/>
+	android:orientation="vertical" android:layout_width="fill_parent"
+	android:layout_height="fill_parent" android:id="@+id/myLinearLayout">
+	<LinearLayout android:layout_width="fill_parent"
+		android:layout_height="wrap_content" android:orientation="horizontal"
+		android:weightSum="1.0" android:paddingTop="4dp" android:paddingLeft="4dp"
+		android:paddingRight="4dp" android:layout_gravity="center_horizontal|bottom|left">
+		<Button android:layout_height="wrap_content"
+			android:layout_width="0px" android:id="@+id/retake_button"
+			android:text="Retake Picture" android:gravity="center"
+			android:layout_weight=".50" />
+		<Button android:layout_height="wrap_content"
+			android:layout_width="0px" android:id="@+id/process_button"
+			android:text="Process Form" android:gravity="center"
+			android:layout_weight=".50" android:enabled="false" />
 	</LinearLayout>
-	<WebView  xmlns:android="http://schemas.android.com/apk/res/android"
-	    android:id="@+id/webview"
-	    android:layout_width="fill_parent"
-	    android:layout_height="fill_parent"
-	    android:background="#000000"
-		android:scrollbars="none"
-		android:visibility="gone"
-	/>
-	<RelativeLayout
-		android:id="@+id/failureMessage"
-		android:visibility="gone"
-	    android:layout_width="fill_parent" 
-	    android:layout_height="fill_parent"
-	    xmlns:android="http://schemas.android.com/apk/res/android">
-		<TextView  xmlns:android="http://schemas.android.com/apk/res/android"
-		    android:layout_width="wrap_content"
-		    android:layout_height="wrap_content"
-			android:textColor="#FFFFFF"
-			android:textSize="24dp"
-			android:layout_centerInParent="true"
-			android:text="Failed to align form.\nSorry :("/>
+	<WebView xmlns:android="http://schemas.android.com/apk/res/android"
+		android:id="@+id/webview" android:layout_width="fill_parent"
+		android:layout_height="fill_parent" android:background="#000000"
+		android:scrollbars="none" android:visibility="gone" />
+	<RelativeLayout android:id="@+id/failureMessage"
+		android:visibility="gone" android:layout_width="fill_parent"
+		android:layout_height="fill_parent" xmlns:android="http://schemas.android.com/apk/res/android">
+		<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+			android:layout_width="wrap_content" android:layout_height="wrap_content"
+			android:textColor="#FFFFFF" android:textSize="24dp"
+			android:layout_centerInParent="true" android:text="Failed to align form.\nSorry :(" />
 	</RelativeLayout>
 </LinearLayout>

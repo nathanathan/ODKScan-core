@@ -14,7 +14,7 @@ It is used to set the value of switches like USE_ANDROID_HEADERS_AND_IO
 //makes cout or a similar function do logging.
 //#define USE_ANDROID_HEADERS_AND_IO
 
-//For printing errors
+//For printing in a android comapatible way.
 #define LOGI printf
 
 //Processor.cpp

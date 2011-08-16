@@ -153,7 +153,6 @@ Aligner::Aligner(){
 	//#define MATCHER_TYPE "FlannBased"
 	descriptorMatcher = DescriptorMatcher::create( MATCHER_TYPE );
 }
-
 void Aligner::setImage( const cv::Mat& img ){
 	currentImg = img;
 	
@@ -178,15 +177,15 @@ void Aligner::setImage( const cv::Mat& img ){
 	
 	descriptorExtractor->compute( currentImgResized, currentImgKeypoints, currentImgDescriptors );
 }
-//Tries to read feature data (presumably for the template) from templPath + ".yml" .
+//Tries to read feature data (presumably for the template) from templPath + ".yml"
 //If none is found it is generated for the image templPath + ".jpg"
 void Aligner::loadFeatureData(const string& templPath) throw(AlignmentException) {
-	
+
 	vector<KeyPoint> templKeypoints;
 	Mat templDescriptors;
 	Size templImageSize;
 	string featuresFile = templPath + ".yml";
-	
+
 	bool featuresFound = false;
 	#ifndef ALWAYS_COMPUTE_TEMPLATE_FEATURES
 		featuresFound = checkForSavedFeatures(  featuresFile, templImageSize, templKeypoints, templDescriptors);
@@ -254,6 +253,7 @@ void Aligner::alignFormImage(Mat& aligned_img, const Size& aligned_img_sz, int f
 		cout << "Can not create descriptor matcher of given type" << endl;
 		throw myAlignmentException;
 	}
+	
 	vector<DMatch> filteredMatches;
 	crossCheckMatching( descriptorMatcher, currentImgDescriptors, templDescriptors, filteredMatches, 1 );
 
@@ -270,6 +270,8 @@ void Aligner::alignFormImage(Mat& aligned_img, const Size& aligned_img_sz, int f
 	Point3d sc = Point3d( ((double)aligned_img_sz.width) / templImageSize.width,
 						  ((double)aligned_img_sz.height) / templImageSize.height,
 						  1.0);
+	
+	if( points1.size() < 4 || points2.size() < 4) throw myAlignmentException;
 	
 	Mat H = findHomography( Mat(points1), Mat(points2), CV_RANSAC, FH_REPROJECT_THRESH );//CV_LMEDS
 	Mat Hscaled = Mat::diag(Mat(sc)) * H * Mat::diag(Mat(trueEfficiencyScale));

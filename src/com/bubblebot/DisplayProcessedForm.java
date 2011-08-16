@@ -2,31 +2,23 @@ package com.bubblebot;
 
 import java.util.Date;
 
-import android.app.Activity;
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.view.View;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
-import android.widget.Button;
-import android.widget.ImageView;
 import android.widget.TextView;
 
 /* DisplayProcessedForm activity
  * 
  * This activity displays the image of a processed form
  */
-public class DisplayProcessedForm extends Activity {
+public class DisplayProcessedForm extends MScanExtendedActivity {
 	
 	TextView text;
-	String dir = "/sdcard/mScan/";
-	String filename = "";
+	private String photoName;
 	
 	// Set up the UI and load the processed image
 	@Override
@@ -35,14 +27,12 @@ public class DisplayProcessedForm extends Activity {
        setContentView(R.layout.processed_form);
        
        Bundle extras = getIntent().getExtras(); 
-       if(extras !=null)
-       {
-    	   filename = extras.getString("file");
-       }
-       filename = "sdcard/BubbleBot/markedup.jpg";
+		if (extras != null) {
+			photoName = extras.getString("photoName");
+		}
        
        text = (TextView) findViewById(R.id.text);
-       text.setText("Displaying " + filename);
+       text.setText("Displaying " + photoName);
        
        // TODO: Figure out how to share a function for doing this with AfterPhotoTaken
        // Using WebView to display the straightened form image.
@@ -57,26 +47,12 @@ public class DisplayProcessedForm extends Activity {
 		// to prevent caching.
 		String html = new String();
 		html = ( "<body bgcolor=\"Black\"><center>" +
-					"<img src=\"file:///" + filename + "?" + new Date().getTime() + "\" width=\"500\" >" +
+					"<img src=\"file:///" + getMarkedupPhotoPath(photoName) + "?" + new Date().getTime() + "\" width=\"500\" >" +
 				"</center></body>");
 		       
 		myWebView.loadDataWithBaseURL("file:////sdcard/BubbleBot/",
 								 html, "text/html", "utf-8", "");
 		
-		/*
-       data = (MenuItem) findViewById(R.id.displayData);
-       data.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
-	       public boolean onMenuItemClick(MenuItem v) {
-	    	   
-	    	   //Find a way to pass in the relevant filename - displaying a set image for now
-	    	   Intent intent = new Intent(getApplication(), DisplayProcessedData.class);
-	    	   //String fname = (filename.substring(0,filename.length()-4));
-	    	   //intent.putExtra("file", fname);
-   			   startActivity(intent); 
-   			   
-   			   return true;
-	       }
-	    });*/
 	}
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {

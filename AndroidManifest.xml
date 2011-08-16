@@ -13,14 +13,15 @@
 		</activity>
 
 
-		<activity android:name="BubbleBot" android:screenOrientation="portrait"
-			android:label="@string/bubblebot_activity">
+		<activity 
+				android:name="BubbleBot"
+				android:screenOrientation="portrait" android:label="mScan">
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN" />
 				<category android:name="android.intent.category.LAUNCHER" />
 			</intent-filter>
 		</activity>
-		<activity android:name="BubbleCollect2" android:launchMode="singleTop"></activity>
+		<activity android:name="BubbleCollect2" android:screenOrientation="portrait" ></activity>
 		<activity android:name="ViewBubbleForms"
 			android:screenOrientation="portrait" android:label="@string/view_bubble_forms_activity">
 		</activity>
