@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent" android:layout_height="fill_parent">
 <LinearLayout 
 	xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="fill_parent"
@@ -23,6 +25,18 @@
     android:layout_height="wrap_content" 
     android:gravity="left"
     android:padding="3dp"
+    android:text="Make sure the whole form is in the picture.">
+</TextView>
+<ImageView
+    android:layout_height="wrap_content"
+    android:layout_width="wrap_content"
+	android:src="@drawable/bad_picture">
+</ImageView>
+<TextView  
+    android:layout_width="fill_parent" 
+    android:layout_height="wrap_content" 
+    android:gravity="left"
+    android:padding="3dp"
     android:text="@string/Instructions3">
 </TextView>
 <TextView  
@@ -33,3 +47,4 @@
     android:text="@string/Instructions4">
 </TextView>
 </LinearLayout>
+</ScrollView>
