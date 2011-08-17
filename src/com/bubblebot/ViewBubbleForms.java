@@ -2,31 +2,28 @@ package com.bubblebot;
 
 import java.io.File;
 import java.io.FilenameFilter;
-
-import android.app.Activity;
+import android.app.ListActivity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.view.ViewGroup.LayoutParams;
-import android.widget.Button;
-import android.widget.LinearLayout;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.ListView;
+import android.widget.AdapterView.OnItemClickListener;
 
 /* ViewBubbleForms activity
  * 
  * This activity displays a list of processed forms for viewing
  */
-public class ViewBubbleForms extends Activity {
-	
+public class ViewBubbleForms extends ListActivity {
+
 	// Initialize the application  
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		
-		setContentView(R.layout.view_bubble_forms);
-		LinearLayout layout = (LinearLayout) findViewById(R.id.ViewFormsLayout);
-		
-		File dir = new File("/sdcard/mScan");		
+
+		File dir = new File(MScanUtils.appFolder + MScanUtils.photoDir);		
 		final String [] filenames = dir.list(new FilenameFilter() {
 			public boolean accept (File dir, String name) {
 				if (new File(dir,name).isDirectory())
@@ -34,36 +31,22 @@ public class ViewBubbleForms extends Activity {
 				return name.toLowerCase().endsWith(".jpg");
 			}
 		});
-		
-		// Add the list of processed form filenames to the UI
-		for(int i = 0; i < filenames.length; i++) {
-			final Button button = new Button(this);
-			final String fname = filenames[i];
-			LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, 100);
-			layoutParams.setMargins(3, 3, 3, 3);
-			button.setLayoutParams(layoutParams);
-			button.setText(fname);
-			
-		    button.setOnClickListener(new View.OnClickListener() {
-		       public void onClick(View v) {
-		    	   //Find a way to pass in the filename for the relevant image - displaying a set image for now
-		    	   Intent intent = new Intent(getApplication(), DisplayProcessedForm.class);
-		    	   intent.putExtra("file", fname);
-	   			   startActivity(intent); 
-		       }
-		    });
-			layout.addView(button);
-		}		
-	}
 
-	@Override
-	protected void onPause() {
-		super.onPause();
-	}
+		setListAdapter(new ArrayAdapter<String>(this, R.layout.list_item, filenames));
 
-	@Override
-	protected void onResume() {
-		super.onResume();
-		
+		ListView lv = getListView();
+		lv.setTextFilterEnabled(true);
+
+		lv.setOnItemClickListener(new OnItemClickListener() {
+			public void onItemClick(AdapterView<?> parent, View view,
+					int position, long id) {
+
+				Intent intent = new Intent(getApplication(), DisplayProcessedForm.class);
+				String filename = filenames[(int) id];
+				Log.i("mScan", filename.substring(0, filename.lastIndexOf(".jpg")));
+				intent.putExtra("photoName", filename.substring(0, filename.lastIndexOf(".jpg")));
+				startActivity(intent); 
+			}
+		});
 	}
 }

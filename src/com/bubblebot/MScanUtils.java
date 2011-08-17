@@ -4,15 +4,36 @@ import java.io.File;
 import java.lang.reflect.Method;
 import java.util.Date;
 
-import android.util.Log;
 import android.view.View;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
-
+/*
+ * MScanUtils contains methods and data share across the mScan application.
+ */
 public class MScanUtils {
 	//Prevent instantiations
 	private MScanUtils(){}
 	
+	public static final String appFolder = "/sdcard/mScan/";
+	public static final String photoDir = "photos/";
+	public static final String alignedPhotoDir = "alignedPhotos/";
+	public static final String jsonDir = "jsonOut/";
+	public static final String markupDir = "markedupPhotos/";
+	public static final String trainingExampleDir = "training_examples/";
+	public static final String templateDir = "form_templates/";
+
+	public static String getPhotoPath(String photoName){
+		return appFolder + photoDir + photoName + ".jpg";
+	}
+	public static String getAlignedPhotoPath(String photoName){
+		return appFolder + alignedPhotoDir + photoName + ".jpg";
+	}
+	public static String getJsonPath(String photoName){
+		return appFolder + jsonDir + photoName + ".json";
+	}
+	public static String getMarkedupPhotoPath(String photoName){
+		return appFolder + markupDir + photoName + ".jpg";
+	}
     public static void displayImageInWebView(WebView myWebView, String imagePath){
 		myWebView.getSettings().setCacheMode(WebSettings.LOAD_NO_CACHE);
 		myWebView.getSettings().setBuiltInZoomControls(true);
@@ -45,25 +66,5 @@ public class MScanUtils {
 			return (new File(folder)).getUsableSpace();
 		}
 		return -1;
-	}
-	public static void clearDir(String dirPath){
-		File dir = new File(dirPath);
-		if(dir.exists()){
-			String[] files = dir.list();
-			for(int i = 0; i < files.length; i++){
-				File file = new File(dirPath + "/" + files[i]);
-				Log.i("mScan", dirPath + "/" + files[i]);
-				if(file.isDirectory()){
-					clearDir(dirPath + "/" + files[i]);
-				}
-				else{
-					file.delete();
-				}
-			}
-			dir.delete();
-		}
-		else{
-			Log.i("mScan", "clearDir error");
-		}
 	}
 }

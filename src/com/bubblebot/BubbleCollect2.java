@@ -9,7 +9,7 @@ import android.os.Bundle;
 import android.provider.MediaStore;
 import android.util.Log;
 
-public class BubbleCollect2 extends MScanExtendedActivity {
+public class BubbleCollect2 extends Activity {
 
 	private static final int TAKE_PICTURE = 12346789;
 	private String photoName;
@@ -18,7 +18,7 @@ public class BubbleCollect2 extends MScanExtendedActivity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		photoName = getUniqueName("img");
-		Uri imageUri = Uri.fromFile(new File( getPhotoPath(photoName) ));
+		Uri imageUri = Uri.fromFile(new File( MScanUtils.getPhotoPath(photoName) ));
 		Intent intent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
 		//Intent intent = new Intent("android.media.action.IMAGE_CAPTURE");
 		intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
@@ -41,9 +41,9 @@ public class BubbleCollect2 extends MScanExtendedActivity {
 				Intent intent = new Intent(getApplication(), AfterPhotoTaken.class);
 				intent.putExtra("photoName", photoName);
 
-				if( (new File(getPhotoPath(photoName))).exists() ) {
+				if( (new File(MScanUtils.getPhotoPath(photoName))).exists() ) {
 					Log.i("mScan", "Starting BubbleProcess activity with "
-							+ getPhotoPath(photoName) + "...");
+							+ MScanUtils.getPhotoPath(photoName) + "...");
 					startActivity(intent);
 				}
 				else{

@@ -1,13 +1,11 @@
 package com.bubblebot;
 
-import java.util.Date;
-
+import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.widget.TextView;
 
@@ -15,7 +13,7 @@ import android.widget.TextView;
  * 
  * This activity displays the image of a processed form
  */
-public class DisplayProcessedForm extends MScanExtendedActivity {
+public class DisplayProcessedForm extends Activity {
 	
 	TextView text;
 	private String photoName;
@@ -34,25 +32,8 @@ public class DisplayProcessedForm extends MScanExtendedActivity {
        text = (TextView) findViewById(R.id.text);
        text.setText("Displaying " + photoName);
        
-       // TODO: Figure out how to share a function for doing this with AfterPhotoTaken
-       // Using WebView to display the straightened form image.
-		WebView myWebView = (WebView)findViewById(R.id.webview2);
-		//myWebView.getSettings().setCacheMode(WebSettings.LOAD_NO_CACHE);
-		myWebView.getSettings().setBuiltInZoomControls(true);
-		myWebView.getSettings().setDefaultZoom(WebSettings.ZoomDensity.FAR);
-		//myWebView.setVerticalScrollbarOverlay(false);
-		
-		// HTML is used to display the image.
-		// Appending the time stamp to the filename is a hack
-		// to prevent caching.
-		String html = new String();
-		html = ( "<body bgcolor=\"Black\"><center>" +
-					"<img src=\"file:///" + getMarkedupPhotoPath(photoName) + "?" + new Date().getTime() + "\" width=\"500\" >" +
-				"</center></body>");
-		       
-		myWebView.loadDataWithBaseURL("file:////sdcard/BubbleBot/",
-								 html, "text/html", "utf-8", "");
-		
+		MScanUtils.displayImageInWebView((WebView)findViewById(R.id.webview2),
+				MScanUtils.getMarkedupPhotoPath(photoName));
 	}
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
@@ -66,6 +47,7 @@ public class DisplayProcessedForm extends MScanExtendedActivity {
 	    switch (item.getItemId()) {
 	    case R.id.displayData:
 			Intent intent = new Intent(getApplication(), DisplayProcessedData.class);
+			intent.putExtra("photoName", photoName);
 			startActivity(intent); 
 	        return true;
 	    default:

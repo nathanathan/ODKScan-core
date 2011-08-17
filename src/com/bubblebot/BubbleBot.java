@@ -1,8 +1,7 @@
 package com.bubblebot;
 
-import java.io.File;
-import java.io.IOException;
 
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.Intent;
@@ -10,20 +9,16 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.util.Log;
 import android.view.View;
-import android.webkit.WebView;
 import android.widget.Button;
-import android.widget.RelativeLayout;
 
 /* Bubblebot activity
  * 
  * This is the main activity. It displays the main menu
  * and launch the corresponding activity based on the user's selection
  */
-public class BubbleBot extends MScanExtendedActivity implements Runnable{
+public class BubbleBot extends Activity {
 
-	private static final int version = 25;
 	private static final int APROX_IMAGE_SIZE = 1000000;
 	ProgressDialog pd;
 	
@@ -34,10 +29,10 @@ public class BubbleBot extends MScanExtendedActivity implements Runnable{
 		
 		SharedPreferences settings = getSharedPreferences(getResources().getString(R.string.prefs_name), 0);
 		int currentVersion = settings.getInt("version", 0);
-		if(currentVersion < version) {
+		if(currentVersion < RunSetup.version) {
 			//TODO: It might be simpler to have all the runnables in separate files.
 			pd = ProgressDialog.show(this, "Please wait...", "Extracting assets", true);
-			Thread thread = new Thread(this);
+			Thread thread = new Thread(new RunSetup(handler, settings, getAssets()));
 			thread.start();
 		}
 
@@ -73,7 +68,7 @@ public class BubbleBot extends MScanExtendedActivity implements Runnable{
 	@Override
 	protected void onResume() {
 		super.onResume();
-		if(MScanUtils.getUsableSpace(this.getAppFolder()) < 4 * APROX_IMAGE_SIZE) {
+		if(MScanUtils.getUsableSpace(MScanUtils.appFolder) < 4 * APROX_IMAGE_SIZE) {
 			AlertDialog alert = new AlertDialog.Builder(this).create();
 			alert.setMessage("It looks like there isn't enough space to store more images.");
 			alert.show();
@@ -86,51 +81,6 @@ public class BubbleBot extends MScanExtendedActivity implements Runnable{
         setIntent.addCategory(Intent.CATEGORY_HOME);
         setIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(setIntent);
-	}
-	public void run() {
-		
-		boolean clearOldData = true;
-		
-		String mScanFolder = getAppFolder();
-		Log.i("mScan", "A");
-		
-		SharedPreferences settings = getSharedPreferences(getResources().getString(R.string.prefs_name), 0);
-		
-		SharedPreferences.Editor editor = settings.edit();
-		
-		if(clearOldData){
-			MScanUtils.clearDir(mScanFolder + photoDir);
-			MScanUtils.clearDir(mScanFolder + alignedPhotoDir);
-			MScanUtils.clearDir(mScanFolder + jsonDir);
-			MScanUtils.clearDir(mScanFolder + markupDir);
-			editor.clear();
-		}
-		
-		// Set up directories if they do not exist
-		(new File(mScanFolder, photoDir)).mkdirs();
-		(new File(mScanFolder, alignedPhotoDir)).mkdirs();
-		(new File(mScanFolder, jsonDir)).mkdirs();
-		(new File(mScanFolder, markupDir)).mkdirs();
-		
-		Log.i("mScan", (new File(mScanFolder, markupDir)).toString());
-		
-		try {
-			String traininExamplesDir =  mScanFolder + "training_examples";
-			String formTemplatesDir = mScanFolder + "form_templates";
-			MScanUtils.clearDir(traininExamplesDir);
-			MScanUtils.clearDir(formTemplatesDir);
-			
-			extractAssets("training_examples", traininExamplesDir);
-			extractAssets("form_templates", formTemplatesDir);
-			
-			editor.putInt("version", version);
-		} catch (IOException e) {
-			// TODO: Terminate the app if this fails.
-			e.printStackTrace();
-			Log.i("mScan", "Extration Error");
-		}
-		editor.commit();
-		handler.sendEmptyMessage(0);
 	}
 	private Handler handler = new Handler() {
         @Override

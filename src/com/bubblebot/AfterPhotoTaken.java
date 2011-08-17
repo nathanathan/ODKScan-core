@@ -1,8 +1,7 @@
 package com.bubblebot;
 
 
-import com.bubblebot.jni.Processor;
-
+import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.Bundle;
@@ -14,15 +13,14 @@ import android.webkit.WebView;
 import android.widget.Button;
 import android.widget.RelativeLayout;
 
-public class AfterPhotoTaken extends MScanExtendedActivity implements Runnable {
+public class AfterPhotoTaken extends Activity {
 	
 	private ProgressDialog pd;
     private Button retake;
     private Button process;
     
 	String photoName;
-	
-	private boolean detectResult;
+	RunProcessor runProcessor;
 
     @Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -37,9 +35,10 @@ public class AfterPhotoTaken extends MScanExtendedActivity implements Runnable {
 		pd.setTitle("Processing...");
 		
 		Bundle extras = getIntent().getExtras();
-		if (extras != null) {
-			photoName = extras.getString("photoName");
-		}
+		if (extras == null) return;
+		
+		photoName = extras.getString("photoName");
+		runProcessor = new RunProcessor(handler, photoName);
  
 		// If user chooses to retake the photo, start the BubbleCollect activity
 		retake = (Button) findViewById(R.id.retake_button);
@@ -62,12 +61,8 @@ public class AfterPhotoTaken extends MScanExtendedActivity implements Runnable {
 				pd.show();
 
 				//It is possible to run this backgrounded with low priority to make things seems faster...
-				Thread thread = new Thread(new RunProcessor(handler,
-															getAlignedPhotoPath(photoName),
-															getResources().getString(com.bubblebot.R.string.templatePath),
-															getAppFolder() + "training_examples",
-															getJsonPath(photoName),
-															getMarkedupPhotoPath(photoName)));
+				runProcessor.setMode(RunProcessor.PROCESS_MODE);
+				Thread thread = new Thread(runProcessor);
 				thread.setPriority(Thread.MAX_PRIORITY);
 				thread.start();
 			}
@@ -75,7 +70,8 @@ public class AfterPhotoTaken extends MScanExtendedActivity implements Runnable {
 		
 		pd.setMessage("Aligning Image");
 		pd.show();
-		Thread thread = new Thread(this);
+		runProcessor.setMode(RunProcessor.ALIGNMENT_MODE);
+		Thread thread = new Thread( runProcessor );
 		thread.setPriority(Thread.MAX_PRIORITY);
 		thread.start();
 	}
@@ -84,29 +80,6 @@ public class AfterPhotoTaken extends MScanExtendedActivity implements Runnable {
 		Intent intent = new Intent(getApplication(), BubbleBot.class);
 		startActivity(intent);
 	}
-    public void run() {
-		Processor mProcessor = new Processor();
-		
-		Log.i("mScan", "mProcessor successfully constructed");
-		
-		String templatePath = getResources().getString(com.bubblebot.R.string.templatePath);
-		
-		if(mProcessor.loadForm(getPhotoPath(photoName))) {
-			Log.i("mScan","Loading: " + photoName);
-			if(mProcessor.loadTemplate(templatePath)) {
-				Log.i("mScan","template loaded");
-				detectResult = mProcessor.alignForm(getAlignedPhotoPath(photoName));
-				Log.i("mScan","aligned");
-			}
-			else {
-				Log.i("mScan","FAILED TO LOAD TEMPLATE: " + templatePath);
-			}
-		}
-		else {
-			Log.i("mScan","FAILED TO LOAD IMAGE: " + photoName);
-		}
-    	handler.sendEmptyMessage(0);
-    }
     private Handler handler = new Handler() {
             @Override
             
@@ -114,14 +87,17 @@ public class AfterPhotoTaken extends MScanExtendedActivity implements Runnable {
             	
             	pd.dismiss();
             	
-            	if(msg.what == RunProcessor.whatId){
-            		Intent intent = new Intent(getApplication(), DisplayProcessedForm.class);
-                    intent.putExtra("photoName", photoName);
-                    startActivity(intent);
+            	if(msg.what == RunProcessor.PROCESS_MODE){
+            		if ( msg.arg1 == 1 ) {
+	            		Intent intent = new Intent(getApplication(), DisplayProcessedForm.class);
+	                    intent.putExtra("photoName", photoName);
+	                    startActivity(intent);
+            		}
             	}
-            	else{
-	        		if ( detectResult ) {
-	        			MScanUtils.displayImageInWebView((WebView)findViewById(R.id.webview), getAlignedPhotoPath(photoName));
+            	else if(msg.what == RunProcessor.ALIGNMENT_MODE){
+	        		if ( msg.arg1 == 1 ) {
+	        			MScanUtils.displayImageInWebView((WebView)findViewById(R.id.webview),
+	        														MScanUtils.getAlignedPhotoPath(photoName));
 	        			process.setEnabled(true);
 	        		}
 	        		else {

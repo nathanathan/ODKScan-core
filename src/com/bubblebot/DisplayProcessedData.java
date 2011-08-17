@@ -6,7 +6,6 @@ import java.io.FileReader;
 import java.io.IOException;
 
 import android.app.ListActivity;
-import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -32,23 +31,17 @@ public class DisplayProcessedData  extends ListActivity {
 
 		super.onCreate(savedInstanceState);
 
-
-		/*
-       Bundle extras = getIntent().getExtras(); 
-       if(extras !=null)
-       {
-    	   filename = extras.getString("file") + ".j";
-       }
-		 */
-		//read in captured data from textfile
-
-
+		Bundle extras = getIntent().getExtras();
+		if (extras == null) return;
+		String photoName = extras.getString("photoName");
+		
 		try {
 			
-			JSONObject bubbleVals = parseFileToJSONObject("sdcard/BubbleBot/output.json");
+			JSONObject bubbleVals = parseFileToJSONObject( MScanUtils.getJsonPath(photoName) );
+			
 			//TODO: replace this with some kind of expanding menu thing so that clicking on a field
 			//		allows users to see things broken down by segment.
-			Log.i("Nathan", "Parsed");
+			
 			String[] fields = getFields(bubbleVals);
 			
 			setListAdapter(new ArrayAdapter<String>(this, R.layout.list_item, fields));
@@ -64,15 +57,13 @@ public class DisplayProcessedData  extends ListActivity {
 							Toast.LENGTH_SHORT).show();
 				}
 			});
-
-
 		} catch (JSONException e) {
 			// TODO Auto-generated catch block
-			Log.i("Nathan", "JSON parsing problems.");
+			Log.i("mScan", "JSON parsing problems.");
 			e.printStackTrace();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
-	    	Log.i("Nathan", "IO problems.");
+	    	Log.i("mScan", "IO problems.");
 			e.printStackTrace();
 		}
 	}
@@ -92,7 +83,7 @@ public class DisplayProcessedData  extends ListActivity {
 
 		return new JSONObject(text.toString());
 	}
-	private JSONArray parseFileToJSONArray(String bvFilename) throws JSONException, IOException {
+	public JSONArray parseFileToJSONArray(String bvFilename) throws JSONException, IOException {
 		File jsonFile = new File(bvFilename);
 
 		//Read text from file
@@ -108,7 +99,7 @@ public class DisplayProcessedData  extends ListActivity {
 
 		return new JSONArray(text.toString());
 	}
-	private Integer sum(Integer[] integerArray){
+	public Integer sum(Integer[] integerArray){
 		int sum = 0;
 		for(int i = 0; i < integerArray.length; i++){
 			sum += integerArray[i];
@@ -124,7 +115,7 @@ public class DisplayProcessedData  extends ListActivity {
 		}
 		return fieldString;
 	}
-	private Integer[] getFieldCounts(JSONObject bubbleVals) throws JSONException {
+	public Integer[] getFieldCounts(JSONObject bubbleVals) throws JSONException {
 		JSONArray fields = bubbleVals.getJSONArray("fields");
 		Integer[] fieldCounts = new Integer[fields.length()];
 		for(int i = 0; i < fields.length(); i++){

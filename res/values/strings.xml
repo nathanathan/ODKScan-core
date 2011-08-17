@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 <string name="prefs_name">"mScanPrefs"</string>
-<string name="templatePath">/sdcard/mScan/form_templates/SIS-A01.json</string>
 <string name="app_name">mScan</string>
 <string name="app_description">Scan and process bubble forms</string>
 <string name="bubblebot_activity">BubbleBot</string>
