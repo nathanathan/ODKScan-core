@@ -98,13 +98,13 @@ void StatCollector::printData(){
 	if(numImages > 0){
 		cout << "Errors: " << errors << endl;
 		cout << "Images Tested: " << numImages << endl;
-		porportionSuccessfulForms = (numImages - errors) / numImages;
+		porportionSuccessfulForms =  1.f * (numImages - errors) / numImages;
 		cout << "Percent Success: " << 100.f * porportionSuccessfulForms << "%" << endl;
 		cout << "Segment alignment stats for successful form alignments: "<< endl;
 		if(numSegments > 0){
 			cout << "\tMissed Segments: " << missedSegments << endl;
 			cout << "\tSegments Attempted: " << numSegments << endl;
-			porportionSuccessfulSegments = (numSegments - missedSegments) / numSegments;
+			porportionSuccessfulSegments = 1.f * (numSegments - missedSegments) / numSegments;
 			cout << "\tPercent Success: " << 100.f * porportionSuccessfulSegments << "%" << endl;
 			cout << "\tBubble classification stats for successful tests alignments: "<< endl;
 		}
@@ -116,7 +116,7 @@ void StatCollector::printData(){
 	cout << "\t\tFalse positives: " << fp << endl;
 	cout << "\t\tTrue negatives: "<< tn << endl;
 	cout << "\t\tFalse negatives: " << fn << endl;
-	porportionCorrectClassifications = (tp + tn) / (tp+fp+tn+fn);
+	porportionCorrectClassifications =  1.f * (tp + tn) / (tp+fp+tn+fn);
 	cout << "\t\tPercent Correct: " << 100.f * porportionCorrectClassifications << "%" << endl;
 	
 	if(numImages > 0){
