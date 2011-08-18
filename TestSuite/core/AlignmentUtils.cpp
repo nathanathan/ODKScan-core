@@ -1,6 +1,7 @@
 #include "AlignmentUtils.h"
 #include <opencv2/calib3d/calib3d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <math.h>
 
 using namespace std;
 using namespace cv;
@@ -91,12 +92,12 @@ vector<Point> transformationToQuad(const Mat& H, const Size& out_image_sz){
 	return quad;
 }
 //Check if the contour has four points, does not self-intersect and is convex.
-bool testQuad(const vector<Point>& quad) {
+bool isQuadValid(const vector<Point>& quad) {
 
 	if(quad.size() != 4) return false;
 	
 	Mat quadMat;
-	for(size_t i = 0; i < 4; i++){
+	for(size_t i = 0; i < 4; i++) {
 		Mat Z = (Mat_<double>(1,3) << quad[i].x, quad[i].y, 0 );
 		if(quadMat.empty()){
 			quadMat = Z;
@@ -120,4 +121,11 @@ bool testQuad(const vector<Point>& quad) {
 	return	sign*E.cross(B).at<double>(0, 2) > 0 &&
 			sign*C.cross(D).at<double>(0, 2) > 0 &&
 			sign*A.cross(E).at<double>(0, 2) > 0;
+}
+bool testQuad(const vector<Point>& quad, const Size& sz, float sizeThresh) {
+	float quadArea = contourArea(Mat(quad));
+	return isQuadValid(quad) && abs(sz.area() - quadArea) < sizeThresh * sz.area();
+}
+bool testQuad(const vector<Point>& quad, const Rect& r, float sizeThresh) {
+	return testQuad(quad, r.size(), sizeThresh);
 }
