@@ -44,11 +44,16 @@ public class DisplayProcessedForm extends Activity {
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
 	    // Handle item selection
+		Intent intent;
 	    switch (item.getItemId()) {
 	    case R.id.displayData:
-			Intent intent = new Intent(getApplication(), DisplayProcessedData.class);
+			intent = new Intent(getApplication(), DisplayProcessedData.class);
 			intent.putExtra("photoName", photoName);
 			startActivity(intent); 
+	        return true;
+	    case R.id.scanNewForm:
+			intent = new Intent(getApplication(), BubbleCollect2.class);
+			startActivity(intent);
 	        return true;
 	    default:
 	        return super.onOptionsItemSelected(item);

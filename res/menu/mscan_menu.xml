@@ -6,4 +6,7 @@
     <item 
 	    android:id="@+id/uploadData"
 	    android:title="Upload Data" />
+	<item 
+	    android:id="@+id/scanNewForm"
+	    android:title="Scan New Form" />
 </menu>

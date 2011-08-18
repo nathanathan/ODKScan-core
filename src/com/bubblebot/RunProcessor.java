@@ -35,9 +35,9 @@ public class RunProcessor implements Runnable{
 			if( mProcessor.trainClassifier( MScanUtils.appFolder + MScanUtils.trainingExampleDir ) &&
 				mProcessor.processForm( MScanUtils.getJsonPath(photoName)) ) {
 				
-				(new MarkupForm()).markupForm(  MScanUtils.getJsonPath(photoName),
-												MScanUtils.getAlignedPhotoPath(photoName),
-												MScanUtils.getMarkedupPhotoPath(photoName));
+				MarkupForm.markupForm(  MScanUtils.getJsonPath(photoName),
+										MScanUtils.getAlignedPhotoPath(photoName),
+										MScanUtils.getMarkedupPhotoPath(photoName));
 				msg.arg1 = 1;//indicates success
 				
 			}

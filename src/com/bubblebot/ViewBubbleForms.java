@@ -60,8 +60,11 @@ public class ViewBubbleForms extends ListActivity {
 				else if(new File(MScanUtils.getAlignedPhotoPath(photoName)).exists()){
 					photoStatus.setTextColor(Color.parseColor("#FFFF00"));
 				}
+				else{
+					photoStatus.setTextColor(Color.parseColor("#FF0000"));
+				}
 
-				TextView nameView = (TextView) view.findViewById(R.id.filename);
+				TextView nameView = (TextView) view.findViewById(R.id.photoname);
 				nameView.setText(photoName);
 
 				TextView type = (TextView) view.findViewById(R.id.createdTime);

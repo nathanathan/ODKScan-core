@@ -11,14 +11,13 @@
  android:layout_height="fill_parent"
  android:layout_width="wrap_content"
  android:layout_margin="10dip"
- android:textSize="20dip"
-  android:textColor="#999999"
+ android:textSize="22dip"
  android:textStyle="bold"
  android:gravity="center_vertical"
  android:singleLine="true"
  />
  <TextView
- android:id="@+id/filename"
+ android:id="@+id/photoname"
  android:text="Name"
  android:layout_height="fill_parent"
  android:layout_width="wrap_content"

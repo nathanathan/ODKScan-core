@@ -19,8 +19,8 @@ import android.widget.Button;
  */
 public class BubbleBot extends Activity {
 
-	private static final int APROX_IMAGE_SIZE = 1000000;
 	ProgressDialog pd;
+	public boolean spaceAlerted = false;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -68,10 +68,12 @@ public class BubbleBot extends Activity {
 	@Override
 	protected void onResume() {
 		super.onResume();
-		if(MScanUtils.getUsableSpace(MScanUtils.appFolder) < 4 * APROX_IMAGE_SIZE) {
+		final int APROX_IMAGE_SIZE = 1000000;
+		if(!spaceAlerted && MScanUtils.getUsableSpace(MScanUtils.appFolder) < 4 * APROX_IMAGE_SIZE) {
 			AlertDialog alert = new AlertDialog.Builder(this).create();
 			alert.setMessage("It looks like there isn't enough space to store more images.");
 			alert.show();
+			spaceAlerted = true;
 		}
 	}
 	@Override
