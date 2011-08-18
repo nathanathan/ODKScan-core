@@ -5,9 +5,9 @@ CORE_OBJS := ${CORE_SRCS:.cpp=.o}
 JSON_PARSER_SRCS := $(wildcard ../jsoncpp-src-0.5.0/src/lib_json/*.cpp)
 JSON_PARSER_OBJS := ${JSON_PARSER_SRCS:.cpp=.o}
 
-ALL_SRCS := $(CORE_SRCS) TestTools.cpp
-ALL_HEADERS := $(CORE_HEADERS) TestTools.h configuration.h
-ALL_OBJS := $(CORE_OBJS) TestTools.o $(JSON_PARSER_OBJS)
+ALL_SRCS := $(CORE_SRCS) StatCollector.cpp
+ALL_HEADERS := $(CORE_HEADERS) StatCollector.h configuration.h
+ALL_OBJS := $(CORE_OBJS) StatCollector.o $(JSON_PARSER_OBJS)
 
 INCLUDES := `pkg-config opencv --cflags --libs` -I../jsoncpp-src-0.5.0/include -I./core -I./
 
@@ -24,6 +24,15 @@ FormAlignmentTest: tests/FormAlignmentTest.test
 	./$<
 
 EverythingTest: tests/EverythingTest.test
+	@rm -rf aligned_forms
+	@cp -rL form_images aligned_forms
+	@rm -rf debug_segment_images
+	@mkdir debug_segment_images
+	@rm -rf bubble_images
+	@mkdir bubble_images
+	./$<
+
+Experiment: tests/Experiment.test
 	@rm -rf aligned_forms
 	@cp -rL form_images aligned_forms
 	@rm -rf debug_segment_images
