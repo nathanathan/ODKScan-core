@@ -1,5 +1,6 @@
 /*
-This program tests the full images processing pipeline on all the images in a specified directory.
+This program runs the image processing pipeline on every image in the specified folder
+and prints out stats breaking down the results by image label and pipelien stage.
 */
 #include "Processor.h"
 #include "FileUtils.h"
@@ -17,14 +18,14 @@ string getLabel(const string& filepath){
 	return	filepath.substr(start, filepath.find_last_of("_") - start);
 }
 
-//The reason to use JSON for the bubble-vals files is that other code, like java code can parse them
-//and display the results without any hardcoding.
 int main(int argc, char *argv[]) {
 
 	//StatCollector statCollector;
 	map<string, StatCollector> collectors;
 
-	string experimentDir("experiment_1/");
+	string experimentDir(argv[1]);
+	if(experimentDir[experimentDir.size() - 1] != '/') experimentDir.append("/");
+	
 	string inputDir("form_images/" + experimentDir);
 	string outputDir("aligned_forms/" + experimentDir);
 	string expectedJsonFile( "form_images/experiment.json" );
@@ -91,10 +92,12 @@ int main(int argc, char *argv[]) {
 		}
 	}
 	
-	cout << "________________________________________________________" << endl;
+	cout << linebreak << endl;
+	StatCollector overall;
 	map<string, StatCollector>::iterator mapit;
 	for ( mapit=collectors.begin() ; mapit != collectors.end(); mapit++ ){
     	cout << (*mapit).first << endl << (*mapit).second;
+    	overall += (*mapit).second;
 	}
-	
+	cout << "overall" << endl << overall;
 }

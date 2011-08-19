@@ -86,27 +86,19 @@ void StatCollector::compareFiles(const string& foundPath, const string& actualPa
 }
 void StatCollector::print(ostream& myOut) const{
 
-	float porportionSuccessfulForms;
-	float porportionSuccessfulSegments;
-	float porportionCorrectClassifications;
-
-	const string linebreak = "________________________________________________________";
-
 	myOut << linebreak << endl << endl;
 	
 	if(numImages > 0){
 		myOut << "Form alignment stats: "<< endl;
 		myOut << "Errors: " << errors << endl;
 		myOut << "Images Tested: " << numImages << endl;
-		porportionSuccessfulForms =  1.f * (numImages - errors) / numImages;
-		myOut << "Percent Success: " << 100.f * porportionSuccessfulForms << "%" << endl;
+		myOut << "Percent Success: " << 100.f * formAlignmentRatio() << "%" << endl;
 		
 		if(numSegments > 0){
 			myOut << "\tSegment alignment stats for successful form alignments: "<< endl;
 			myOut << "\tMissed Segments: " << missedSegments << endl;
 			myOut << "\tSegments Attempted: " << numSegments << endl;
-			porportionSuccessfulSegments = 1.f * (numSegments - missedSegments) / numSegments;
-			myOut << "\tPercent Success: " << 100.f * porportionSuccessfulSegments << "%" << endl;
+			myOut << "\tPercent Success: " << 100.f * segmentAlignmentRatio() << "%" << endl;
 		}
 	}
 	else{
@@ -118,14 +110,13 @@ void StatCollector::print(ostream& myOut) const{
 	myOut << "\t\tFalse positives: " << fp << endl;
 	myOut << "\t\tTrue negatives: "<< tn << endl;
 	myOut << "\t\tFalse negatives: " << fn << endl;
-	porportionCorrectClassifications =  1.f * (tp + tn) / (tp+fp+tn+fn);
-	myOut << "\t\tPercent Correct: " << 100.f * porportionCorrectClassifications << "%" << endl;
+	myOut << "\t\tPercent Correct: " << 100.f * correctClassificationRatio() << "%" << endl;
 	
 	if(numImages > 0){
 		myOut << endl << "Total success rate: " << 100.f *
-												  (porportionSuccessfulForms ? : 1.0) *
-												  (porportionSuccessfulSegments ? : 1.0) *
-												  porportionCorrectClassifications << "%" << endl;
+												  (numImages > 0 ? formAlignmentRatio() : 1.0) *
+												  (numSegments > 0 ? segmentAlignmentRatio() : 1.0) *
+												  correctClassificationRatio() << "%" << endl;
 	}
 	myOut << linebreak << endl;
 }

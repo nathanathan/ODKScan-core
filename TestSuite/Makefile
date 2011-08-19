@@ -39,7 +39,7 @@ Experiment: tests/Experiment.test
 	@mkdir debug_segment_images
 	@rm -rf bubble_images
 	@mkdir bubble_images
-	./$<
+	./$< experiment_1
 
 TemplateEditor: TemplateEditor.test
 	@rm -rf debug_segment_images
@@ -61,6 +61,7 @@ TemplateEditor: TemplateEditor.test
 jni-transfer: $(CORE_SRCS) $(CORE_HEADERS)
 	cp -i $? ../jni/core
 	@echo "You can delete this file. It just tells make the jni-transfer target is up-to-date." > jni-transfer
+
 .IGNORE: clean
 clean:
 	rm -rf debug_segment_images
