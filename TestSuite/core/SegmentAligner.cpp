@@ -13,7 +13,7 @@
 NameGenerator alignmentNamer("debug_segment_images/", false);
 #endif
 
-#define USE_INTERSECTIONS
+//#define USE_INTERSECTIONS
 //There is a tradeoff with using intersections.
 //It seems to work better on messy segments, however,
 //on segments with multiple min energy lines we are more likely
@@ -190,7 +190,7 @@ vector<Point> findSegment(const Mat& img, const Rect& roi){
 
 	imgThresh = (img - temp_img) > 0;
 
-	Rect contractedRoi = resizeRect(roi, .5);
+	Rect contractedRoi = resizeRect(roi, .7);
 	
 	imgThresh(contractedRoi) = Scalar::all(255);
 	

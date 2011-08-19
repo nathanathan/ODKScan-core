@@ -7,10 +7,6 @@
 
 using namespace std;
 
-bool isImage(const std::string& filename){
-	return filename.find(".jpg") != std::string::npos;
-}
-
 //Compares 2 segments
 //returns false if the found segment wasn't fount
 void StatCollector::compareSegments(const Json::Value& foundSeg, const Json::Value& actualSeg){
@@ -88,39 +84,52 @@ void StatCollector::compareFiles(const string& foundPath, const string& actualPa
 		}
 	}
 }
-void StatCollector::printData(){
+void StatCollector::print(ostream& myOut) const{
 
 	float porportionSuccessfulForms;
 	float porportionSuccessfulSegments;
 	float porportionCorrectClassifications;
 
-	cout << endl << "________________________________________________________" << endl << endl;
+	myOut << endl << "________________________________________________________" << endl << endl;
+	
 	if(numImages > 0){
-		cout << "Errors: " << errors << endl;
-		cout << "Images Tested: " << numImages << endl;
+		myOut << "Form alignment stats: "<< endl;
+		myOut << "Errors: " << errors << endl;
+		myOut << "Images Tested: " << numImages << endl;
 		porportionSuccessfulForms =  1.f * (numImages - errors) / numImages;
-		cout << "Percent Success: " << 100.f * porportionSuccessfulForms << "%" << endl;
-		cout << "Segment alignment stats for successful form alignments: "<< endl;
+		myOut << "Percent Success: " << 100.f * porportionSuccessfulForms << "%" << endl;
+		
 		if(numSegments > 0){
-			cout << "\tMissed Segments: " << missedSegments << endl;
-			cout << "\tSegments Attempted: " << numSegments << endl;
+			myOut << "\tSegment alignment stats for successful form alignments: "<< endl;
+			myOut << "\tMissed Segments: " << missedSegments << endl;
+			myOut << "\tSegments Attempted: " << numSegments << endl;
 			porportionSuccessfulSegments = 1.f * (numSegments - missedSegments) / numSegments;
-			cout << "\tPercent Success: " << 100.f * porportionSuccessfulSegments << "%" << endl;
-			cout << "\tBubble classification stats for successful tests alignments: "<< endl;
+			myOut << "\tPercent Success: " << 100.f * porportionSuccessfulSegments << "%" << endl;
 		}
 	}
 	else{
-		cout << "\t\tBubble classification stats: "<< endl;
+		myOut << "\t\tBubble classification stats: "<< endl;
 	}
-	cout << "\t\tTrue positives: "<< tp << endl;
-	cout << "\t\tFalse positives: " << fp << endl;
-	cout << "\t\tTrue negatives: "<< tn << endl;
-	cout << "\t\tFalse negatives: " << fn << endl;
+	
+	myOut << "\t\tBubble classification stats for successful segment alignments: "<< endl;
+	myOut << "\t\tTrue positives: "<< tp << endl;
+	myOut << "\t\tFalse positives: " << fp << endl;
+	myOut << "\t\tTrue negatives: "<< tn << endl;
+	myOut << "\t\tFalse negatives: " << fn << endl;
 	porportionCorrectClassifications =  1.f * (tp + tn) / (tp+fp+tn+fn);
-	cout << "\t\tPercent Correct: " << 100.f * porportionCorrectClassifications << "%" << endl;
+	myOut << "\t\tPercent Correct: " << 100.f * porportionCorrectClassifications << "%" << endl;
 	
 	if(numImages > 0){
-		cout << "Total success rate: " << 100.f * (tp + tn) * (numImages - errors) / ((tp+fp+tn+fn) * numImages) << "%" << endl;
+		myOut << endl << "Total success rate: " << 100.f *
+												  (porportionSuccessfulForms ? : 1.0) *
+												  (porportionSuccessfulSegments ? : 1.0) *
+												  porportionCorrectClassifications << "%" << endl;
 	}
-	cout << "________________________________________________________" << endl;
+	myOut << "________________________________________________________" << endl;
 }
+
+ostream& operator<<(ostream& os, const StatCollector& sc){
+	sc.print(os);
+	return os;
+}
+

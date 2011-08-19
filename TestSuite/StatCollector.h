@@ -2,8 +2,7 @@
 #define STATCOLLECTOR_H
 #include <string>
 #include <json/json.h>
-
-bool isImage(const std::string& filename);
+#include <iostream>
 
 class StatCollector
 {
@@ -21,8 +20,11 @@ public:
 	missedSegments(0), numSegments(0)
 	{}
 	void compareFiles(const std::string& foundPath, const std::string& actualPath);
-	void printData();
+	void print(std::ostream& myOut) const;
 	void incrErrors(){ errors++; }
 	void incrImages(){ numImages++; }
 };
+
+std::ostream& operator<<(std::ostream& os, const StatCollector& sc);
+
 #endif
