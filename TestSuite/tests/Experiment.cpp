@@ -90,9 +90,11 @@ int main(int argc, char *argv[]) {
 			}
 		}
 	}
-	map<string, StatCollector>::iterator mapit;
-	for ( mapit=collectors.begin() ; mapit != collectors.end(); mapit++ )
-    	cout << (*mapit).first << endl << (*mapit).second;
 	
+	cout << "________________________________________________________" << endl;
+	map<string, StatCollector>::iterator mapit;
+	for ( mapit=collectors.begin() ; mapit != collectors.end(); mapit++ ){
+    	cout << (*mapit).first << endl << (*mapit).second;
+	}
 	
 }

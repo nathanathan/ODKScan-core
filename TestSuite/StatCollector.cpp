@@ -90,7 +90,9 @@ void StatCollector::print(ostream& myOut) const{
 	float porportionSuccessfulSegments;
 	float porportionCorrectClassifications;
 
-	myOut << endl << "________________________________________________________" << endl << endl;
+	const string linebreak = "________________________________________________________";
+
+	myOut << linebreak << endl << endl;
 	
 	if(numImages > 0){
 		myOut << "Form alignment stats: "<< endl;
@@ -125,7 +127,7 @@ void StatCollector::print(ostream& myOut) const{
 												  (porportionSuccessfulSegments ? : 1.0) *
 												  porportionCorrectClassifications << "%" << endl;
 	}
-	myOut << "________________________________________________________" << endl;
+	myOut << linebreak << endl;
 }
 
 ostream& operator<<(ostream& os, const StatCollector& sc){
