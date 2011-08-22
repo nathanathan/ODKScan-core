@@ -172,6 +172,19 @@ inline Point findIntersection(const Point& P1, const Point& P2,
 		( (P1.x * P2.y - P1.y * P2.x) * (P3.y - P4.y) -
 		  (P1.y - P2.y) * (P3.x * P4.y - P3.y * P4.x) ) / denom);
 }
+/*
+Pseudo-code description of findSegment:
+1.	Find lines along the edges of the bounding box
+	a.	Using difference of means and thresholding about 0 generate a binary images that should have highly pronounced black edges.
+		There are many alternatives that might also work here, for example an inverted canny filter.
+	b.	For every pair of rows in the top half of the image sum the white pixels in a line that starts at the left side of the image in the first row,
+		and ends at the right side of the image in the second. The row pair with the minimum number of white pixels is the minimum energy line.
+	c.	Repeat step 2 while flipping and/or transposing the image to find 4 such lines corresponding to the edges of the segment.
+2.	Find their intersections
+3.	Find the trasformation from the 4 intersection points to the rectangle defined in the template,
+	then use it to transform the segment into the rectangle.
+Note, this leaves out some tweaks and implementation details.
+*/
 //TODO: reimplement scaling to 128 px
 vector<Point> findSegment(const Mat& img, const Rect& roi){
 	Mat imgThresh, temp_img, temp_img2;

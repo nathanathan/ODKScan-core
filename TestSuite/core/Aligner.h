@@ -6,12 +6,15 @@
 #include <exception>
 
 class AlignmentException: public std::exception {
-  virtual const char* what() const throw()
-  {
-	return "Alignment exception";
-  }
+	virtual const char* what() const throw() {
+		return "Alignment exception";
+	}
 };
-
+/*
+Form alignment can be broken apart into 3 parts, feature detection, feature extraction, and feature matching. The best option I've found so far for detection/extraction is the grid adapted SURF feature detector, with the SURF feature extractor. I've parameterized SURF to only use one octave since order of magnitude scale differences shouldn't occur in form images. If they do, the form is probably too large/small in the picture to capture all the information on it. More octaves might help with larger features, I'll have to research this more...
+The grid adapted feature detector is good for limiting the number of key-points found so that the algorithm executes in a reasonable amount of time.
+Feature matching can be pretty easily switched between the brute force matcher (which is a bit more reliable) and the flann matcher (which is a bit faster). Additionally, I'm using cross check matching code from one of the OpenCV example programs.
+*/
 class Aligner
 {
 	cv::Mat currentImg;
@@ -33,14 +36,12 @@ class Aligner
 	public:
 		Aligner();
 		/*
+		This commented out section is for not-yet-implemented form detection
 		//Loads as well
 		bool generateFeatureData(const string& templateDirecotry);
 		
 		//Returns the index of the feature data to use
 		int DetectForm(const cv::Mat& formImg) const; //maybe private
-		//If I call this from javaland then I will need to get back the template name to use which might be unplesant...
-		//But if I call it from Processor I will need to keep that processor instance around so that it preserves the template name,
-		//which might have the advantage of speeding things up a little by avoiding saving/loading the images...
 		
 		//gets the template name from the index returned by detect from
 		std::string getTemplateName(int idx);

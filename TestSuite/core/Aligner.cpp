@@ -149,8 +149,8 @@ Aligner::Aligner(){
 	
 	descriptorExtractor = DescriptorExtractor::create( "SURF" );
 	
-	//#define MATCHER_TYPE "BruteForce"
-	#define MATCHER_TYPE "FlannBased"
+	#define MATCHER_TYPE "BruteForce"
+	//#define MATCHER_TYPE "FlannBased"
 	descriptorMatcher = DescriptorMatcher::create( MATCHER_TYPE );
 }
 void Aligner::setImage( const cv::Mat& img ){

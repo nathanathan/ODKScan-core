@@ -5,13 +5,15 @@ Header file for image processing functions.
 #define IMAGEPROCESSING_H
 #include "configuration.h"
 #include <tr1/memory>
-
+/*
+This class handles most of the JSON parsing and provides an interface to the overall process.
+*/
 class Processor{
 	public:
 		Processor();
 		bool loadTemplate(const char* templatePath);
 		
-		//These two probably don't need to be exposed except for in the testing suite
+		//This function might not need to be exposed:
 		bool trainClassifier(const char* trainingImageDir);
 		
 		bool loadForm(const char* imagePath, int rotate90 = 0);

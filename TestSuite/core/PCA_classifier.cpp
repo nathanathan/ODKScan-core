@@ -143,6 +143,7 @@ void writeVector(FileStorage& fs, const string& label, const vector<Tp>& vec) {
 	}
 	fs << "]";
 }
+//Note this only reads string vectors
 vector<string> readVector(FileStorage& fs, const string& label) {
 	FileNode fn = fs[label];
 	vector<string> vec(fn.size());
@@ -154,7 +155,7 @@ vector<string> readVector(FileStorage& fs, const string& label) {
 	return vec;
 }
 bool PCA_classifier::save(const string& outputPath) const {
-
+	//might be clearner to just have save/load throw exceptions.
 	try {
 		FileStorage fs(outputPath, FileStorage::WRITE);
 		fs << "exampleSizeWidth" << exampleSize.width;
@@ -197,11 +198,11 @@ bool PCA_classifier::load(const string& inputPath, const Size& requiredExampleSi
 	}
 	return true;
 }
-bool PCA_classifier::train_PCA_classifier(const vector<string>& examplePaths, const Size& myExampleSize,
+bool PCA_classifier::train_PCA_classifier(const vector<string>& examplePaths, Size myExampleSize,
 											int eigenvalues, bool flipExamples) {
 	statClassifier.clear();
 	weights = (Mat_<float>(3,1) << 1, 1, 1);//TODO: fix the weighting stuff 
-	exampleSize = Size(myExampleSize);//the copy constructor might be necessairy.
+	exampleSize = myExampleSize);
 	search_window = myExampleSize;
 	update_gaussian_weights();
 
@@ -250,9 +251,11 @@ bool PCA_classifier::train_PCA_classifier(const vector<string>& examplePaths, co
 	
 	return true;
 }
-//Rate a location on how likely it is to be a bubble.
-//The rating is the SSD of the queried pixels and their PCA back projection,
-//so lower ratings mean more bubble like.
+//Rates a range of pixels in det_img_gray on how likely it is to be a bubble.
+//The rating is the  sum of squard difference of the queried pixels and their PCA back projection.
+//Back projection tries to reconstruct a image/vector just using components of the PCA set (generated from the training data).
+//The theory is that if there is little difference between the reconstructed image and the original image
+//(as measured by the SSD) then the image is probably similar to some of the images used to generate the PCA set.
 inline double PCA_classifier::rateBubble(const Mat& det_img_gray, const Point& bubble_location) const {
 
     Mat query_pixels, pca_components;
@@ -287,8 +290,8 @@ inline double PCA_classifier::rateBubble(const Mat& det_img_gray, const Point& b
 }
 #define USE_HILLCLIMBING
 #ifdef USE_HILLCLIMBING
-//This using a hillclimbing algorithm to find the location with the highest bubble rating.
-//It might only find a local instead of global minimum but it is much faster.
+//This using a hillclimbing algorithm to find the location that minimizes the value of the rate bubble function.
+//It might only find a local instead of global minimum but it is much faster than a global search.
 Point PCA_classifier::bubble_align(const Mat& det_img_gray, const Point& bubble_location) const {
 	int iterations = 10;
 
@@ -322,6 +325,7 @@ Point PCA_classifier::bubble_align(const Mat& det_img_gray, const Point& bubble_
 		iterations--;
 	}
 	#if 0
+	//This shows the examined pixels if it is on.
 	namedWindow("outliers", CV_WINDOW_NORMAL);
 	imshow( "outliers", sofar );
 	

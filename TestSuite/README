@@ -9,8 +9,10 @@ ______________________________
 	Core Files:
 
 * Processor (.h|.cpp) 		-Handles JSON parsing and provides an interface.
-* FormAlignment (.h|.cpp) 	 Contains functions for aligning forms and segments.
-* PCA_classifier (.h|.cpp)	-Classifies bubbles using principal component analysis.
+* Aligner (.h|.cpp) 		-Class for detecting and aligning forms.
+* SegmentAligner (.h|.cpp)	-Contains code for aligning segments.
+* AlignmentUtils (.h|.cpp)	-Functions useful for doing alignment related things like dealing with quads.
+* PCA_classifier (.h|.cpp)	-Classifies bubbles using OpenCV's SVM with PCA.
 							 Contains code for reading training data from directories and refining bubble positions.
 * Addons (.h|.cpp) 			-Misc. utility functions that are useful in multiple places.
 * NameGenerator (.h|.cpp) 	-A utility for generating unique names.
