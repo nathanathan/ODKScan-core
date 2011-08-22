@@ -32,14 +32,21 @@ EverythingTest: tests/EverythingTest.test
 	@mkdir bubble_images
 	./$<
 
+#The experiment target runs Experiment.cpp on the specified folder.
+#Use the following syntax to specify the folder:
+#make Experiment EXPERIMENT_FOLDER=experiment_1
+#If no folder is specified it will default to experiment_1
+ifndef $(EXPERIMENT_FOLDER)
+EXPERIMENT_FOLDER := experiment_1
+endif
 Experiment: tests/Experiment.test
-	@rm -rf aligned_forms
-	@cp -rL form_images aligned_forms
+	@rm -rf aligned_forms/$(EXPERIMENT_FOLDER)
+	@mkdir aligned_forms/$(EXPERIMENT_FOLDER)
 	@rm -rf debug_segment_images
 	@mkdir debug_segment_images
 	@rm -rf bubble_images
 	@mkdir bubble_images
-	./$< experiment_1
+	./$< $(EXPERIMENT_FOLDER)
 
 TemplateEditor: TemplateEditor.test
 	@rm -rf debug_segment_images
@@ -73,4 +80,6 @@ clean:
 #Some helpful sources I used to make this makefile:
 #http://stackoverflow.com/questions/5799820/makefile-and-c-project
 #http://www.gnu.org/s/hello/manual/make/Special-Targets.html
+#http://www.gnu.org/s/hello/manual/make/Conditional-Syntax.html#Conditional-Syntax
 #http://en.wikipedia.org/wiki/Makefile
+#http://stackoverflow.com/questions/2214575/passing-arguments-to-make-run
