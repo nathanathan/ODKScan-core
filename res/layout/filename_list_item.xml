@@ -4,7 +4,6 @@
  android:layout_width="fill_parent"
  android:orientation="horizontal"
 >
-
  <TextView
  android:id="@+id/photoStatus"
  android:text="•"
