@@ -69,7 +69,8 @@ public class BubbleBot extends Activity {
 	protected void onResume() {
 		super.onResume();
 		final int APROX_IMAGE_SIZE = 1000000;
-		if(!spaceAlerted && MScanUtils.getUsableSpace(MScanUtils.appFolder) < 4 * APROX_IMAGE_SIZE) {
+		long usableSpace = MScanUtils.getUsableSpace(MScanUtils.appFolder);
+		if(!spaceAlerted && usableSpace >= 0 && usableSpace < 4 * APROX_IMAGE_SIZE) {
 			AlertDialog alert = new AlertDialog.Builder(this).create();
 			alert.setMessage("It looks like there isn't enough space to store more images.");
 			alert.show();

@@ -36,6 +36,11 @@ public class DisplayProcessedForm extends Activity {
 				MScanUtils.getMarkedupPhotoPath(photoName));
 	}
 	@Override
+	public void onAttachedToWindow() {
+	    super.onAttachedToWindow();
+		openOptionsMenu();
+	}
+	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 	    MenuInflater inflater = getMenuInflater();
 	    inflater.inflate(R.menu.mscan_menu, menu);

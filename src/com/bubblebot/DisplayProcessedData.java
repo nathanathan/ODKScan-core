@@ -6,13 +6,17 @@ import java.io.FileReader;
 import java.io.IOException;
 
 import android.app.ListActivity;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
+import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import org.json.JSONArray;
@@ -25,6 +29,7 @@ import org.json.JSONObject;
  */
 public class DisplayProcessedData  extends ListActivity {
 
+	JSONObject [] fields;
 	// Set up the UI
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -32,28 +37,55 @@ public class DisplayProcessedData  extends ListActivity {
 		super.onCreate(savedInstanceState);
 
 		Bundle extras = getIntent().getExtras();
+		
 		if (extras == null) return;
+		
 		String photoName = extras.getString("photoName");
 		
 		try {
-			
 			JSONObject bubbleVals = parseFileToJSONObject( MScanUtils.getJsonPath(photoName) );
 			
-			//TODO: replace this with some kind of expanding menu thing so that clicking on a field
-			//		allows users to see things broken down by segment.
+			fields = JSONArray2Array( bubbleVals.getJSONArray("fields") );
 			
-			String[] fields = getFields(bubbleVals);
+			ArrayAdapter<JSONObject> arrayAdapter = new ArrayAdapter<JSONObject>(this, R.layout.data_list_item, fields) {
+				@Override
+				public View getView(int position, View convertView, ViewGroup parent) {
+					
+					LinearLayout view = (convertView != null) ? (LinearLayout) convertView : createView(parent);
+					
+					final JSONObject field = fields[position];
+					
+					TextView fieldName = (TextView) view.findViewById(R.id.fieldName);
+					TextView fieldCount = (TextView) view.findViewById(R.id.fieldCount);
+					try {
+						fieldName.setText(field.getString("label"));
+						Integer[] segmentCounts = getSegmentCounts(field);
+						fieldCount.setText("" + sum(segmentCounts));
+					} catch (JSONException e) {
+						fieldName.setText( "ERROR" );
+						fieldCount.setText("NA");
+					}
+					return view;
+				}
+
+				private LinearLayout createView(ViewGroup parent) {
+					LinearLayout item = (LinearLayout) getLayoutInflater().inflate(R.layout.data_list_item,
+							parent, false);
+					return item;
+				}
+			};
 			
-			setListAdapter(new ArrayAdapter<String>(this, R.layout.list_item, fields));
+			setListAdapter(arrayAdapter);
 
 			ListView lv = getListView();
-			lv.setTextFilterEnabled(true);
-
+			
 			lv.setOnItemClickListener(new OnItemClickListener() {
 				public void onItemClick(AdapterView<?> parent, View view,
-						int position, long id) {
+										int position, long id) {
+					//TODO: replace this with some kind of expanding menu thing so that clicking on a field
+					//		allows users to see things broken down by segment.
 					// When clicked, show a toast with the TextView text
-					Toast.makeText(getApplicationContext(), ""+id,
+					Toast.makeText(getApplicationContext(), ""+position,
 							Toast.LENGTH_SHORT).show();
 				}
 			});
@@ -67,6 +99,13 @@ public class DisplayProcessedData  extends ListActivity {
 			e.printStackTrace();
 		}
 	}
+	private JSONObject[] JSONArray2Array(JSONArray jsonArray) throws JSONException {
+		JSONObject[] output = new JSONObject[jsonArray.length()];
+		for(int i = 0; i < jsonArray.length(); i++){
+			output[i] = jsonArray.getJSONObject(i);
+		}
+		return output;
+	}
 	private JSONObject parseFileToJSONObject(String bvFilename) throws JSONException, IOException {
 		File jsonFile = new File(bvFilename);
 
@@ -75,7 +114,7 @@ public class DisplayProcessedData  extends ListActivity {
 		BufferedReader br = new BufferedReader(new FileReader(jsonFile));
 		String line;
 
-		while ((line = br.readLine()) != null) 
+		while((line = br.readLine()) != null) 
 		{
 			text.append(line);
 			text.append('\n');
@@ -83,7 +122,7 @@ public class DisplayProcessedData  extends ListActivity {
 
 		return new JSONObject(text.toString());
 	}
-	public JSONArray parseFileToJSONArray(String bvFilename) throws JSONException, IOException {
+	private JSONArray parseFileToJSONArray(String bvFilename) throws JSONException, IOException {
 		File jsonFile = new File(bvFilename);
 
 		//Read text from file
@@ -115,7 +154,7 @@ public class DisplayProcessedData  extends ListActivity {
 		}
 		return fieldString;
 	}
-	public Integer[] getFieldCounts(JSONObject bubbleVals) throws JSONException {
+	private Integer[] getFieldCounts(JSONObject bubbleVals) throws JSONException {
 		JSONArray fields = bubbleVals.getJSONArray("fields");
 		Integer[] fieldCounts = new Integer[fields.length()];
 		for(int i = 0; i < fields.length(); i++){
@@ -130,13 +169,16 @@ public class DisplayProcessedData  extends ListActivity {
 		Integer[] bubbleCounts = new Integer[jArray.length()];
 
 		for (int i = 0; i < jArray.length(); i++) {
-			JSONArray bubbleValArray = jArray.getJSONObject(i).getJSONArray("bubbles");
 			int numFilled = 0;
-			for (int j = 0; j < bubbleValArray.length(); j++) {
-				if( bubbleValArray.getJSONObject(j).getBoolean("value") ){
-					numFilled++;
+			try{
+				JSONArray bubbleValArray = jArray.getJSONObject(i).getJSONArray("bubbles");
+				for (int j = 0; j < bubbleValArray.length(); j++) {
+					if( bubbleValArray.getJSONObject(j).getBoolean("value") ){
+						numFilled++;
+					}
 				}
-			}
+			}catch(JSONException e){}
+			
 			bubbleCounts[i] = numFilled;
 		}
 		return bubbleCounts;
