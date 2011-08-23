@@ -6,3 +6,4 @@
 int CrawlFileTree(std::string rootdir, std::vector<std::string> &filenames);
 int CrawlFileTree(char* rootdir, std::vector<std::string > &filenames);
 bool fileExists(const std::string& filename);
+bool isImage(const std::string& filename);

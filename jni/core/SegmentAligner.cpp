@@ -13,7 +13,7 @@
 NameGenerator alignmentNamer("debug_segment_images/", false);
 #endif
 
-#define USE_INTERSECTIONS
+//#define USE_INTERSECTIONS
 //There is a tradeoff with using intersections.
 //It seems to work better on messy segments, however,
 //on segments with multiple min energy lines we are more likely
@@ -172,64 +172,59 @@ inline Point findIntersection(const Point& P1, const Point& P2,
 		( (P1.x * P2.y - P1.y * P2.x) * (P3.y - P4.y) -
 		  (P1.y - P2.y) * (P3.x * P4.y - P3.y * P4.x) ) / denom);
 }
-
-//TODO: The blurSize param is sort of a hacky solution to the problem of contours being too large
-//		in certain cases. It fixes the problem on some form images because they can be blurred a lot
-//		and produce good results for contour finding. This is not the case with segments.
-//		I think a better solution might be to alter maxQuad somehow... I haven't figured out how though.
-vector<Point> findQuad(const Mat& img, int blurSize, float buffer = 0.0){
+/*
+Pseudo-code description of findSegment:
+1.	Find lines along the edges of the bounding box
+	a.	Using difference of means and thresholding about 0 generate a binary images that should have highly pronounced black edges.
+		There are many alternatives that might also work here, for example an inverted canny filter.
+	b.	For every pair of rows in the top half of the image sum the white pixels in a line that starts at the left side of the image in the first row,
+		and ends at the right side of the image in the second. The row pair with the minimum number of white pixels is the minimum energy line.
+	c.	Repeat step 2 while flipping and/or transposing the image to find 4 such lines corresponding to the edges of the segment.
+2.	Find their intersections
+3.	Find the trasformation from the 4 intersection points to the rectangle defined in the template,
+	then use it to transform the segment into the rectangle.
+Note, this leaves out some tweaks and implementation details.
+*/
+//TODO: reimplement scaling to 128 px
+vector<Point> findSegment(const Mat& img, const Rect& roi){
 	Mat imgThresh, temp_img, temp_img2;
 	
-	//Shrink the image down for efficiency
-	//and so we don't have to worry about filters behaving differently on large images
-	int multiple = img.cols / 256;
-	if(multiple > 1){
-		resize(img, temp_img, (1.f / multiple) * img.size(), 0, 0, INTER_AREA);
-	}
-	else{
-		multiple = 1;
-		img.copyTo(temp_img);
-	}
+	int blurSize = 9;
 	
-	float actual_width_multiple = float(img.rows) / temp_img.rows;
-	float actual_height_multiple = float(img.cols) / temp_img.cols;
-	
-	temp_img.copyTo(temp_img2);
 	#if 1
-		blur(temp_img2, temp_img, 2*Size(2*blurSize+1, 2*blurSize+1));
+		blur(img, temp_img, 2*Size(2*blurSize+1, 2*blurSize+1));
 	#else
 		//Not sure if this had advantages or not...
 		//My theory is that it is slower but more accurate,
 		//but I don't know if either difference is significant enough to notice.
 		//Will need to test.
-		GaussianBlur(temp_img2, temp_img, Size(9, 9), 3, 3);
+		GaussianBlur(img, temp_img, Size(9, 9), 3, 3);
 	#endif
-	
-	//erode(temp_img2, temp_img, (Mat_<uchar>(3,3) << 1,0,1,0,1,0,1,0,1));
-	//This threshold might be tweakable
-	imgThresh = (temp_img2 - temp_img) > 0;
 
-	float bufferChoke = buffer/(1 + 2*buffer);
-	Rect roi(bufferChoke * Point(temp_img.cols, temp_img.rows), (1.f - 2*bufferChoke) * temp_img.size());
+	imgThresh = (img - temp_img) > 0;
+
+	Rect contractedRoi = resizeRect(roi, .7);
 	
-	//Blocking out a chunk in the middle of the segment can help in cases with densely filled bubbles.
-	float extendedChoke = bufferChoke + .2;
-	Rect contractedRoi(extendedChoke * Point(temp_img.cols, temp_img.rows), (1.f - 2*extendedChoke) * temp_img.size());
 	imgThresh(contractedRoi) = Scalar::all(255);
-
+	
 	Point A1, B1, A2, B2, A3, B3, A4, B4;
 	findLines(imgThresh, A1, B1, roi, false, true);
 	findLines(imgThresh, A2, B2, roi, false, false);
 	findLines(imgThresh, A3, B3, roi, true, true);
 	findLines(imgThresh, A4, B4, roi, true, false);
-	
-	
+
+
 	#ifdef USE_INTERSECTIONS
 		vector <Point> quad;
 		quad.push_back(findIntersection(A1, B1, A2, B2));
 		quad.push_back(findIntersection(A2, B2, A3, B3));
 		quad.push_back(findIntersection(A3, B3, A4, B4));
 		quad.push_back(findIntersection(A4, B4, A1, B1));
+		
+		//TODO: add some code that does this:
+		//		lines can be used to mask off sections of the image
+		//		if there is a height/width discrepancy move the weighting line to the averate of the expected lines.
+		
 	#else
 		#define EXPANSION_PERCENTAGE .05
 		line( imgThresh, A1, B1, Scalar::all(0), 1, 4);
@@ -245,21 +240,9 @@ vector<Point> findQuad(const Mat& img, int blurSize, float buffer = 0.0){
 	#if 0 
 		//refine corner locations
 		//This seems to actually do worse
-		vector <Point2f> fquad;
-		for(size_t i = 0; i<quad.size(); i++){
-			fquad.push_back(Point2f(actual_width_multiple * quad[i].x, actual_height_multiple * quad[i].y));
-		}
+
 		TermCriteria termcrit(CV_TERMCRIT_ITER|CV_TERMCRIT_EPS,20,0.03);
-		cornerSubPix(img, fquad, Size(3,3), Size(2, 2), termcrit);
-	
-		for(size_t i = 0; i<quad.size(); i++){
-			quad[i] = Point(fquad[i].x, fquad[i].y);
-		}
-	#else
-		//Resize the contours for the full size image:
-		for(size_t i = 0; i<quad.size(); i++){
-			quad[i] = Point(actual_width_multiple * quad[i].x, actual_height_multiple * quad[i].y);
-		}
+		cornerSubPix(img, quad, Size(3,3), Size(2, 2), termcrit);
 	#endif
 	
 	#ifdef OUTPUT_DEBUG_IMAGES
@@ -271,9 +254,4 @@ vector<Point> findQuad(const Mat& img, int blurSize, float buffer = 0.0){
 	#endif
 
 	return quad;
-}
-
-
-vector<Point> findBoundedRegionQuad(const Mat& img, float buffer){
-	return findQuad(img, 9, buffer);
 }

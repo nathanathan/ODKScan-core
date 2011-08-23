@@ -150,3 +150,8 @@ static void HandleDir(char *dirpath, DIR *d, vector<string> &filenames) {
     free(newfile);
   }
 }
+
+
+bool isImage(const std::string& filename){
+	return filename.find(".jpg") != std::string::npos;
+}

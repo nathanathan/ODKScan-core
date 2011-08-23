@@ -41,17 +41,25 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage) {
 		
 		string fieldName = field.get("label", "Unlabeled").asString();
 		Scalar boxColor = colors[i%6];
-		
+	
 		const Json::Value segments = field["segments"];
 		for ( size_t j = 0; j < segments.size(); j++ ) {
 			const Json::Value segment = segments[j];
 			if(segment.isMember("quad")){//If we're dealing with a bubble-vals JSON file
 				//Draw segment rectangles:
 				vector<Point> quad = jsonArrayToQuad(segment["quad"]);
+				
 				const Point* p = &quad[0];
 				int n = (int) quad.size();
 				polylines(markupImage, &p, &n, 1, true, boxColor, 2, CV_AA);
-			
+				
+				if( segment.get("notFound", false).asBool() ) {
+					polylines(markupImage, &p, &n, 1, true, .25 * boxColor, 2, CV_AA);
+				}
+				else{
+					polylines(markupImage, &p, &n, 1, true, boxColor, 2, CV_AA);
+				}
+
 				const Json::Value bubbles = segment["bubbles"];
 				for ( size_t k = 0; k < bubbles.size(); k++ ) {
 					const Json::Value bubble = bubbles[k];
@@ -83,8 +91,9 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage) {
 	}
 	return true;
 }
+
 //Makes a JSON file that contains only the fieldnames and their corresponding bubble counts.
-bool MarkupForm::outputFieldCounts(const char* bubbleVals, const char* outputPath) {
+bool MarkupForm::outputFieldCounts(const char* bubbleVals, const char* outputPath){
 
 	Json::Value bvRoot;
 	
@@ -119,7 +128,7 @@ bool MarkupForm::outputFieldCounts(const char* bubbleVals, const char* outputPat
 }
 //Marks up formImage based on the specifications of a bubble-vals JSON file at the given path.
 //Then output the form to the given locaiton.
-bool MarkupForm::markupForm(const char* markupPath, const char* formPath, const char* outputPath) {
+bool MarkupForm::markupForm(const char* markupPath, const char* formPath, const char* outputPath){
 	Mat markupImage = imread(formPath);
 	if(markupImage.empty()) return false;
 	if(!markupFormHelper(markupPath, markupImage)) return false;

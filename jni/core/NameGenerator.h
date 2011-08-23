@@ -3,7 +3,10 @@
 #include <iostream>
 #include <string>
 #include <sys/stat.h>
-
+/*
+NameGenerate is a object for generating unique filenames.
+It is mainly used to output debug images.
+*/
 class NameGenerator {
 		int unique_name_counter;
 		std::string initial_prefix;

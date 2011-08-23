@@ -126,39 +126,37 @@ Json::Value classifyBubbles(const Mat& segment, const Json::Value& segmentJSON, 
 }
 Json::Value processSegment(const Json::Value &segmentTemplate){
 
-	Rect imageRect( SCALEPARAM * Point(segmentTemplate.get("x", INT_MIN ).asInt(),
+	Rect segmentRect( SCALEPARAM * Point(segmentTemplate.get("x", INT_MIN ).asInt(),
 									   segmentTemplate.get("y", INT_MIN).asInt()),
-					SCALEPARAM * Size(segmentTemplate.get("width", INT_MIN).asInt(),
+						SCALEPARAM * Size(segmentTemplate.get("width", INT_MIN).asInt(),
 									  segmentTemplate.get("height", INT_MIN).asInt()));
 
-	Rect expandedRect = expandRect(imageRect, SEGMENT_BUFFER);
-
+	Rect expandedRect = resizeRect(segmentRect, 1 + SEGMENT_BUFFER);
+	
 	//Ensure that the segment with the buffer added on doesn't go off the form
 	//and that everything is positive.
 	//Maybe add some code that will reduce the segment buffer if it goes over the edge.
 	assert(expandedRect.tl().x >= 0 && expandedRect.tl().y >= 0);
 	assert(expandedRect.br().x < formImage.cols && expandedRect.br().y < formImage.rows);
 
-	Mat segment = formImage(expandedRect);
+	Mat segmentImg = formImage(expandedRect);
 
-	vector<Point> quad = findBoundedRegionQuad(segment, SEGMENT_BUFFER);
-	//TODO: come up with some way for segment alignment to fail.
-				
-	if(quad.size() == 4){
+	vector<Point> quad = findSegment(segmentImg, segmentRect - expandedRect.tl());
+
+	if(testQuad(quad, segmentRect, .15)){
 		#ifdef DEBUG_PROCESSOR
 			//This makes a stream of dots so we can see how fast things are going.
 			//we get a ! when things go wrong.
 			cout << '.' << flush;
 		#endif
-		Mat transformation = quadToTransformation(quad, imageRect.size());
+		Mat transformation = quadToTransformation(quad, segmentRect.size());
 		Mat alignedSegment(0, 0, CV_8U);
-		warpPerspective(segment, alignedSegment, transformation, imageRect.size());
+		warpPerspective(segmentImg, alignedSegment, transformation, segmentRect.size());
 
 		Json::Value segmentJsonOut;
 		segmentJsonOut["quad"] = quadToJsonArray(quad, expandedRect.tl());
 		segmentJsonOut["bubbles"] = classifyBubbles(alignedSegment, segmentTemplate,
-													transformation.inv(), expandedRect.tl());
-													
+													transformation.inv(), expandedRect.tl());			
 		return segmentJsonOut;
 	}
 	else{
@@ -167,6 +165,7 @@ Json::Value processSegment(const Json::Value &segmentTemplate){
 		#endif
 		Json::Value segmentJsonOut;
 		segmentJsonOut["quad"] = quadToJsonArray(quad, expandedRect.tl());
+		segmentJsonOut["notFound"] = true;
 		return segmentJsonOut;
 	}
 }

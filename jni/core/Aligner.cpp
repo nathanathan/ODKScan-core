@@ -281,18 +281,8 @@ void Aligner::alignFormImage(Mat& aligned_img, const Size& aligned_img_sz, int f
 	
 	vector<Point> quad = transformationToQuad(Hscaled, aligned_img_sz);
 	
-	if( testQuad(quad) ) {
-		float area = contourArea(Mat(quad));
-		float expected_area = (.8 * currentImg.size()).area();
-		float tolerence = .4;
-		if( area < (1. - tolerence) * expected_area ||
-			area > (1. + tolerence) * expected_area){
-			throw myAlignmentException;
-		}
-	}
-	else{
-		throw myAlignmentException;
-	}
+	if( ! testQuad(quad, .8 * currentImg.size()) ) throw myAlignmentException;
+	
 	#ifdef SHOW_MATCHES_WINDOW
 		//This code creates a window to show matches:
 		vector<char> matchesMask( filteredMatches.size(), 0 );

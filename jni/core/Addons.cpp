@@ -20,12 +20,10 @@ Size operator * (float lhs, Size rhs) {
 Rect operator * (float lhs, Rect rhs) {
 	return Rect(lhs*rhs.tl(), lhs*rhs.size());
 }
-Rect expandRect(const Rect& r, const float expansionPercentage){
-	Point diag = r.tl() - r.br();
-	return Rect(expansionPercentage * diag + r.tl(), 
-				- expansionPercentage * diag + r.br());
+Rect resizeRect(const Rect& r, float amount){
+	Point offset = ((1.0 - amount) / 2.0) * Point(r.width, r.height);
+	return Rect(r.tl() + offset, r.br() - offset);
 }
-
 Json::Value pointToJson(const Point p){
 	Json::Value jPoint;
 	jPoint.append(p.x);

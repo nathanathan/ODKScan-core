@@ -7,12 +7,15 @@
 #include <opencv2/ml/ml.hpp>
 #include "Addons.h"
 
+/*
+This class implements bubble classification using OpenCV's support vector machine and PCA.
+*/
 class PCA_classifier
 {
 	private:	
 		
 		CvSVM statClassifier;
-		//TODO: try SVM without PCA
+
 		std::vector<std::string> classifications; 
 		
 		cv::PCA my_PCA;
@@ -40,7 +43,7 @@ class PCA_classifier
 		void set_search_window(cv::Size sw);
 		double rateBubble(const cv::Mat& det_img_gray, const cv::Point& bubble_location) const;
 		bool train_PCA_classifier(	const std::vector<std::string>& examplePaths,
-									const cv::Size& myExampleSize,
+									cv::Size myExampleSize,
 									int eigenvalues = 7,
 									bool flipExamples = false);
 		cv::Point bubble_align(const cv::Mat& det_img_gray, const cv::Point& bubble_location) const;
