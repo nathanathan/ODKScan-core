@@ -5,9 +5,6 @@
  * this means that the android project must reference opencv/android as a project
  * see the default.properties for how this is done
  */
-%pragma(java) jniclassimports=%{
-import com.opencv.jni.*; //import the android-opencv jni wrappers
-%}
 
 %pragma(java) jniclasscode=%{
 	static {
@@ -19,7 +16,7 @@ import com.opencv.jni.*; //import the android-opencv jni wrappers
 			//lib to be found
 			//check the apk generated, by opening it in an archive manager, to verify that
 			//both these libraries are present
-			System.loadLibrary("android-opencv");
+
 			System.loadLibrary("bubblebot");
 		} catch (UnsatisfiedLinkError e) {
 			//badness
