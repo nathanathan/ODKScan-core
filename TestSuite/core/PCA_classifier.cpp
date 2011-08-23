@@ -202,7 +202,7 @@ bool PCA_classifier::train_PCA_classifier(const vector<string>& examplePaths, Si
 											int eigenvalues, bool flipExamples) {
 	statClassifier.clear();
 	weights = (Mat_<float>(3,1) << 1, 1, 1);//TODO: fix the weighting stuff 
-	exampleSize = myExampleSize);
+	exampleSize = myExampleSize;
 	search_window = myExampleSize;
 	update_gaussian_weights();
 
