@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+ android:layout_height="?android:attr/listPreferredItemHeight"
+ android:layout_width="fill_parent"
+ android:orientation="horizontal"
+>
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+	android:id="@+id/fieldName"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:padding="10dp"
+    android:layout_weight="1"
+    android:textSize="16sp" >
+</TextView>
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+	android:id="@+id/fieldCount"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:padding="10dp"
+    android:layout_weight="4"
+    android:textStyle="bold"
+    android:textSize="16sp" >
+</TextView>
+</LinearLayout>
