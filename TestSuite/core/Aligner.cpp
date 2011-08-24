@@ -12,10 +12,11 @@
 #include <fstream>
 
 //vaying the reproject threshold can make a big difference in performance.
-#define FH_REPROJECT_THRESH 3.0
+#define FH_REPROJECT_THRESH 4.0
 
-//#define ALWAYS_COMPUTE_TEMPLATE_FEATURES
+#define ALWAYS_COMPUTE_TEMPLATE_FEATURES
 //#define SHOW_MATCHES_WINDOW
+#define MASK_CENTER_AMOUNT .4
 
 #ifdef OUTPUT_DEBUG_IMAGES
 #include "NameGenerator.h"
@@ -25,6 +26,10 @@ NameGenerator dbgNamer("debug_form_images/", true);
 using namespace std;
 using namespace cv;
 
+#ifdef SHOW_MATCHES_WINDOW
+	#define ALWAYS_COMPUTE_TEMPLATE_FEATURES
+	Mat featureSource, featureDest;
+#endif
 
 //This is from the OpenCV descriptor matcher example.
 void crossCheckMatching( Ptr<DescriptorMatcher>& descriptorMatcher,
@@ -144,8 +149,9 @@ Aligner::Aligner(){
 	//detector = FeatureDetector::create( "GridSURF" );
 	
 	detector = Ptr<FeatureDetector>(new GridAdaptedFeatureDetector(
-										new SurfFeatureDetector( 400., 1, 3), //Adding octaves while shrinking the image might speed things up.
+										new SurfFeatureDetector( 300., 1, 3), //Adding octaves while shrinking the image might speed things up.
 										500, 4, 4));//4,4 grid size seems to be bizzarly more effective than other sizes.
+	//Increasing the octave layers might help in some cases
 	
 	descriptorExtractor = DescriptorExtractor::create( "SURF" );
 	
@@ -164,11 +170,43 @@ void Aligner::setImage( const cv::Mat& img ){
 									double(currentImgResized.rows) / img.rows,
 									1.0);
 	
+	#if 0
+		Mat temp;
+		adaptiveThreshold(currentImgResized, temp, 50, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 9, 15);
+		//equalizeHist(currentImgResized, temp);
+		currentImgResized = currentImgResized + temp;
+		currentImgResized.convertTo(currentImgResized, 0);
+	#endif
+	
+	#ifdef SHOW_MATCHES_WINDOW
+		featureSource = currentImgResized;
+	#endif
+	
+	#if 0
+		namedWindow("outliers", CV_WINDOW_NORMAL);
+		imshow( "outliers", currentImgResized );
+	
+		for(;;)
+		{
+			char c = (char)waitKey(0);
+			if( c == '\x1b' ) // esc
+			{
+				cvDestroyWindow("outliers");
+			    break;
+			}
+		}
+	#endif
+	Mat mask(currentImgResized.rows, currentImgResized.cols, CV_8UC1, Scalar::all(255));
+	#ifdef MASK_CENTER_AMOUNT
+		Rect roi = resizeRect(Rect(Point(0,0), currentImgResized.size()), MASK_CENTER_AMOUNT);
+		rectangle(mask, roi.tl(), roi.br(), Scalar::all(0), -1);
+	#endif
+	
 	#ifdef DEBUG_ALIGN_IMAGE
 		cout << "Extracting keypoints from current image..." << endl;
 	#endif
 	
-	detector->detect( currentImgResized, currentImgKeypoints );
+	detector->detect( currentImgResized, currentImgKeypoints, mask);
 	
 	#ifdef DEBUG_ALIGN_IMAGE
 		cout << "\t" << currentImgKeypoints.size() << " points" << endl;
@@ -198,7 +236,11 @@ void Aligner::loadFeatureData(const string& templPath) throw(AlignmentException)
 		Mat templImage, temp;
 		templImage = imread( templPath + ".jpg", 0 );
 		resize(templImage, temp, templImage.size(), 0, 0, INTER_AREA);
-		templImage = temp;
+		
+		//templImage = temp;
+		//adaptiveThreshold(temp, templImage, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 9, 15);
+		//equalizeHist(temp, templImage);
+		
 		temp.release();
 		templImageSize = templImage.size();
 
@@ -209,8 +251,16 @@ void Aligner::loadFeatureData(const string& templPath) throw(AlignmentException)
 		Mat mask = makeFieldMask(templPath + ".json");
 		resize(mask, temp, templImage.size(), 0, 0, INTER_AREA);
 		erode(temp, mask, Mat(), Point(-1,-1), 6);
-		//mask = temp;
-		/*
+		#ifdef MASK_CENTER_AMOUNT
+			Rect roi = resizeRect(Rect(Point(0,0), templImage.size()), MASK_CENTER_AMOUNT);
+			rectangle(mask, roi.tl(), roi.br(), Scalar::all(0), -1);
+		#endif
+		
+		#ifdef SHOW_MATCHES_WINDOW
+			featureDest = templImage;
+		#endif
+		
+		#if 0
 		imshow( "outliers", templImage & mask);
 		for(;;)
 		{
@@ -222,7 +272,7 @@ void Aligner::loadFeatureData(const string& templPath) throw(AlignmentException)
 		        break;
 		    }
 		}
-		*/
+		#endif
 		
 		temp.release();
 		detector->detect( templImage, templKeypoints, mask );
@@ -282,7 +332,7 @@ void Aligner::alignFormImage(Mat& aligned_img, const Size& aligned_img_sz, int f
 	vector<Point> quad = transformationToQuad(Hscaled, aligned_img_sz);
 	
 	if( ! testQuad(quad, .8 * currentImg.size()) ) throw myAlignmentException;
-	
+
 	#ifdef SHOW_MATCHES_WINDOW
 		//This code creates a window to show matches:
 		vector<char> matchesMask( filteredMatches.size(), 0 );
@@ -294,8 +344,8 @@ void Aligner::alignFormImage(Mat& aligned_img, const Size& aligned_img_sz, int f
 		}
 	
 		Mat drawImg;
-		Mat img2 = imread("lfdImage.jpg");
-		drawMatches( currentImg, currentImgKeypoints, img2, templKeypoints, filteredMatches, drawImg,
+
+		drawMatches( featureSource, currentImgKeypoints, featureDest, templKeypoints, filteredMatches, drawImg,
 					CV_RGB(0, 255, 0), CV_RGB(255, 0, 255), matchesMask, DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
 	
 		namedWindow("inliers", CV_WINDOW_NORMAL);
@@ -304,7 +354,7 @@ void Aligner::alignFormImage(Mat& aligned_img, const Size& aligned_img_sz, int f
         for( size_t i1 = 0; i1 < matchesMask.size(); i1++ )
             matchesMask[i1] = !matchesMask[i1];
             
-        drawMatches( currentImg, currentImgKeypoints, img2, templKeypoints, filteredMatches, drawImg,
+        drawMatches( featureSource, currentImgKeypoints, featureDest, templKeypoints, filteredMatches, drawImg,
         			CV_RGB(0, 0, 255), CV_RGB(255, 0, 0), matchesMask,
         			DrawMatchesFlags::DRAW_OVER_OUTIMG | DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
 		

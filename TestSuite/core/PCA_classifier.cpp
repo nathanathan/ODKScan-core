@@ -6,13 +6,13 @@
 #include <iostream>
 
 #ifdef OUTPUT_BUBBLE_IMAGES
-#include "NameGenerator.h"
-extern NameGenerator namer;
+	#include "NameGenerator.h"
+	extern NameGenerator namer;
 #endif
 
 #ifdef OUTPUT_EXAMPLES
-#include "NameGenerator.h"
-NameGenerator exampleNamer;
+	#include "NameGenerator.h"
+	NameGenerator exampleNamer;
 #endif
 
 #define NORMALIZE

@@ -6,6 +6,10 @@
 using namespace std;
 using namespace cv;
 
+Rect resizeRect(const Rect& r, float amount){
+	Point offset = ((1.0 - amount) / 2.0) * Point(r.width, r.height);
+	return Rect(r.tl() + offset, r.br() - offset);
+}
 //Order a 4 point vector clockwise with the 0 index at the most top-left corner
 vector<Point> orderCorners(const vector<Point>& corners){
 

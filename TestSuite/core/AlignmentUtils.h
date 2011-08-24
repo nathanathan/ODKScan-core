@@ -2,7 +2,7 @@
 #define ALIGNMENT_UTILS_H
 
 #include <opencv2/core/core.hpp>
-
+cv::Rect resizeRect(const cv::Rect& r, float amount);
 std::vector<cv::Point> orderCorners(const std::vector<cv::Point>& corners);
 std::vector<cv::Point> expandCorners(const std::vector<cv::Point>& corners, double expansionPercent);
 cv::Mat quadToTransformation(const std::vector<cv::Point>& foundCorners, const cv::Size& out_image_sz);
