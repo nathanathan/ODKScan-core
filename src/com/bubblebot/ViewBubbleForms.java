@@ -23,7 +23,8 @@ import android.widget.TextView;
  */
 public class ViewBubbleForms extends ListActivity {
 
-	String [] photoNames;
+	private String [] photoNames;
+	private ArrayAdapter<String> myAdapter;
 	
 	// Initialize the application  
 	@Override
@@ -45,7 +46,7 @@ public class ViewBubbleForms extends ListActivity {
 			photoNames[i] = photoNames[i].substring(0, photoNames[i].lastIndexOf(".jpg"));
 		}
 		
-		ArrayAdapter<String> arrayAdapter = new ArrayAdapter<String>(this, R.layout.filename_list_item, photoNames) {
+		myAdapter = new ArrayAdapter<String>(this, R.layout.filename_list_item, photoNames) {
 			@Override
 			public View getView(int position, View convertView, ViewGroup parent) {
 
@@ -80,7 +81,7 @@ public class ViewBubbleForms extends ListActivity {
 			}
 		};
 		
-		setListAdapter(arrayAdapter);
+		setListAdapter(myAdapter);
 
 		ListView lv = getListView();
 
@@ -98,10 +99,16 @@ public class ViewBubbleForms extends ListActivity {
 				else if(new File(MScanUtils.getAlignedPhotoPath(photoName)).exists()){
 					Intent intent = new Intent(getApplication(), AfterPhotoTaken.class);
 					intent.putExtra("photoName", photoName);
+					intent.putExtra("preAligned", true);
 					startActivity(intent); 
 				}
 			}
 		});
 		
+	}
+	@Override
+	public void onResume(){
+		super.onResume();
+		myAdapter.notifyDataSetChanged();
 	}
 }

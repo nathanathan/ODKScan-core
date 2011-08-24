@@ -11,6 +11,7 @@ import android.util.Log;
 import android.view.View;
 import android.webkit.WebView;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 
 /*
@@ -24,6 +25,7 @@ public class AfterPhotoTaken extends Activity {
     private String photoName;
     private RunProcessor runProcessor;
     private Button processButton;
+    private LinearLayout content;
 
     @Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -31,19 +33,25 @@ public class AfterPhotoTaken extends Activity {
     	
     	Log.i("mScan", "After Photo taken");
     	
-    	//TODO: It should be possible to use the same layout for this and display processed image
-		setContentView(R.layout.after_photo_taken);
+    	setContentView(R.layout.after_photo_taken);
+    	
+    	content = (LinearLayout) findViewById(R.id.myLinearLayout);
+    	
+		Bundle extras = getIntent().getExtras();
+		if (extras == null) {
+			Log.i("mScan","extras == null");
+			//This might happen if we use back to reach this activity from the camera activity.
+			content.setVisibility(View.VISIBLE);
+			return;
+		}
+		
+		photoName = extras.getString("photoName");
+		
+		runProcessor = new RunProcessor(handler, photoName);
 		
 		pd = new ProgressDialog(this);
 		pd.setCancelable(false);
 		//pd.setTitle("Processing...");
-		
-		Bundle extras = getIntent().getExtras();
-		if (extras == null) return;
-		
-		photoName = extras.getString("photoName");
-		runProcessor = new RunProcessor(handler, photoName);
-		
 		pd.setMessage("Aligning Image");
 		pd.show();
 		
@@ -71,8 +79,12 @@ public class AfterPhotoTaken extends Activity {
 				thread.start();
 			}
 		});
-		
-		runProcessor.setMode(RunProcessor.ALIGNMENT_MODE);
+		if( extras.getBoolean("preAligned") ){
+			runProcessor.setMode(RunProcessor.LOAD_MODE);
+		}
+		else{
+			runProcessor.setMode(RunProcessor.ALIGNMENT_MODE);
+		}
 		Thread thread = new Thread( runProcessor );
 		thread.setPriority(Thread.MAX_PRIORITY);
 		thread.start();
@@ -90,7 +102,8 @@ public class AfterPhotoTaken extends Activity {
 	                    startActivity(intent);
             		}
             	}
-            	else if(msg.what == RunProcessor.ALIGNMENT_MODE){
+            	else if(msg.what == RunProcessor.ALIGNMENT_MODE ||
+            			msg.what == RunProcessor.LOAD_MODE){
             		aligned = (msg.arg1 == 1);
 	        		if ( aligned ) {
 	        			MScanUtils.displayImageInWebView((WebView)findViewById(R.id.webview),
@@ -100,9 +113,9 @@ public class AfterPhotoTaken extends Activity {
 	        			RelativeLayout failureMessage = (RelativeLayout) findViewById(R.id.failureMessage);
 	        			failureMessage.setVisibility(View.VISIBLE);
 	        		}
+	        		content.setVisibility(View.VISIBLE);
 	        		processButton.setEnabled(aligned);
             	}
-
             }
     };
 }

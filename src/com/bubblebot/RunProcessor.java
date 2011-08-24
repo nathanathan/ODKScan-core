@@ -11,6 +11,7 @@ public class RunProcessor implements Runnable{
 	
 	public static final int ALIGNMENT_MODE = 1;
 	public static final int PROCESS_MODE = 2;
+	public static final int LOAD_MODE = 3;
 	
 	private int mode;
 	Processor mProcessor;
@@ -40,6 +41,13 @@ public class RunProcessor implements Runnable{
 										MScanUtils.getMarkedupPhotoPath(photoName));
 				msg.arg1 = 1;//indicates success
 				
+			}
+		}
+		else if(mode == LOAD_MODE){
+			if( mProcessor.loadForm(MScanUtils.getAlignedPhotoPath(photoName)) ){
+				if(mProcessor.loadTemplate( MScanUtils.appFolder + "form_templates/SIS-A01.json" )) {
+					msg.arg1 = 1;//indicates success
+				}
 			}
 		}
 		else if(mode == ALIGNMENT_MODE){

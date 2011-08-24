@@ -29,7 +29,7 @@ import org.json.JSONObject;
  */
 public class DisplayProcessedData  extends ListActivity {
 
-	JSONObject [] fields;
+	private JSONObject [] fields;
 	// Set up the UI
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
