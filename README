@@ -60,8 +60,8 @@ http://opencv.itseez.com/trunk/doc/tutorials/introduction/android_binary_package
 The only external dependencies are the android sdk and ndk
 We assume that you have the NDK in ~/android-ndk-r6
 You can change this directory in local.env.mk
-We assume that you have the SDK in ~/android-sdk-linux_x86
-This path can be changed in local.properties
+We assume that you have the SDK in /home/nathan/android-sdk-linux_x86 (Which it is probably not!)
+This path can be changed in local.properties and watch out tildas don't work.
 
 To clean the project:
 1) Enter "make clean"
