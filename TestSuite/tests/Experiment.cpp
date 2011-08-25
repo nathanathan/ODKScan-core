@@ -10,6 +10,7 @@ and prints out stats breaking down the results by image label and pipelien stage
 #include <iostream>
 #include <string>
 #include <map>
+#include <time.h>
 
 using namespace std;
 
@@ -20,6 +21,8 @@ string getLabel(const string& filepath){
 
 int main(int argc, char *argv[]) {
 
+	clock_t init, final;	
+	
 	//StatCollector statCollector;
 	map<string, StatCollector> collectors;
 
@@ -50,9 +53,11 @@ int main(int argc, char *argv[]) {
 			
 			cout << "Processing image: " << (*it) << endl;
 			
+			init = clock();
+			
 			Processor myProcessor;
 			
-			if( !myProcessor.loadForm((*it).c_str()) ) {
+			if( !myProcessor.loadForm((*it).c_str())) {
 				cout << "\E[31m" <<  "Could not load. Arg: " << "\e[0m" << (*it) << endl;
 				collectors[label].incrErrors();
 				continue;
@@ -81,6 +86,8 @@ int main(int argc, char *argv[]) {
 				continue;
 			}
 			
+			final=clock()-init;
+			cout << (double)final / ((double)CLOCKS_PER_SEC) << endl;
 			cout << "\E[32m" << "Apparent success!" << "\e[0m" << endl;
 			
 			if( fileExists(expectedJsonFile) ) {
