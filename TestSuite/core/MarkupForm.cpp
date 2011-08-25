@@ -2,7 +2,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/legacy/compat.hpp> //I'm not sure why I need this
+//#include <opencv2/legacy/compat.hpp> //I'm not sure if I need this
 
 #include <json/json.h>
 

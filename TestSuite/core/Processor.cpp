@@ -226,11 +226,20 @@ bool loadForm(const char* imagePath, int rotate90){
 	formImage = imread(imagePath, 0);
 	if(formImage.empty()) return false;
 	
+	/*
 	//When using feature based alignment the rotate 90 thing is unnecessairy.
+	//Apparently I do get slightly different performance when the image is rotated90
 	if(rotate90 != 0){
 		Mat temp;
 		transpose(formImage, temp);
-		flip(temp,formImage, rotate90); //This might vary by phone... 1 is for Nexus.
+		flip(temp,formImage, int(rotate90 > 0)); //This might vary by phone... 1 is for Nexus.
+	}
+	*/
+	//Automatically rotate90 if the image is wider than it is tall
+	if(formImage.cols > formImage.rows){
+		Mat temp;
+		transpose(formImage, temp);
+		flip(temp,formImage, 1);
 	}
 	
 	JsonOutput["image_path"] = imagePath;
@@ -261,13 +270,16 @@ bool alignForm(const char* alignedImageOutputPath){
 		return false;
 	}
 	
-	if(straightenedImage.empty()) return false;
+	if(straightenedImage.empty()) {
+		cout << "does this happen?" << endl;
+		return false;
+	}
 
 	formImage = straightenedImage;	
 	JsonOutput["aligned_image_path"] = alignedImageOutputPath;
 	
 	#ifdef DEBUG_PROCESSOR
-	cout << "aligned" << endl;
+		cout << "aligned" << endl;
 	#endif
 	return writeFormImage(alignedImageOutputPath);
 }
@@ -291,6 +303,8 @@ bool processForm(const char* outputPath) {
 		
 		Json::Value fieldJsonOut;
 		fieldJsonOut["label"] = field.get("label", "unlabeled");
+		
+		if(field.get("mask", false).asBool()) continue;
 		
 		for ( size_t j = 0; j < segments.size(); j++ ) {
 			const Json::Value segmentTemplate = segments[j];

@@ -16,7 +16,7 @@
 
 #define ALWAYS_COMPUTE_TEMPLATE_FEATURES
 //#define SHOW_MATCHES_WINDOW
-#define MASK_CENTER_AMOUNT .4
+#define MASK_CENTER_AMOUNT .41
 
 #ifdef OUTPUT_DEBUG_IMAGES
 #include "NameGenerator.h"
@@ -147,25 +147,30 @@ Aligner::Aligner(){
 	//descriptorExtractor = Ptr<DescriptorExtractor>(new SurfDescriptorExtractor( 4, 3, true ));
 	//detector = FeatureDetector::create( "SURF" ); 
 	//detector = FeatureDetector::create( "GridSURF" );
+	//TODO: Make a switch to go between different known good settings.
+	//		Good settings for phone phone might be bad for another.
 	
 	detector = Ptr<FeatureDetector>(new GridAdaptedFeatureDetector(
-										new SurfFeatureDetector( 300., 1, 3), //Adding octaves while shrinking the image might speed things up.
-										500, 4, 4));//4,4 grid size seems to be bizzarly more effective than other sizes.
-	//Increasing the octave layers might help in some cases
+										new SurfFeatureDetector( 250., 1, 3),
+										3500, 7, 7));
 	
-	descriptorExtractor = DescriptorExtractor::create( "SURF" );
+	//descriptorExtractor = DescriptorExtractor::create( "SURF" );
+	descriptorExtractor = Ptr<DescriptorExtractor>(new SurfDescriptorExtractor( 1, 3 ));
 	
-	#define MATCHER_TYPE "BruteForce"
-	//#define MATCHER_TYPE "FlannBased"
+	//#define MATCHER_TYPE "BruteForce"
+	#define MATCHER_TYPE "FlannBased"
 	descriptorMatcher = DescriptorMatcher::create( MATCHER_TYPE );
 }
 void Aligner::setImage( const cv::Mat& img ){
+
 	currentImg = img;
-	
-	// Be careful when resizing, aliasing can completely break this function.
-	//If something goes wrong revert to .5 image size
 	Mat currentImgResized;
+	//Ideally the resizing constant should be something like:
+	//(1200.1 / currentImg.rows)
+	//That way we will always resize to the same size.
+	//Watch out because performance is very sensitive to the scaling of the image.
 	resize(currentImg, currentImgResized, .5 * currentImg.size(), 0, 0, INTER_AREA);
+	
 	trueEfficiencyScale = Point3d(  double(currentImgResized.cols) / img.cols,
 									double(currentImgResized.rows) / img.rows,
 									1.0);
@@ -250,11 +255,14 @@ void Aligner::loadFeatureData(const string& templPath) throw(AlignmentException)
 		
 		Mat mask = makeFieldMask(templPath + ".json");
 		resize(mask, temp, templImage.size(), 0, 0, INTER_AREA);
-		erode(temp, mask, Mat(), Point(-1,-1), 6);
+		erode(temp, mask, Mat(), Point(-1,-1), 1);
+		
+		/*
 		#ifdef MASK_CENTER_AMOUNT
 			Rect roi = resizeRect(Rect(Point(0,0), templImage.size()), MASK_CENTER_AMOUNT);
 			rectangle(mask, roi.tl(), roi.br(), Scalar::all(0), -1);
 		#endif
+		*/
 		
 		#ifdef SHOW_MATCHES_WINDOW
 			featureDest = templImage;
@@ -278,9 +286,10 @@ void Aligner::loadFeatureData(const string& templPath) throw(AlignmentException)
 		detector->detect( templImage, templKeypoints, mask );
 
 		#ifdef DEBUG_ALIGN_IMAGE
-		cout << "\t" << templKeypoints.size() << " points" << endl;
-		cout << "Computing descriptors for keypoints from template image..." << endl;
+			cout << "\t" << templKeypoints.size() << " points" << endl;
+			cout << "Computing descriptors for keypoints from template image..." << endl;
 		#endif
+		
 		descriptorExtractor->compute( templImage, templKeypoints, templDescriptors );
 		
 		if( !saveFeatures(featuresFile, templImageSize, templKeypoints, templDescriptors) ) throw myAlignmentException;
@@ -305,7 +314,8 @@ void Aligner::alignFormImage(Mat& aligned_img, const Size& aligned_img_sz, int f
 	}
 	
 	vector<DMatch> filteredMatches;
-	crossCheckMatching( descriptorMatcher, currentImgDescriptors, templDescriptors, filteredMatches, 1 );
+	crossCheckMatching( descriptorMatcher, currentImgDescriptors, templDescriptors, filteredMatches);
+	//descriptorMatcher->match( currentImgDescriptors, templDescriptors, filteredMatches );
 
 	vector<int> queryIdxs( filteredMatches.size() ), trainIdxs( filteredMatches.size() );
 	for( size_t i = 0; i < filteredMatches.size(); i++ )
