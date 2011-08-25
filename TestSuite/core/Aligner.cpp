@@ -14,7 +14,7 @@
 //vaying the reproject threshold can make a big difference in performance.
 #define FH_REPROJECT_THRESH 4.0
 
-#define ALWAYS_COMPUTE_TEMPLATE_FEATURES
+//#define ALWAYS_COMPUTE_TEMPLATE_FEATURES
 //#define SHOW_MATCHES_WINDOW
 #define MASK_CENTER_AMOUNT .41
 
@@ -147,19 +147,26 @@ Aligner::Aligner(){
 	//descriptorExtractor = Ptr<DescriptorExtractor>(new SurfDescriptorExtractor( 4, 3, true ));
 	//detector = FeatureDetector::create( "SURF" ); 
 	//detector = FeatureDetector::create( "GridSURF" );
-	//TODO: Make a switch to go between different known good settings.
-	//		Good settings for phone phone might be bad for another.
 	
+	#if 0
 	detector = Ptr<FeatureDetector>(new GridAdaptedFeatureDetector(
 										new SurfFeatureDetector( 250., 1, 3),
 										3500, 7, 7));
 	
 	//descriptorExtractor = DescriptorExtractor::create( "SURF" );
 	descriptorExtractor = Ptr<DescriptorExtractor>(new SurfDescriptorExtractor( 1, 3 ));
+	#else
+	//Optimal hessian level seems to vary by phone
+	detector = Ptr<FeatureDetector>(new GridAdaptedFeatureDetector(
+									new SurfFeatureDetector( 395., 1, 3),
+									3500, 7, 7));
+	
+	//descriptorExtractor = DescriptorExtractor::create( "SURF" );
+	descriptorExtractor = Ptr<DescriptorExtractor>(new SurfDescriptorExtractor( 1, 3 ));
+	#endif
 	
 	//#define MATCHER_TYPE "BruteForce"
 	#define MATCHER_TYPE "FlannBased"
-	descriptorMatcher = DescriptorMatcher::create( MATCHER_TYPE );
 }
 void Aligner::setImage( const cv::Mat& img ){
 
@@ -201,7 +208,9 @@ void Aligner::setImage( const cv::Mat& img ){
 			}
 		}
 	#endif
+	
 	Mat mask(currentImgResized.rows, currentImgResized.cols, CV_8UC1, Scalar::all(255));
+	
 	#ifdef MASK_CENTER_AMOUNT
 		Rect roi = resizeRect(Rect(Point(0,0), currentImgResized.size()), MASK_CENTER_AMOUNT);
 		rectangle(mask, roi.tl(), roi.br(), Scalar::all(0), -1);
@@ -307,7 +316,7 @@ void Aligner::alignFormImage(Mat& aligned_img, const Size& aligned_img_sz, int f
 	#ifdef DEBUG_ALIGN_IMAGE
 		cout << "Matching descriptors..." << endl;
 	#endif
-	
+	Ptr<DescriptorMatcher> descriptorMatcher = DescriptorMatcher::create( MATCHER_TYPE );
 	if( descriptorMatcher.empty()  ) {
 		cout << "Can not create descriptor matcher of given type" << endl;
 		throw myAlignmentException;

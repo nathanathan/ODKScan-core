@@ -24,7 +24,6 @@ class Aligner
 	
 	cv::Ptr<cv::FeatureDetector> detector;
 	cv::Ptr<cv::DescriptorExtractor> descriptorExtractor;
-	cv::Ptr<cv::DescriptorMatcher> descriptorMatcher;
 	
 	std::vector<std::string> templatePaths;
 	std::vector< std::vector<cv::KeyPoint> > templKeypointsVec;
