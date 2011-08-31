@@ -20,6 +20,14 @@ Size operator * (float lhs, Size rhs) {
 Rect operator * (float lhs, Rect rhs) {
 	return Rect(lhs*rhs.tl(), lhs*rhs.size());
 }
+vector<Point> rectToQuad(const Rect& r){
+	vector<Point> out;
+	out.push_back(r.tl());
+	out.push_back(Point(r.x+r.width, r.y));
+	out.push_back(r.br());
+	out.push_back(Point(r.x, r.y+r.height));
+	return out;
+}
 Json::Value pointToJson(const Point p){
 	Json::Value jPoint;
 	jPoint.append(p.x);
@@ -29,7 +37,7 @@ Json::Value pointToJson(const Point p){
 Point jsonToPoint(const Json::Value& jPoint){
 	return Point(jPoint[0u].asInt(), jPoint[1u].asInt());
 }
-Json::Value quadToJsonArray(vector<Point>& quad, Point offset){
+Json::Value quadToJsonArray(const vector<Point>& quad, const Point& offset){
 	Json::Value out;
 	for(size_t i = 0; i < quad.size(); i++){
 		Point myPoint = offset + quad[i];

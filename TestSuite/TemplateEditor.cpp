@@ -20,8 +20,8 @@ int main(int argc, char *argv[]) {
 
 	Mat markupImage;
 
-	string formPath("form_templates/SIS-A01.jpg");
-	string templatePath("form_templates/SIS-A01.json");
+	string formPath("form_templates/UW_course_eval_A_front.jpg");
+	string templatePath("form_templates/UW_course_eval_A_front.json");
 
 	const string winName = "editing window";
 	namedWindow(winName, CV_WINDOW_NORMAL);

@@ -43,12 +43,12 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage) {
 		Scalar boxColor = colors[i%6];
 	
 		const Json::Value segments = field["segments"];
+		
 		for ( size_t j = 0; j < segments.size(); j++ ) {
 			const Json::Value segment = segments[j];
 			if(segment.isMember("quad")){//If we're dealing with a bubble-vals JSON file
 				//Draw segment rectangles:
 				vector<Point> quad = jsonArrayToQuad(segment["quad"]);
-				
 				const Point* p = &quad[0];
 				int n = (int) quad.size();
 				polylines(markupImage, &p, &n, 1, true, boxColor, 2, CV_AA);
