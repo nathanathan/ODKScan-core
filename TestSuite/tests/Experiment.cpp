@@ -67,7 +67,6 @@ int main(int argc, char *argv[]) {
 				continue;
 			}
 			
-			myProcessor.trainClassifier("training_examples/android_training_examples");
 			cout << "Outputting aligned image to: " << imgOutputPath << endl;
 			
 			if( !myProcessor.alignForm(imgOutputPath.c_str()) ) {
@@ -75,6 +74,8 @@ int main(int argc, char *argv[]) {
 				collectors[label].incrErrors();
 				continue;
 			}
+			
+			myProcessor.trainClassifier("training_examples/android_training_examples");
 			if( !myProcessor.processForm(jsonOutfile.c_str()) ) {
 				cout << "\E[31m" << "Could not process. Arg: " << "\e[0m" << jsonOutfile << endl;
 				collectors[label].incrErrors();
