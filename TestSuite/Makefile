@@ -11,6 +11,13 @@ ALL_OBJS := $(CORE_OBJS) StatCollector.o $(JSON_PARSER_OBJS)
 
 INCLUDES := `pkg-config opencv --cflags --libs` -I../jsoncpp-src-0.5.0/include -I./core -I./
 
+CourseEvalTest: tests/CourseEvalTest.test
+	@rm -rf debug_segment_images
+	@mkdir debug_segment_images
+	@rm -rf bubble_images
+	@mkdir bubble_images
+	./$<
+
 ImageProcessTest: tests/ImageProcessTest.test
 	@rm -rf debug_segment_images
 	@mkdir debug_segment_images
