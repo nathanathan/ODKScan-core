@@ -1,4 +1,5 @@
 #include "AlignmentUtils.h"
+#include "Addons.h"
 #include <opencv2/calib3d/calib3d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <math.h>
@@ -127,7 +128,21 @@ bool isQuadValid(const vector<Point>& quad) {
 			sign*A.cross(E).at<double>(0, 2) > 0;
 }
 bool testQuad(const vector<Point>& quad, const Size& sz, float sizeThresh) {
-	float quadArea = contourArea(Mat(quad));
+	float quadArea = contourArea(Mat(quad)); //This might be a bit inexact unfortunately...
+		/*
+		see this test:
+		if( testQuad(rectToQuad(segmentRect), segmentRect, .01) ){
+			cout << "hi" << endl;
+		}*/
+	#ifdef DEBUG_MODE
+		if(!isQuadValid(quad)){
+			cout << "invalid quad" << endl;
+		}
+		if(abs(sz.area() - quadArea) >= sizeThresh * sz.area()){
+			cout << "invalid size" << endl;
+		}
+		cout << "sz.area(): " << sz.area() << endl;
+	#endif
 	return isQuadValid(quad) && abs(sz.area() - quadArea) < sizeThresh * sz.area();
 }
 bool testQuad(const vector<Point>& quad, const Rect& r, float sizeThresh) {
