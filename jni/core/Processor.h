@@ -10,19 +10,16 @@ This class handles most of the JSON parsing and provides an interface to the ove
 */
 class Processor{
 	public:
+		//Functions are specified in the order they should be invoked.
 		Processor();
-		bool loadTemplate(const char* templatePath);
-		
-		//This function might not need to be exposed:
-		bool trainClassifier(const char* trainingImageDir);
-		
-		bool loadForm(const char* imagePath, int rotate90 = 0);
-		//Maybe instead of exposing alignForm I should just expose a method
-		//for finding and displaying the contour.
-		bool alignForm(const char* alignedImageOutputPath);
-		bool processForm(const char* outPath);
-		bool writeFormImage(const char* outputPath);
-		
+		bool setForm(const char* imagePath, int rotate90 = 0);
+		bool loadFeatureData(const char* templatePath);
+		int detectForm();
+		bool setTemplate(const char* templatePath);
+		bool alignForm(const char* alignedImageOutputPath, int templateIdx = 0);
+		bool processForm(const char* outPath) const;
+		bool writeFormImage(const char* outputPath) const;
+
 	private:
 		class ProcessorImpl;
     	std::tr1::shared_ptr<ProcessorImpl> processorImpl;
