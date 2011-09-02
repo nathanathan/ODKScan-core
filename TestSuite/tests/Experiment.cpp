@@ -23,7 +23,6 @@ int main(int argc, char *argv[]) {
 
 	clock_t init, final;	
 	
-	//StatCollector statCollector;
 	map<string, StatCollector> collectors;
 
 	string experimentDir(argv[1]);
@@ -57,12 +56,12 @@ int main(int argc, char *argv[]) {
 			
 			Processor myProcessor;
 			
-			if( !myProcessor.loadForm((*it).c_str())) {
+			if( !myProcessor.setForm((*it).c_str())) {
 				cout << "\E[31m" <<  "Could not load. Arg: " << "\e[0m" << (*it) << endl;
 				collectors[label].incrErrors();
 				continue;
 			}
-			if( !myProcessor.loadTemplate(templatePath.c_str()) ) {
+			if( !myProcessor.setTemplate(templatePath.c_str()) ) {
 				cout << "Could not load. Arg: " << templatePath << endl;
 				continue;
 			}
@@ -75,7 +74,8 @@ int main(int argc, char *argv[]) {
 				continue;
 			}
 			
-			myProcessor.trainClassifier("training_examples/android_training_examples");
+			//myProcessor.trainClassifier("training_examples/android_training_examples");
+			
 			if( !myProcessor.processForm(jsonOutfile.c_str()) ) {
 				cout << "\E[31m" << "Could not process. Arg: " << "\e[0m" << jsonOutfile << endl;
 				collectors[label].incrErrors();

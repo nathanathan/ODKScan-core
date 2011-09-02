@@ -8,6 +8,8 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
 
+#include <math.h>
+
 #include <iostream>
 #include <fstream>
 
@@ -19,8 +21,8 @@
 #define MASK_CENTER_AMOUNT .41
 
 #ifdef OUTPUT_DEBUG_IMAGES
-#include "NameGenerator.h"
-NameGenerator dbgNamer("debug_form_images/", true);
+	#include "NameGenerator.h"
+	NameGenerator dbgNamer("debug_form_images/", true);
 #endif
 
 using namespace std;
@@ -162,11 +164,10 @@ void Aligner::setImage( const cv::Mat& img ){
 
 	currentImg = img;
 	Mat currentImgResized;
-	//Ideally the resizing constant should be something like:
-	//(1200.1 / currentImg.rows)
-	//That way we will always resize to the same size.
-	//Watch out because performance is very sensitive to the scaling of the image.
-	resize(currentImg, currentImgResized, .5 * currentImg.size(), 0, 0, INTER_AREA);
+
+	//1259712 is the area of a 5 megapixel image scaled by .5.
+	//The goal is to keep resizing consistent.
+	resize(currentImg, currentImgResized, sqrt(1259712.f / currentImg.size().area()) * currentImg.size(), 0, 0, INTER_AREA);
 	
 	trueEfficiencyScale = Point3d(  double(currentImgResized.cols) / img.cols,
 									double(currentImgResized.rows) / img.rows,
@@ -240,7 +241,7 @@ void Aligner::loadFeatureData(const string& templPath) throw(cv::Exception) {
 		#ifdef ALWAYS_COMPUTE_TEMPLATE_FEATURES
 			CV_Error(CV_StsError, "Always compute template features is on.");
 		#endif
-		loadFeatures(  featuresFile, templImageSize, templKeypoints, templDescriptors);
+		loadFeatures( featuresFile, templImageSize, templKeypoints, templDescriptors);
 	}
 	catch( cv::Exception& e ) {
 	
@@ -314,12 +315,12 @@ void Aligner::loadFeatureData(const string& templPath) throw(cv::Exception) {
 	templDescriptorsVec.push_back(templDescriptors);
 	templImageSizeVec.push_back(templImageSize);
 }
-size_t Aligner::detectForm() const {
+size_t Aligner::detectForm() const{
 	//TODO: Make this code unterrible
 	Ptr<DescriptorMatcher> descriptorMatcher = DescriptorMatcher::create( MATCHER_TYPE );
-
 	size_t formIdx = 0;
 	size_t previousBest = 0;
+	
 	for(size_t i = 0; i < templDescriptorsVec.size(); i++){
 		vector<DMatch> filteredMatches;
 		size_t inliers = 0;
@@ -368,7 +369,7 @@ size_t Aligner::detectForm() const {
 */
 	
 }
-void Aligner::alignFormImage(Mat& aligned_img, const Size& aligned_img_sz, int featureDataIdx ) throw(cv::Exception) {
+void Aligner::alignFormImage(Mat& aligned_img, const Size& aligned_img_sz, size_t featureDataIdx ) throw(cv::Exception) {
 	
 	vector<KeyPoint> templKeypoints = templKeypointsVec[featureDataIdx];
 	Mat templDescriptors = templDescriptorsVec[featureDataIdx];
@@ -408,8 +409,6 @@ void Aligner::alignFormImage(Mat& aligned_img, const Size& aligned_img_sz, int f
 	warpPerspective( currentImg, aligned_img, Hscaled, aligned_img_sz);
 	
 	vector<Point> quad = transformationToQuad(Hscaled, aligned_img_sz);
-	
-	if( ! testQuad(quad, .8 * currentImg.size()) ) CV_Error(CV_StsError, "Invalid quad found.");
 
 	#ifdef SHOW_MATCHES_WINDOW
 		//This code creates a window to show matches:
@@ -450,21 +449,17 @@ void Aligner::alignFormImage(Mat& aligned_img, const Size& aligned_img_sz, int f
 		    }
 		}
 	#endif
-	/*
+
 	#ifdef OUTPUT_DEBUG_IMAGES
 		Mat dbg;
-		img.copyTo(dbg);
+		currentImg.copyTo(dbg);
 		string qiname = dbgNamer.get_unique_name("alignment_debug_") + ".jpg";
 		const Point* p = &quad[0];
 		int n = (int) quad.size();
-		if( alignSuccess ){
-			polylines(dbg, &p, &n, 1, true, 250, 3, CV_AA);
-		}
-		else{
-			polylines(dbg, &p, &n, 1, true, 0, 5, CV_AA);
-			cout << "Form alignment failed" << endl;
-		}
+		polylines(dbg, &p, &n, 1, true, 250, 3, CV_AA);
+
 		imwrite(qiname, dbg);
 	#endif
-	*/
+
+	if( ! testQuad(quad, .85 * currentImg.size()) ) CV_Error(CV_StsError, "Invalid quad found.");
 }

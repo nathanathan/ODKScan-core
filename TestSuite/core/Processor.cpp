@@ -39,7 +39,7 @@ using namespace cv;
 
 Json::Value genBubblesJson( const vector<bool>& bubbleVals, const vector<Point>& bubbleLocations, 
 							const Point& offset,
-							const Mat& transformation = (Mat_<double>(3,3) << 1, 0, 0, 0, 1, 0, 0, 0, 1)){
+							const Mat& transformation = (Mat_<double>(3,3) << 1, 0, 0, 0, 1, 0, 0, 0, 1)) {
 							
 	assert(bubbleLocations.size() == bubbleVals.size());
 	Json::Value out;
@@ -57,12 +57,12 @@ Json::Value genBubblesJson( const vector<bool>& bubbleVals, const vector<Point>&
 class Processor::ProcessorImpl {
 
 private:
-
+Mat formImage;
+Aligner aligner;
 Json::Value root;
 Json::Value JsonOutput;
 PCA_classifier classifier;
 string templPath;
-Mat formImage;
 
 vector<bool> classifyBubbles(const Mat& segment, const vector<Point> bubbleLocations) {
 	vector<bool> out;
@@ -197,44 +197,33 @@ Json::Value processSegment(const Json::Value &segmentTemplate) {
 	
 	return segmentJsonOut;
 }
-bool setTemplate(const char* templatePath) {
-	
-	templPath = string(templatePath);
-	//We don't need a file extension so this removes it if one is provided.
-	if(templPath.find(".") != string::npos){
-		templPath = templPath.substr(0, templPath.find_last_of("."));
-	}
-	if(!parseJsonFromFile(templPath + ".json", root)) return false;
-	JsonOutput["template_path"] = templPath;
-	return true;
-	
-}
-
-public:
-
-bool trainClassifier(const char* trainingImageDir) {
+bool trainClassifier(string trainingImageDir) {
 	#ifdef DEBUG_PROCESSOR
-	cout << "training classifier..." << endl;
+		cout << "training classifier..." << endl;
 	#endif
 	
 	if (!root.isMember("bubble_size")) return false;
 	
+	if( trainingImageDir.empty() ){
+		trainingImageDir = DEFAULT_TRAINING_IMAGE_DIR;
+	}
+	
 	Json::Value bubbleSize = root["bubble_size"];
 	Size requiredExampleSize = SCALEPARAM * Size(bubbleSize[0u].asInt(),
 												 bubbleSize[1u].asInt());
-	//TODO: trainingImageDir should be specified in the template.
-	//		perhaps multiple dirs will be specified if the form needs multiple classifiers...
-	JsonOutput["training_image_directory"] = Json::Value( trainingImageDir );
 	
-	string cachedDataPath = string(trainingImageDir) + "/cached_classifier_data.yml";
+	size_t lastSlashIdx = templPath.find_last_of("/");
+	string templateName = templPath.substr(lastSlashIdx + 1, templPath.length() - lastSlashIdx);
 	
+	string cachedDataPath = trainingImageDir + "/" + templateName + "_cached_classifier_data.yml";
+
 	bool createClassifier = true;
 	if( fileExists(cachedDataPath) ) {
 		createClassifier = !classifier.load(cachedDataPath, requiredExampleSize);
 	}
 	if ( createClassifier ) {
 		vector<string> filepaths;
-		CrawlFileTree(string(trainingImageDir), filepaths);
+		CrawlFileTree(trainingImageDir, filepaths);
 		bool success = classifier.train_PCA_classifier( filepaths, requiredExampleSize,
 														EIGENBUBBLES, true);//flip training examples.
 		if (!success) return false;
@@ -248,10 +237,33 @@ bool trainClassifier(const char* trainingImageDir) {
 	#endif
 	return true;
 }
+
+public:
+
+bool setTemplate(const char* templatePath) {
+	#ifdef DEBUG_PROCESSOR
+		cout << "setting template..." << endl;
+	#endif
+	templPath = string(templatePath);
+	//We don't need a file extension so this removes it if one is provided.
+	if(templPath.find(".") != string::npos){
+		templPath = templPath.substr(0, templPath.find_last_of("."));
+	}
+	if(!parseJsonFromFile(templPath + ".json", root)) return false;
+	
+	JsonOutput["template_path"] = templPath;
+	trainClassifier(JsonOutput.get("training_image_directory", "").asString());
+	
+	//If no templates have their feature data loaded, load the feature data for the set template.
+	if( aligner.templImageSizeVec.empty() ) loadFeatureData(templPath.c_str());
+	
+	return true;
+}
 bool loadForm(const char* imagePath, int rotate90) {
 	#ifdef DEBUG_PROCESSOR
 		cout << "loading form image..." << flush;
 	#endif
+	
 	formImage = imread(imagePath, 0);
 	if(formImage.empty()) return false;
 	
@@ -264,45 +276,36 @@ bool loadForm(const char* imagePath, int rotate90) {
 		flip(temp,formImage, int(rotate90 > 0)); //This might vary by phone... 1 is for Nexus.
 	}
 	*/
+	
 	//Automatically rotate90 if the image is wider than it is tall
 	if(formImage.cols > formImage.rows){
 		Mat temp;
 		transpose(formImage, temp);
 		flip(temp,formImage, 1);
 	}
-	
+
 	JsonOutput["image_path"] = imagePath;
+	
 	#ifdef DEBUG_PROCESSOR
 		cout << "loaded" << endl;
 	#endif
 	return true;
 }
-bool alignForm(const char* alignedImageOutputPath) {//and detect template
-
+bool alignForm(const char* alignedImageOutputPath, size_t formIdx) {
 	#ifdef DEBUG_PROCESSOR
-	cout << "aligning form..." << endl;
+		cout << "aligning form..." << endl;
 	#endif
 	
-	vector <string> templates;
-	templates.push_back("form_templates/SIS-A01");
-	templates.push_back("form_templates/UW_course_eval_A_front");
-	
 	Mat straightenedImage;
+	
 	try{
-		Aligner aligner;
-		cout << "Detecting form..." << endl;
-		for(size_t i = 0; i < templates.size(); i++){
-			aligner.loadFeatureData(templates[i]);
-		}
-		
-		aligner.setImage(formImage);
-		size_t formIdx = aligner.detectForm();
-		cout << "\tDetected: " << templates[formIdx] << "\t\tIndex: " << formIdx << endl;
-		setTemplate(templates[formIdx].c_str());
-		
 		Size form_sz(root.get("width", 0).asInt(), root.get("height", 0).asInt());
-		if( form_sz.width <= 0 || form_sz.height <= 0) return false;
 		
+		if( form_sz.width <= 0 || form_sz.height <= 0) CV_Error(CV_StsError, "Invalid form dimension in template.");
+		
+		//If the image was not set (because form detection didn't happen) set it.
+		if( aligner.currentImg.empty() ) aligner.setImage(formImage);
+
 		aligner.alignFormImage( straightenedImage, SCALEPARAM * form_sz, formIdx );
 	}
 	catch(cv::Exception& e){
@@ -385,27 +388,55 @@ bool writeFormImage(const char* outputPath) {
 	//see http://stackoverflow.com/questions/675039/how-can-i-create-directory-tree-in-c-linux
 	return imwrite(outputPath, formImage);
 }
-
+bool loadFeatureData(const char* templatePath){
+	try{
+		aligner.loadFeatureData(templatePath);
+	}
+	catch(cv::Exception& e){
+		LOGI(e.what());
+		return false;
+	}
+	return true;
+}
+int detectForm(){
+	int formIdx;
+	try{
+		cout << "Detecting form..." << endl;
+		aligner.setImage(formImage);
+		formIdx = aligner.detectForm();
+	}
+	catch(cv::Exception& e){
+		LOGI(e.what());
+		return -1;
+	}
+	return (int)formIdx;
+}
 };
 
 
 /* This stuff hooks the Processor class up to the implementation class: */
-Processor::Processor() : processorImpl(new ProcessorImpl){ LOGI("Testing to see if C++ code works..."); }
-bool Processor::loadTemplate(const char* templatePath){
-	return true;
+Processor::Processor() : processorImpl(new ProcessorImpl){
+	LOGI("Processor successfully constructed.");
 }
-bool Processor::trainClassifier(const char* trainingImageDir){
-	return processorImpl->trainClassifier(trainingImageDir);
-}
-bool Processor::loadForm(const char* imagePath, int rotate90){
+bool Processor::setForm(const char* imagePath, int rotate90){
 	return processorImpl->loadForm(imagePath, rotate90);
 }
-bool Processor::alignForm(const char* alignedImageOutputPath){
-	return processorImpl->alignForm(alignedImageOutputPath);
+bool Processor::loadFeatureData(const char* templatePath){
+	return processorImpl->loadFeatureData(templatePath);
 }
-bool Processor::processForm(const char* outPath){
+int Processor::detectForm(){
+	return processorImpl->detectForm();
+}
+bool Processor::setTemplate(const char* templatePath){
+	return processorImpl->setTemplate(templatePath);
+}
+bool Processor::alignForm(const char* alignedImageOutputPath, int formIdx){
+	if(formIdx < 0) return false;
+	return processorImpl->alignForm(alignedImageOutputPath, (size_t)formIdx);
+}
+bool Processor::processForm(const char* outPath) const{
 	return processorImpl->processForm(outPath);
 }
-bool Processor::writeFormImage(const char* outputPath){
+bool Processor::writeFormImage(const char* outputPath) const{
 	return processorImpl->writeFormImage(outputPath);
 }

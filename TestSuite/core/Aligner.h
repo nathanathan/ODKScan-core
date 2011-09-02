@@ -12,7 +12,6 @@ Feature matching can be pretty easily switched between the brute force matcher (
 class Aligner
 {
 	private:
-		cv::Mat currentImg;
 		std::vector<cv::KeyPoint> currentImgKeypoints;
 		cv::Mat currentImgDescriptors;
 		cv::Point3d trueEfficiencyScale;
@@ -22,9 +21,12 @@ class Aligner
 	
 		std::vector< std::vector<cv::KeyPoint> > templKeypointsVec;
 		std::vector<cv::Mat> templDescriptorsVec;
-		std::vector<cv::Size> templImageSizeVec;
+		
 	
 	public:
+		cv::Mat currentImg;
+		std::vector<cv::Size> templImageSizeVec;
+	
 		Aligner();
 		
 		//Potential efficiency gains by loading descriptors and not keypoints.
@@ -36,11 +38,12 @@ class Aligner
 		void setImage( const cv::Mat& img );
 		
 		//Returns the index of the feature data to use
+		//alignFormImage will default to using the last index detected
 		size_t detectForm() const;
 		
 		void alignFormImage( cv::Mat& aligned_image,
-							 const cv::Size& aligned_image_sz, int fdIdx ) throw(cv::Exception);
-		
+							 const cv::Size& aligned_image_sz,
+							 size_t formIdxArg ) throw(cv::Exception);
 };
 
 #endif
