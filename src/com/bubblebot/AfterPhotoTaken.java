@@ -1,6 +1,8 @@
 package com.bubblebot;
 
 
+import java.util.Date;
+
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Intent;
@@ -20,12 +22,14 @@ import android.widget.RelativeLayout;
  */
 public class AfterPhotoTaken extends Activity {
 	
-	private ProgressDialog pd;
     private boolean aligned = false;
     private String photoName;
     private RunProcessor runProcessor;
+    private ProgressDialog pd;
     private Button processButton;
     private LinearLayout content;
+
+    private long startTime;
 
     @Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -73,18 +77,20 @@ public class AfterPhotoTaken extends Activity {
 	    				"transmitted from the mother during pregnancy.");
 				pd.show();
 				//It is possible to run this backgrounded with low priority to make things seems faster...
-				runProcessor.setMode(RunProcessor.PROCESS_MODE);
+				runProcessor.setMode(RunProcessor.Mode.PROCESS);
+				startTime = new Date().getTime();
 				Thread thread = new Thread(runProcessor);
 				thread.setPriority(Thread.MAX_PRIORITY);
 				thread.start();
 			}
 		});
 		if( extras.getBoolean("preAligned") ){
-			runProcessor.setMode(RunProcessor.LOAD_MODE);
+			runProcessor.setMode(RunProcessor.Mode.LOAD);
 		}
 		else{
-			runProcessor.setMode(RunProcessor.ALIGNMENT_MODE);
+			runProcessor.setMode(RunProcessor.Mode.LOAD_ALIGN);
 		}
+		startTime = new Date().getTime();
 		Thread thread = new Thread( runProcessor );
 		thread.setPriority(Thread.MAX_PRIORITY);
 		thread.start();
@@ -95,15 +101,21 @@ public class AfterPhotoTaken extends Activity {
             	
             	pd.dismiss();
             	
-            	if(msg.what == RunProcessor.PROCESS_MODE){
+            	RunProcessor.Mode mode = RunProcessor.Mode.values()[msg.what];
+            	
+            	double timeTaken = (double) (new Date().getTime() - startTime) / 1000;
+    			Log.i("mScan", "Mode: " + mode + "/n" + "Time taken:"
+    							+ String.format("%.2f", timeTaken));
+    			
+            	if(mode == RunProcessor.Mode.PROCESS){
             		if ( msg.arg1 == 1 ) {
 	            		Intent intent = new Intent(getApplication(), DisplayProcessedForm.class);
 	                    intent.putExtra("photoName", photoName);
 	                    startActivity(intent);
             		}
             	}
-            	else if(msg.what == RunProcessor.ALIGNMENT_MODE ||
-            			msg.what == RunProcessor.LOAD_MODE){
+            	else if(mode == RunProcessor.Mode.LOAD_ALIGN ||
+            			mode == RunProcessor.Mode.LOAD){
             		aligned = (msg.arg1 == 1);
 	        		if ( aligned ) {
 	        			MScanUtils.displayImageInWebView((WebView)findViewById(R.id.webview),

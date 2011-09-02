@@ -20,8 +20,10 @@ public class BubbleCollect2 extends Activity {
 		photoName = getUniqueName("img");
 		Uri imageUri = Uri.fromFile(new File( MScanUtils.getPhotoPath(photoName) ));
 		Intent intent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
+		
 		//Intent intent = new Intent("android.media.action.IMAGE_CAPTURE");
 		intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
+		
 		//intent.putExtra(MediaStore.EXTRA_SCREEN_ORIENTATION, "");
 		//intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
 		intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
