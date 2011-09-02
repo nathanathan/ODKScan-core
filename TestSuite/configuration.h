@@ -20,6 +20,8 @@ It is used to set the value of switches like USE_ANDROID_HEADERS_AND_IO
 //Processor.cpp
 #define DEBUG_PROCESSOR
 #define OUTPUT_SEGMENT_IMAGES
+#define TRAINING_IMAGE_ROOT "training_examples"
+#define DEFAULT_TRAINING_IMAGE_DIR "training_examples/android_training_examples"
 //FormAlignmnet.cpp
 #define DEBUG_ALIGN_IMAGE
 #define OUTPUT_DEBUG_IMAGES
