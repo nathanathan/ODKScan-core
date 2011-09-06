@@ -1,12 +1,8 @@
 package com.bubblebot;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 
 import android.app.ListActivity;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -19,7 +15,6 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -43,9 +38,9 @@ public class DisplayProcessedData  extends ListActivity {
 		String photoName = extras.getString("photoName");
 		
 		try {
-			JSONObject bubbleVals = parseFileToJSONObject( MScanUtils.getJsonPath(photoName) );
+			JSONObject bubbleVals = JSONUtils.parseFileToJSONObject( MScanUtils.getJsonPath(photoName) );
 			
-			fields = JSONArray2Array( bubbleVals.getJSONArray("fields") );
+			fields = JSONUtils.JSONArray2Array( bubbleVals.getJSONArray("fields") );
 			
 			ArrayAdapter<JSONObject> arrayAdapter = new ArrayAdapter<JSONObject>(this, R.layout.data_list_item, fields) {
 				@Override
@@ -59,8 +54,8 @@ public class DisplayProcessedData  extends ListActivity {
 					TextView fieldCount = (TextView) view.findViewById(R.id.fieldCount);
 					try {
 						fieldName.setText(field.getString("label"));
-						Integer[] segmentCounts = getSegmentCounts(field);
-						fieldCount.setText("" + sum(segmentCounts));
+						Integer[] segmentCounts = JSONUtils.getSegmentCounts(field);
+						fieldCount.setText("" + MScanUtils.sum(segmentCounts));
 					} catch (JSONException e) {
 						fieldName.setText( "ERROR" );
 						fieldCount.setText("NA");
@@ -98,89 +93,5 @@ public class DisplayProcessedData  extends ListActivity {
 	    	Log.i("mScan", "IO problems.");
 			e.printStackTrace();
 		}
-	}
-	private JSONObject[] JSONArray2Array(JSONArray jsonArray) throws JSONException {
-		JSONObject[] output = new JSONObject[jsonArray.length()];
-		for(int i = 0; i < jsonArray.length(); i++){
-			output[i] = jsonArray.getJSONObject(i);
-		}
-		return output;
-	}
-	private JSONObject parseFileToJSONObject(String bvFilename) throws JSONException, IOException {
-		File jsonFile = new File(bvFilename);
-
-		//Read text from file
-		StringBuilder text = new StringBuilder();
-		BufferedReader br = new BufferedReader(new FileReader(jsonFile));
-		String line;
-
-		while((line = br.readLine()) != null) 
-		{
-			text.append(line);
-			text.append('\n');
-		}
-
-		return new JSONObject(text.toString());
-	}
-	private JSONArray parseFileToJSONArray(String bvFilename) throws JSONException, IOException {
-		File jsonFile = new File(bvFilename);
-
-		//Read text from file
-		StringBuilder text = new StringBuilder();
-		BufferedReader br = new BufferedReader(new FileReader(jsonFile));
-		String line;
-
-		while ((line = br.readLine()) != null) 
-		{
-			text.append(line);
-			text.append('\n');
-		}
-
-		return new JSONArray(text.toString());
-	}
-	public Integer sum(Integer[] integerArray){
-		int sum = 0;
-		for(int i = 0; i < integerArray.length; i++){
-			sum += integerArray[i];
-		}
-		return sum;
-	}
-	private String[] getFields(JSONObject bubbleVals) throws JSONException {
-		JSONArray fields = bubbleVals.getJSONArray("fields");
-		String[] fieldString = new String[fields.length()];
-		for(int i = 0; i < fields.length(); i++){
-			Integer[] segmentCounts = getSegmentCounts(fields.getJSONObject(i));
-			fieldString[i] = fields.getJSONObject(i).getString("label") + " : \n" + sum(segmentCounts);
-		}
-		return fieldString;
-	}
-	private Integer[] getFieldCounts(JSONObject bubbleVals) throws JSONException {
-		JSONArray fields = bubbleVals.getJSONArray("fields");
-		Integer[] fieldCounts = new Integer[fields.length()];
-		for(int i = 0; i < fields.length(); i++){
-			Integer[] segmentCounts = getSegmentCounts(fields.getJSONObject(i));
-			fieldCounts[i] = sum(segmentCounts);
-		}
-		return fieldCounts;
-	}
-	private Integer[] getSegmentCounts(JSONObject field) throws JSONException {
-
-		JSONArray jArray = field.getJSONArray("segments");
-		Integer[] bubbleCounts = new Integer[jArray.length()];
-
-		for (int i = 0; i < jArray.length(); i++) {
-			int numFilled = 0;
-			try{
-				JSONArray bubbleValArray = jArray.getJSONObject(i).getJSONArray("bubbles");
-				for (int j = 0; j < bubbleValArray.length(); j++) {
-					if( bubbleValArray.getJSONObject(j).getBoolean("value") ){
-						numFilled++;
-					}
-				}
-			}catch(JSONException e){}
-			
-			bubbleCounts[i] = numFilled;
-		}
-		return bubbleCounts;
 	}
 }
