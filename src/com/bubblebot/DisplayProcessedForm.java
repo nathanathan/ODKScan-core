@@ -1,8 +1,12 @@
 package com.bubblebot;
 
 import android.app.Activity;
+import android.app.ProgressDialog;
+import android.content.Context;
 import android.content.Intent;
+import android.net.ConnectivityManager;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -55,6 +59,18 @@ public class DisplayProcessedForm extends Activity {
 			intent = new Intent(getApplication(), DisplayProcessedData.class);
 			intent.putExtra("photoName", photoName);
 			startActivity(intent); 
+	        return true;
+	    case R.id.uploadData:
+	    	ProgressDialog pd = ProgressDialog.show(this, "", "Uploading Data...", true, true);
+	    	
+	    	ConnectivityManager cm = (ConnectivityManager) this.getSystemService(Context.CONNECTIVITY_SERVICE);
+	    	if(cm.getActiveNetworkInfo().isConnected()){
+	    		JSONUtils.simplifyOutput(photoName, MScanUtils.appFolder + "test.json");
+	    	}
+	    	else{
+	    		pd.dismiss();
+	    		//TODO: Add error dialog
+	    	}
 	        return true;
 	    case R.id.scanNewForm:
 			intent = new Intent(getApplication(), BubbleCollect2.class);
