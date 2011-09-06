@@ -13,6 +13,8 @@ import android.webkit.WebView;
 public class MScanUtils {
 	//Prevent instantiations
 	private MScanUtils(){}
+
+	public static final boolean DebugMode = true;
 	
 	public static final String appFolder = "/sdcard/mScan/";
 	public static final String photoDir = "photos/";
@@ -63,8 +65,15 @@ public class MScanUtils {
 	}
 	public static long getUsableSpace(String folder) {
 		if(MScanUtils.hasMethod(File.class, "getUsableSpace")){
-			return (new File(folder)).getUsableSpace();
-		}
+			return new File(folder).getUsableSpace();
+		} 
 		return -1;
+	}
+	public static Integer sum(Integer[] integerArray){
+		int sum = 0;
+		for(int i = 0; i < integerArray.length; i++){
+			sum += integerArray[i];
+		}
+		return sum;
 	}
 }

@@ -90,9 +90,11 @@ public class AfterPhotoTaken extends Activity {
 		else{
 			runProcessor.setMode(RunProcessor.Mode.LOAD_ALIGN);
 		}
-		startTime = new Date().getTime();
 		Thread thread = new Thread( runProcessor );
 		thread.setPriority(Thread.MAX_PRIORITY);
+		if(MScanUtils.DebugMode){
+			startTime = new Date().getTime();
+		}
 		thread.start();
 	}
     private Handler handler = new Handler() {
@@ -103,10 +105,12 @@ public class AfterPhotoTaken extends Activity {
             	
             	RunProcessor.Mode mode = RunProcessor.Mode.values()[msg.what];
             	
-            	double timeTaken = (double) (new Date().getTime() - startTime) / 1000;
-    			Log.i("mScan", "Mode: " + mode + "/n" + "Time taken:"
-    							+ String.format("%.2f", timeTaken));
-    			
+            	if(MScanUtils.DebugMode){
+	    			Log.i("mScan", "Mode: " + mode);
+	    			double timeTaken = (double) (new Date().getTime() - startTime) / 1000;
+	    			Log.i("mScan", "Time taken:" + String.format("%.2f", timeTaken));
+            	}
+            	
             	if(mode == RunProcessor.Mode.PROCESS){
             		if ( msg.arg1 == 1 ) {
 	            		Intent intent = new Intent(getApplication(), DisplayProcessedForm.class);

@@ -12,6 +12,7 @@ public class RunProcessor implements Runnable{
 	public enum Mode {
 	    LOAD, LOAD_ALIGN, PROCESS
 	}
+	public static final boolean DoFormDetection = false;
 	
 	private Mode mode;
 	private Processor mProcessor;
@@ -54,13 +55,18 @@ public class RunProcessor implements Runnable{
 			
 			if(mProcessor.setForm(MScanUtils.getPhotoPath(photoName))) {
 				Log.i("mScan","Loading: " + photoName);
+				
+				
 				//TODO: consider making the mScan root part of the processor state.
 				String[] templatePaths = { "form_templates/SIS-A01", "form_templates/UW_course_eval_A_front" };
-				for(int i = 0; i < templatePaths.length; i++){
-					mProcessor.loadFeatureData(MScanUtils.appFolder + templatePaths[i]);
-				}
+				int formIdx = 0;
 				
-				int formIdx = mProcessor.detectForm();
+				if(DoFormDetection){
+					for(int i = 0; i < templatePaths.length; i++){
+						mProcessor.loadFeatureData(MScanUtils.appFolder + templatePaths[i]);
+					}
+					formIdx = mProcessor.detectForm();
+				}
 				
 				if(formIdx >= 0 && mProcessor.setTemplate(MScanUtils.appFolder + templatePaths[formIdx])) {
 					Log.i("mScan","template loaded");
