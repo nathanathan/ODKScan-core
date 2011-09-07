@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
 	string outputDir("aligned_forms/" + experimentDir);
 	string expectedJsonFile( "form_images/experiment.json" );
 
-	string templatePath("form_templates/SIS-A01.json");
+	string templatePath("form_templates/SIS-A01");
 
 	vector<string> filenames;
 	CrawlFileTree(inputDir, filenames);
@@ -56,18 +56,23 @@ int main(int argc, char *argv[]) {
 			
 			Processor myProcessor;
 			
-			if( !myProcessor.setForm((*it).c_str())) {
+			if( !myProcessor.loadFormImage((*it).c_str(), false)) {
 				cout << "\E[31m" <<  "Could not load. Arg: " << "\e[0m" << (*it) << endl;
 				collectors[label].incrErrors();
 				continue;
 			}
+			
+			if( !myProcessor.loadFeatureData(templatePath.c_str()) ) {
+				cout << "\E[31m" <<  "Could not set load feature data. Arg: " << "\e[0m" << templatePath << endl;
+				continue;
+			}
+			
 			if( !myProcessor.setTemplate(templatePath.c_str()) ) {
-				cout << "Could not load. Arg: " << templatePath << endl;
+				cout << "\E[31m" <<  "Could not set template. Arg: " << "\e[0m" << templatePath << endl;
 				continue;
 			}
 			
 			cout << "Outputting aligned image to: " << imgOutputPath << endl;
-			
 			if( !myProcessor.alignForm(imgOutputPath.c_str()) ) {
 				cout << "\E[31m" <<  "Could not align. Arg: " << "\e[0m" << imgOutputPath  << endl;
 				collectors[label].incrErrors();
@@ -88,8 +93,10 @@ int main(int argc, char *argv[]) {
 			}
 			
 			final=clock()-init;
-			cout << (double)final / ((double)CLOCKS_PER_SEC) << endl;
+			cout << "Time taken: " << (double)final / ((double)CLOCKS_PER_SEC) << " seconds" << endl;
 			cout << "\E[32m" << "Apparent success!" << "\e[0m" << endl;
+			
+			collectors[label].addTime( (double)final / ((double)CLOCKS_PER_SEC) );
 			
 			if( fileExists(expectedJsonFile) ) {
 				collectors[label].compareFiles(jsonOutfile, expectedJsonFile);

@@ -9,6 +9,7 @@ class StatCollector
 int tp, fp, tn, fn;
 int errors, numImages;
 int missedSegments, numSegments;
+std::vector<double> times;
 
 private:
 	void compareSegments(const Json::Value& foundSeg, const Json::Value& actualSeg);
@@ -22,14 +23,15 @@ public:
 	
 	StatCollector(  int tp, int fp, int tn, int fn,
 					int errors, int numImages,
-					int missedSegments, int numSegments):
+					int missedSegments, int numSegments, std::vector<double> times):
 		tp(tp), fp(fp), tn(tn), fn(fn),
 		errors(errors), numImages(numImages),
-		missedSegments(missedSegments), numSegments(numSegments)
+		missedSegments(missedSegments), numSegments(numSegments), times(times)
 	{}
 	
 	void incrErrors(){ errors++; }
 	void incrImages(){ numImages++; }
+	void addTime(double t){ times.push_back(t); }
 	void compareFiles(const std::string& foundPath, const std::string& actualPath);
 
 	float formAlignmentRatio() const { return 1.f * (numImages - errors) / numImages; }
@@ -47,10 +49,14 @@ public:
 		this->numImages += sc.numImages;
 		this->missedSegments += sc.missedSegments;
 		this->numSegments += sc.numSegments;
+		this->times.insert(this->times.end(), sc.times.begin(), sc.times.end());
 		return *this;
 	}
 
 	StatCollector operator+(const StatCollector& sc) const {
+		std::vector <double> newTimes;
+		newTimes.insert(newTimes.end(), times.begin(), times.end());
+		newTimes.insert(newTimes.end(), sc.times.begin(), sc.times.end());
 		return StatCollector(
 					tp + sc.tp,
 					fp + sc.fp,
@@ -59,7 +65,8 @@ public:
 					errors + sc.errors,
 					numImages + sc.numImages,
 					missedSegments + sc.missedSegments,
-					numSegments + sc.numSegments);
+					numSegments + sc.numSegments,
+					newTimes );
 	}
 };
 

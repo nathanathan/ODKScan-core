@@ -84,12 +84,20 @@ void StatCollector::compareFiles(const string& foundPath, const string& actualPa
 		}
 	}
 }
+double vecSum(vector <double> v){
+	double sum = 0;
+	for(size_t i = 0; i < v.size(); i++){
+		sum += v[i];
+	}
+	return sum;
+}
 void StatCollector::print(ostream& myOut) const{
 
 	myOut << linebreak << endl << endl;
 	
 	if(numImages > 0){
 		myOut << "Form alignment stats: "<< endl;
+		myOut << "Average Time Taken: "<< vecSum(times) / times.size() << " seconds" << endl;
 		myOut << "Errors: " << errors << endl;
 		myOut << "Images Tested: " << numImages << endl;
 		myOut << "Percent Success: " << 100.f * formAlignmentRatio() << "%" << endl;
