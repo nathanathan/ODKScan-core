@@ -11,6 +11,9 @@ ALL_OBJS := $(CORE_OBJS) StatCollector.o $(JSON_PARSER_OBJS)
 
 INCLUDES := `pkg-config opencv --cflags --libs` -I../jsoncpp-src-0.5.0/include -I./core -I./
 
+Calibrate: calibration.test
+	./$< -w 6 -h 9 -s 0.025 -o camera.yml -op -oe -su calibphotos/image_list.xml
+
 CourseEvalTest: tests/CourseEvalTest.test
 	@rm -rf debug_segment_images
 	@mkdir debug_segment_images

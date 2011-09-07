@@ -2,8 +2,9 @@
 This file is included in:
 formAlignment.cpp/.h
 PCA_classifier.cpp/.h
+Processor.cpp/.h
 
-It is used to set the value of switches like USE_ANDROID_HEADERS_AND_IO
+It defines platform specific constants
 */
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H

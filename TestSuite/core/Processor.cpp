@@ -249,39 +249,51 @@ bool setTemplate(const char* templatePath) {
 	if(templPath.find(".") != string::npos){
 		templPath = templPath.substr(0, templPath.find_last_of("."));
 	}
+	
 	if(!parseJsonFromFile(templPath + ".json", root)) return false;
 	
 	JsonOutput["template_path"] = templPath;
 	trainClassifier(JsonOutput.get("training_image_directory", "").asString());
 	
-	//If no templates have their feature data loaded, load the feature data for the set template.
-	if( aligner.templImageSizeVec.empty() ) loadFeatureData(templPath.c_str());
-	
 	return true;
 }
-bool loadForm(const char* imagePath, int rotate90) {
+bool loadFormImage(const char* imagePath, bool undistort) {
 	#ifdef DEBUG_PROCESSOR
 		cout << "loading form image..." << flush;
 	#endif
 	
+	Mat temp;
+	
 	formImage = imread(imagePath, 0);
 	if(formImage.empty()) return false;
 	
-	/*
-	//When using feature based alignment the rotate 90 thing is unnecessairy.
-	//Apparently I do get slightly different performance when the image is rotated90
-	if(rotate90 != 0){
-		Mat temp;
-		transpose(formImage, temp);
-		flip(temp,formImage, int(rotate90 > 0)); //This might vary by phone... 1 is for Nexus.
-	}
-	*/
-	
 	//Automatically rotate90 if the image is wider than it is tall
+	//We want to keep the orientation consistent because:
+	//1. It seems to make a slight difference in alignment. (SURF is not *completely* rotation invariant)
+	//2. Undistortion
 	if(formImage.cols > formImage.rows){
-		Mat temp;
 		transpose(formImage, temp);
 		flip(temp,formImage, 1);
+	}
+
+	if(undistort){
+		Mat cameraMatrix, distCoeffs;
+		Mat map1, map2;
+		Size imageSize = formImage.size();
+		
+		String cameraCalibFile("camera.yml");
+		
+		if( !fileExists(cameraCalibFile) ) return false;
+		
+		FileStorage fs(cameraCalibFile, FileStorage::READ);
+		fs["camera_matrix"] >> cameraMatrix;
+		fs["distortion_coefficients"] >> distCoeffs;
+		
+		initUndistortRectifyMap(cameraMatrix, distCoeffs, Mat(),
+                                getOptimalNewCameraMatrix(cameraMatrix, distCoeffs, imageSize, 0, imageSize, 0),
+                                imageSize, CV_16SC2, map1, map2);
+		remap(formImage, temp, map1, map2, INTER_LINEAR);
+		formImage = temp;
 	}
 
 	JsonOutput["image_path"] = imagePath;
@@ -418,8 +430,8 @@ int detectForm(){
 Processor::Processor() : processorImpl(new ProcessorImpl){
 	LOGI("Processor successfully constructed.");
 }
-bool Processor::setForm(const char* imagePath, int rotate90){
-	return processorImpl->loadForm(imagePath, rotate90);
+bool Processor::loadFormImage(const char* imagePath, bool undistort){
+	return processorImpl->loadFormImage(imagePath, undistort);
 }
 bool Processor::loadFeatureData(const char* templatePath){
 	return processorImpl->loadFeatureData(templatePath);

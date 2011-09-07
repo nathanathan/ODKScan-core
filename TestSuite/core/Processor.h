@@ -12,7 +12,7 @@ class Processor{
 	public:
 		//Functions are specified in the order they should be invoked.
 		Processor();
-		bool setForm(const char* imagePath, int rotate90 = 0);
+		bool loadFormImage(const char* imagePath, bool undistort = false);
 		bool loadFeatureData(const char* templatePath);
 		int detectForm();
 		bool setTemplate(const char* templatePath);
