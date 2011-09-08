@@ -1,15 +1,19 @@
 #include "StatCollector.h"
 #include "Addons.h"
+
 #include <iostream>
+
+#include <opencv2/core/core.hpp>
 
 #define DEBUG 0
 //#define PRINT_MISS_LOCATIONS
 
 using namespace std;
+using namespace cv;
 
 //Compares 2 segments
 //returns false if the found segment wasn't fount
-void StatCollector::compareSegments(const Json::Value& foundSeg, const Json::Value& actualSeg){
+void StatCollector::compareSegmentBubbleVals(const Json::Value& foundSeg, const Json::Value& actualSeg){
 	#if DEBUG > 0
 	cout << "Comparing segments..." << endl;
 	#endif
@@ -48,7 +52,28 @@ void StatCollector::compareSegments(const Json::Value& foundSeg, const Json::Val
 		}
 	}
 }
-void StatCollector::compareFields(const Json::Value& foundField, const Json::Value& actualField){
+vector<Point> StatCollector::compareSegmentBubbleOffsets(const Json::Value& foundSeg, const Json::Value& actualSeg) const{
+	#if DEBUG > 0
+	cout << "Comparing segment bubble offsets..." << endl;
+	#endif
+	vector<Point> out;
+	if( foundSeg.get("notFound", false).asBool() ) {
+		return out;
+	}
+	
+	Point segmentOffset(actualSeg.get("x", -1).asInt(),
+						actualSeg.get("y", -1).asInt());
+	
+	const Json::Value fBubbles = foundSeg["bubbles"];
+	const Json::Value expectedLocations = actualSeg["bubble_locations"];
+	for( size_t i = 0; i < fBubbles.size(); i++){
+		Point expectedLocation = segmentOffset + jsonToPoint(expectedLocations[i]);
+		Point actualLocation = jsonToPoint(fBubbles[i]["location"]);
+		out.push_back(expectedLocation - actualLocation);
+	}
+	return out;
+}
+void StatCollector::compareFields(const Json::Value& foundField, const Json::Value& actualField, ComparisonMode mode){
 	#if DEBUG > 0
 	cout << "Comparing fields..." << endl;
 	#endif
@@ -59,13 +84,20 @@ void StatCollector::compareFields(const Json::Value& foundField, const Json::Val
 		for( size_t j = i; j < aSegments.size(); j++){
 			const int aKey = aSegments[j].get("key", -62).asInt();
 			if(fKey == aKey) {
-				compareSegments(fSegments[i], aSegments[j]);
+				if(mode == COMP_BUBBLE_VALS){
+					compareSegmentBubbleVals(fSegments[i], aSegments[j]);
+				}
+				else{
+					vector<Point> segmentOffsets = compareSegmentBubbleOffsets(fSegments[i], aSegments[j]);
+					offsets.insert(offsets.end(), segmentOffsets.begin(), segmentOffsets.end());
+				}
 			}
 		}
 	}
 }
-void StatCollector::compareFiles(const string& foundPath, const string& actualPath){
+void StatCollector::compareFiles(const string& foundPath, const string& actualPath, ComparisonMode mode){
 	Json::Value foundRoot, actualRoot;
+
 	parseJsonFromFile(foundPath.c_str(), foundRoot);
 	parseJsonFromFile(actualPath.c_str(), actualRoot);
 	#if DEBUG > 0
@@ -79,7 +111,7 @@ void StatCollector::compareFiles(const string& foundPath, const string& actualPa
 		for( size_t j = i; j < aFields.size(); j++){
 			const int aFieldKey = aFields[j].get("key", -2).asInt();
 			if(fFieldKey == aFieldKey) {
-				compareFields(fFields[i], aFields[j]);
+				compareFields(fFields[i], aFields[j], mode);
 			}
 		}
 	}
@@ -97,23 +129,27 @@ void StatCollector::print(ostream& myOut) const{
 	
 	if(numImages > 0){
 		myOut << "Form alignment stats: "<< endl;
-		myOut << "Average Time Taken: "<< vecSum(times) / times.size() << " seconds" << endl;
 		myOut << "Errors: " << errors << endl;
 		myOut << "Images Tested: " << numImages << endl;
 		myOut << "Percent Success: " << 100.f * formAlignmentRatio() << "%" << endl;
-		
+		if(!offsets.empty()){
+			myOut << "Accuracy\n(Measured by differences of found bubble positions from expected bubble postions): " << endl;
+			Scalar mean, stddev;
+			meanStdDev(Mat(offsets), mean, stddev);
+			myOut << "Mean:" << norm(mean) << "\t\t" << "Std. Deviation:" << norm(stddev) << endl;
+		}
 		if(numSegments > 0){
 			myOut << "\tSegment alignment stats for successful form alignments: "<< endl;
 			myOut << "\tMissed Segments: " << missedSegments << endl;
 			myOut << "\tSegments Attempted: " << numSegments << endl;
 			myOut << "\tPercent Success: " << 100.f * segmentAlignmentRatio() << "%" << endl;
+			myOut << "\t\tBubble classification stats for successful segment alignments: "<< endl;
 		}
 	}
 	else{
 		myOut << "\t\tBubble classification stats: "<< endl;
 	}
 	
-	myOut << "\t\tBubble classification stats for successful segment alignments: "<< endl;
 	myOut << "\t\tTrue positives: "<< tp << endl;
 	myOut << "\t\tFalse positives: " << fp << endl;
 	myOut << "\t\tTrue negatives: "<< tn << endl;
@@ -126,6 +162,7 @@ void StatCollector::print(ostream& myOut) const{
 												  (numSegments > 0 ? segmentAlignmentRatio() : 1.0) *
 												  correctClassificationRatio() << "%" << endl;
 	}
+	myOut << "Average image processing time: "<< vecSum(times) / times.size() << " seconds" << endl;
 	myOut << linebreak << endl;
 }
 
@@ -133,4 +170,3 @@ ostream& operator<<(ostream& os, const StatCollector& sc){
 	sc.print(os);
 	return os;
 }
-

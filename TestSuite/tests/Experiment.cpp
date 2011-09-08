@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
 			
 			Processor myProcessor;
 			
-			if( !myProcessor.loadFormImage((*it).c_str(), false)) {
+			if( !myProcessor.loadFormImage((*it).c_str(), true)) {
 				cout << "\E[31m" <<  "Could not load. Arg: " << "\e[0m" << (*it) << endl;
 				collectors[label].incrErrors();
 				continue;
@@ -79,8 +79,6 @@ int main(int argc, char *argv[]) {
 				continue;
 			}
 			
-			//myProcessor.trainClassifier("training_examples/android_training_examples");
-			
 			if( !myProcessor.processForm(jsonOutfile.c_str()) ) {
 				cout << "\E[31m" << "Could not process. Arg: " << "\e[0m" << jsonOutfile << endl;
 				collectors[label].incrErrors();
@@ -98,15 +96,18 @@ int main(int argc, char *argv[]) {
 			
 			collectors[label].addTime( (double)final / ((double)CLOCKS_PER_SEC) );
 			
-			if( fileExists(expectedJsonFile) ) {
-				collectors[label].compareFiles(jsonOutfile, expectedJsonFile);
+			if(fileExists(jsonOutfile) && fileExists(expectedJsonFile) && fileExists(templatePath + ".json")){
+				collectors[label].compareFiles(jsonOutfile, expectedJsonFile, COMP_BUBBLE_VALS);
+				collectors[label].compareFiles(jsonOutfile, templatePath + ".json", COMP_BUBBLE_OFFSETS);
 			}
 			else{
-				cout << "Could not find: " << expectedJsonFile << endl;
+				cout << "\E[31m" <<  "Could not compare files. File does not exist." << "\e[0m" << endl;
+				continue;
 			}
 		}
 	}
 	
+	//Print out overall stats:
 	cout << linebreak << endl;
 	StatCollector overall;
 	map<string, StatCollector>::iterator mapit;
