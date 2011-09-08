@@ -1,12 +1,10 @@
-/*
-Header file for image processing functions.
-*/
-#ifndef IMAGEPROCESSING_H
-#define IMAGEPROCESSING_H
+#ifndef PROCESSOR_H
+#define PROCESSOR_H
 #include "configuration.h"
 #include <tr1/memory>
+
 /*
-This class handles most of the JSON parsing and provides an interface to the overall process.
+This class handles most of the JSON parsing and provides an interface to the image processing pipeline.
 */
 class Processor{
 	public:

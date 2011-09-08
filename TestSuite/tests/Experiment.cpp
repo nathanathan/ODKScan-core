@@ -1,6 +1,6 @@
 /*
-This program runs the image processing pipeline on every image in the specified folder
-and prints out stats breaking down the results by image label and pipelien stage.
+This program runs the image processing pipeline on every image in the specified folder (recusively)
+then prints out stats breaking down the results by image label and pipeline stage.
 */
 #include "Processor.h"
 #include "FileUtils.h"
@@ -26,6 +26,7 @@ int main(int argc, char *argv[]) {
 	map<string, StatCollector> collectors;
 
 	string experimentDir(argv[1]);
+	//Ensure the experiment dir ends with a '/'
 	if(experimentDir[experimentDir.size() - 1] != '/') experimentDir.append("/");
 	
 	string inputDir("form_images/" + experimentDir);
@@ -73,6 +74,7 @@ int main(int argc, char *argv[]) {
 			}
 			
 			cout << "Outputting aligned image to: " << imgOutputPath << endl;
+			
 			if( !myProcessor.alignForm(imgOutputPath.c_str()) ) {
 				cout << "\E[31m" <<  "Could not align. Arg: " << "\e[0m" << imgOutputPath  << endl;
 				collectors[label].incrErrors();
