@@ -1,6 +1,6 @@
 /*
-Addons is a bunch of code that isn't really program specific and get's reused in multiple places.
-It's a kind of random mix of stuff and it if grows a lot should probably be split up.
+Addons is a bunch of code that isn't really class specific and get's reused in multiple places.
+It's a pretty random mix of stuff and it if grows much larger it should probably be split up.
 */
 #ifndef ADDONS_H
 #define ADDONS_H

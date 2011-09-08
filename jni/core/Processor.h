@@ -5,14 +5,22 @@ Header file for image processing functions.
 #define IMAGEPROCESSING_H
 #include "configuration.h"
 #include <tr1/memory>
+
 /*
-This class handles most of the JSON parsing and provides an interface to the overall process.
+This class handles most of the JSON parsing and provides an interface to the image processing pipeline.
 */
 class Processor{
 	public:
 		//Functions are specified in the order they should be invoked.
+		
 		Processor();
-		bool setForm(const char* imagePath, int rotate90 = 0);
+		/*
+		hello world.
+		*/
+		bool loadFormImage(const char* imagePath, bool undistort = false);
+		/**
+		loadFeatureData - hello world 2.
+		*/
 		bool loadFeatureData(const char* templatePath);
 		int detectForm();
 		bool setTemplate(const char* templatePath);

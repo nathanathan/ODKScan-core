@@ -162,9 +162,15 @@ Aligner::Aligner(){
 }
 void Aligner::setImage( const cv::Mat& img ){
 
+	#if 0
+	//TODO: Figure out a way to set the camera params here.
+	Mat dcm = getDefaultNewCameraMatrix((Mat_<float>(3,3) << 612.02,0,319.5,0,612.02,239.5,0,0,1), img.size(), true);
+	//cout << dcm << endl;
+	undistort(img, currentImg, dcm, (Mat_<double>(5,1) << .0660769, -.32678, -.0011122, -.002264932, 1.5752));
+	#endif
 	currentImg = img;
+	
 	Mat currentImgResized;
-
 	//1259712 is the area of a 5 megapixel image scaled by .5.
 	//The goal is to keep resizing consistent.
 	resize(currentImg, currentImgResized, sqrt(1259712.f / currentImg.size().area()) * currentImg.size(), 0, 0, INTER_AREA);
@@ -172,15 +178,7 @@ void Aligner::setImage( const cv::Mat& img ){
 	trueEfficiencyScale = Point3d(  double(currentImgResized.cols) / img.cols,
 									double(currentImgResized.rows) / img.rows,
 									1.0);
-	/*
-	TODO: Figure out a way to set the camera params here.
-	Mat temp;
-	Mat dcm = getDefaultNewCameraMatrix((Mat_<float>(3,3) << 1,0,0,0,1,0,0,0,1), currentImgResized.size(), true);
-	//cout << dcm << endl;
-	undistort(currentImgResized, temp, dcm, (Mat_<double>(4,1) << -.00000001, -.00000000000001, 0, 0));
-	currentImgResized = temp;
-	*/
-	
+
 	#if 0
 		Mat temp;
 		adaptiveThreshold(currentImgResized, temp, 50, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 9, 15);
@@ -241,7 +239,7 @@ void Aligner::loadFeatureData(const string& templPath) throw(cv::Exception) {
 		#ifdef ALWAYS_COMPUTE_TEMPLATE_FEATURES
 			CV_Error(CV_StsError, "Always compute template features is on.");
 		#endif
-		loadFeatures( featuresFile, templImageSize, templKeypoints, templDescriptors);
+		loadFeatures( featuresFile, templImageSize, templKeypoints, templDescriptors );
 	}
 	catch( cv::Exception& e ) {
 	
@@ -367,7 +365,6 @@ size_t Aligner::detectForm() const{
 	Mat bowDescriptor;
 	bowExtractor->compute( currentImg, currentImgKeypoints, bowDescriptor );
 */
-	
 }
 void Aligner::alignFormImage(Mat& aligned_img, const Size& aligned_img_sz, size_t featureDataIdx ) throw(cv::Exception) {
 	
