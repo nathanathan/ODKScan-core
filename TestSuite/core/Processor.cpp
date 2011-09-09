@@ -147,7 +147,8 @@ Json::Value processSegment(const Json::Value &segmentTemplate) {
 
 		segmentImg = formImage(expandedRect);
 
-		vector<Point> quad = findSegment(segmentImg, segmentRect - expandedRect.tl());
+		vector<Point2f> quad;
+		findSegment(segmentImg, segmentRect - expandedRect.tl(), quad);
 
 		if(testQuad(quad, segmentRect, .15)){
 			#ifdef DEBUG_PROCESSOR

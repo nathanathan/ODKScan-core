@@ -72,7 +72,7 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage) {
 				if(endOfField < quad[1].x){
 					endOfField = quad[1].x;
 				}
-				avgY += (quad[0].y + quad[1].y + quad[2].y + quad[3].y) / 4;
+				avgY += quad[3].y;// + quad[1].y + quad[2].y + quad[3].y) / 4;
 
 				const Json::Value bubbles = segment["bubbles"];
 				for ( size_t k = 0; k < bubbles.size(); k++ ) {

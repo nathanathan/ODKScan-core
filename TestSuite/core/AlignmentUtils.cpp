@@ -12,28 +12,35 @@ Rect resizeRect(const Rect& r, float amount){
 	return Rect(r.tl() + offset, r.br() - offset);
 }
 //Order a 4 point vector clockwise with the 0 index at the most top-left corner
-vector<Point> orderCorners(const vector<Point>& corners){
+template <class T>
+vector< Point_<T> > orderCornersImpl(const vector< Point_<T> >& corners){
 
-	vector<Point> orderedCorners;
+	vector< Point_<T> > orderedCorners;
 
-	Moments m = moments(Mat(corners));
 
-	Mat center = (Mat_<double>(1,3) << m.m10/m.m00, m.m01/m.m00, 0 );
+	Mat center = Mat::zeros( 1,3,CV_64F );
+	for(size_t i = 0; i < corners.size(); i++){
+		center.at<double>(0,0) += corners[i].x;
+		center.at<double>(0,1) += corners[i].y;
+	}
+	center /= corners.size();
+	
+	
 	Mat p0 = (Mat_<double>(1,3) << corners[0].x, corners[0].y, 0 );
 	Mat p1 = (Mat_<double>(1,3) << corners[1].x, corners[1].y, 0 );
 
 	if((center - p0).cross(p1 - p0).at<double>(0,2) < 0){ //Double-check this math just in case
-		orderedCorners = vector<Point>(corners.begin(), corners.end());
+		orderedCorners = vector< Point_<T> >(corners.begin(), corners.end());
 	}
 	else{
-		orderedCorners = vector<Point>(corners.rbegin(), corners.rend());
+		orderedCorners = vector< Point_<T> >(corners.rbegin(), corners.rend());
 	}
 
 	int shift = 0;
 	double tlMax = 0;
 	Mat B = (Mat_<double>(1,2) << -1, -1);
 	for(size_t i = 0; i < orderedCorners.size(); i++ ){
-		Mat A = (Mat_<double>(1,2) << orderedCorners[i].x - m.m10/m.m00, orderedCorners[i].y - m.m01/m.m00);
+		Mat A = (Mat_<double>(1,2) << orderedCorners[i].x - center.at<double>(0,0), orderedCorners[i].y - center.at<double>(0,1));
 		double tlProj = A.dot(B);
 		if(tlProj > tlMax){
 			shift = i;
@@ -41,12 +48,15 @@ vector<Point> orderCorners(const vector<Point>& corners){
 		}
 	}
 
-	vector<Point> temp = vector<Point>(orderedCorners.begin(), orderedCorners.end());
+	vector< Point_<T> > temp = vector< Point_<T> >(orderedCorners.begin(), orderedCorners.end());
 	for(size_t i = 0; i < orderedCorners.size(); i++ ){
 		orderedCorners[i] = temp[(i + shift) % orderedCorners.size()];
 	}
 	return orderedCorners;
 }
+vector<Point> orderCorners(const vector<Point>& corners) { return orderCornersImpl(corners); }
+vector<Point2f> orderCorners(const vector<Point2f>& corners) { return orderCornersImpl(corners); }
+
 //Creates a new vector with all the points expanded about the average of the first vector.
 vector<Point> expandCorners(const vector<Point>& corners, double expansionPercent){
 	Point center(0,0);
@@ -64,15 +74,24 @@ vector<Point> expandCorners(const vector<Point>& corners, double expansionPercen
 }
 Mat quadToTransformation(const vector<Point>& foundCorners, const Size& out_image_sz) {
 
+	Point2f corners_a[4];
 	Point2f out_corners[4] = {Point2f(0, 0), Point2f(out_image_sz.width, 0),
 							  Point2f(out_image_sz.width, out_image_sz.height), Point2f(0, out_image_sz.height)};
 
-	vector<Point> orderedCorners = orderCorners(foundCorners);
+	for(size_t i = 0; i<4; i++){
+		corners_a[i] = Point2f(foundCorners[i].x, foundCorners[i].y);
+	}
 	
+	return getPerspectiveTransform(corners_a, out_corners);
+}
+Mat quadToTransformation(const vector<Point2f>& foundCorners, const Size& out_image_sz) {
+
 	Point2f corners_a[4];
+	Point2f out_corners[4] = {Point2f(0, 0), Point2f(out_image_sz.width, 0),
+							  Point2f(out_image_sz.width, out_image_sz.height), Point2f(0, out_image_sz.height)};
 	
-	for(size_t i = 0; i<orderedCorners.size(); i++){
-		corners_a[i] = Point2f(orderedCorners[i].x, orderedCorners[i].y);
+	for(size_t i = 0; i<4; i++){
+		corners_a[i] = foundCorners[i];
 	}
 	
 	return getPerspectiveTransform(corners_a, out_corners);
@@ -97,7 +116,8 @@ vector<Point> transformationToQuad(const Mat& H, const Size& out_image_sz){
 	return quad;
 }
 //Check if the contour has four points, does not self-intersect and is convex.
-bool isQuadValid(const vector<Point>& quad) {
+template <class T>
+bool isQuadValid(const vector< Point_<T> >& quad) {
 
 	if(quad.size() != 4) return false;
 	
@@ -145,6 +165,27 @@ bool testQuad(const vector<Point>& quad, const Size& sz, float sizeThresh) {
 	#endif
 	return isQuadValid(quad) && abs(sz.area() - quadArea) < sizeThresh * sz.area();
 }
+bool testQuad(const vector<Point2f>& quad, const Size& sz, float sizeThresh) {
+	float quadArea = contourArea(Mat(quad)); //This might be a bit inexact unfortunately...
+		/*
+		see this test:
+		if( testQuad(rectToQuad(segmentRect), segmentRect, .01) ){
+			cout << "hi" << endl;
+		}*/
+	#ifdef DEBUG_MODE
+		if(!isQuadValid(quad)){
+			cout << "invalid quad" << endl;
+		}
+		if(abs(sz.area() - quadArea) >= sizeThresh * sz.area()){
+			cout << "invalid size" << endl;
+		}
+		cout << "sz.area(): " << sz.area() << endl;
+	#endif
+	return isQuadValid(quad) && abs(sz.area() - quadArea) < sizeThresh * sz.area();
+}
 bool testQuad(const vector<Point>& quad, const Rect& r, float sizeThresh) {
+	return testQuad(quad, r.size(), sizeThresh);
+}
+bool testQuad(const vector<Point2f>& quad, const Rect& r, float sizeThresh) {
 	return testQuad(quad, r.size(), sizeThresh);
 }

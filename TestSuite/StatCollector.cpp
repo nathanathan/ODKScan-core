@@ -133,7 +133,7 @@ void StatCollector::print(ostream& myOut) const{
 		myOut << "Images Tested: " << numImages << endl;
 		myOut << "Percent Success: " << 100.f * formAlignmentRatio() << "%" << endl;
 		if(!offsets.empty()){
-			myOut << "Accuracy\n(Measured by differences of found bubble positions from expected bubble postions): " << endl;
+			myOut << "Accuracy\n(Differences of found bubble positions from expected bubble postions): " << endl;
 			Scalar mean, stddev;
 			meanStdDev(Mat(offsets), mean, stddev);
 			myOut << "Mean:" << norm(mean) << "\t\t" << "Std. Deviation:" << norm(stddev) << endl;
