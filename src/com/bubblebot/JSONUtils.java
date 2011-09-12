@@ -17,40 +17,59 @@ import android.util.Log;
 public class JSONUtils {
 	//Prevent instantiations
 	private JSONUtils(){}
-
-	public static void simplifyOutput(String photoName, String outPath) {
+	
+	public static String generateSimplifiedJSONString(String photoName) {
 		try {
-			JSONObject bubbleVals = parseFileToJSONObject(MScanUtils.getJsonPath(photoName));
-			JSONArray fields = bubbleVals.getJSONArray("fields");
-
-			JSONObject outRoot = new JSONObject();
-			
-			outRoot.put("form_name", bubbleVals.getString("template_path"));
-			
-			outRoot.put("location", "location name");
-			
-			outRoot.put("data_capture_date",
-					new Date(new File(MScanUtils.getPhotoPath(photoName)).lastModified()).toString());
-			
-			JSONObject outFields = new JSONObject();
-			for(int i = 0; i < fields.length(); i++){
-				outFields.put(fields.getJSONObject(i).getString("label"),
-							  MScanUtils.sum(getSegmentCounts(fields.getJSONObject(i))));
-			}
-			outRoot.put("fields", outFields);
-			
-			BufferedWriter out = new BufferedWriter(new FileWriter(outPath));
-			out.write(outRoot.toString());
-			out.close();
-			
+			String outString = generateSimplifiedJSON(photoName).toString();
+			outString = outString.replaceAll("[\\[\\]\\(\\)\\\\]", "\\\\$0");
+			return outString;
 		} catch (JSONException e) {
-			Log.i("mScan", "JSON exception in JSONUtils");
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			Log.i("mScan", "JSON excetion in JSONUtils.");
+			return "";
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			Log.i("mScan", "IO excetion in JSONUtils.");
+			return "";
 		}
+	}
+	public static void simplifyOutput(String photoName, String outPath) {
+		try {
+			BufferedWriter out = new BufferedWriter(new FileWriter(outPath));
+			out.write(generateSimplifiedJSON(photoName).toString());
+			out.close();
+		} catch (JSONException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			Log.i("mScan", "JSON excetion in JSONUtils.");
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			Log.i("mScan", "IO excetion in JSONUtils.");
+		}
+	}
+	public static JSONObject generateSimplifiedJSON(String photoName) throws JSONException, IOException {
+		JSONObject outRoot = new JSONObject();
+		
+		JSONObject bubbleVals = parseFileToJSONObject(MScanUtils.getJsonPath(photoName));
+		JSONArray fields = bubbleVals.getJSONArray("fields");
+		
+		outRoot.put("form_name", bubbleVals.getString("template_path"));
+		
+		outRoot.put("location", "location name");
+		
+		outRoot.put("data_capture_date",
+				new Date(new File(MScanUtils.getPhotoPath(photoName)).lastModified()).toString());
+		
+		JSONObject outFields = new JSONObject();
+		for(int i = 0; i < fields.length(); i++){
+			outFields.put(fields.getJSONObject(i).getString("label"),
+						  MScanUtils.sum(getSegmentCounts(fields.getJSONObject(i))));
+		}
+		outRoot.put("fields", outFields);
+		return outRoot;
 	}
 	public static JSONObject parseFileToJSONObject(String bvFilename) throws JSONException, IOException {
 		File jsonFile = new File(bvFilename);
