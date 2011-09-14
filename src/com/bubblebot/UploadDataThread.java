@@ -5,7 +5,6 @@ import java.util.Date;
 import android.os.Handler;
 import android.util.Log;
 
-import com.google.fusiontables.ftclient.ClientLogin;
 import com.google.fusiontables.ftclient.FtClient;
 
 public class UploadDataThread implements Runnable {
@@ -15,18 +14,17 @@ public class UploadDataThread implements Runnable {
 	
 	private FtClient ftclient;
 	private long tableid = 1465132;
-	private String username = "<user>";
-	private String password = "<password>";
+	private String authToken;
 	
-	public UploadDataThread(Handler handler, String photoName){
+	public UploadDataThread(Handler handler, String photoName, String authToken){
 		this.photoName = photoName;
 		this.handler = handler;
+		this.authToken = authToken;
 	}
 	@Override
 	public void run() {
 		// Initialize FTClient
-		String token = ClientLogin.authorize(username, password);
-		ftclient = new FtClient(token);
+		ftclient = new FtClient(authToken);
 		// Generate INSERT statement
 		StringBuilder insert = new StringBuilder();
 		insert.append("INSERT INTO ");
@@ -38,8 +36,8 @@ public class UploadDataThread implements Runnable {
 		insert.append("', '");
 		insert.append(new Date().toString());
 		insert.append("')");
-		ftclient.query(insert.toString());
-		handler.sendEmptyMessage(0);
+		String resultMsg = ftclient.query(insert.toString());
+		handler.sendEmptyMessage(resultMsg.startsWith("rowid") ? 1 : 0);//Sends 1 for success and 0 for failure
 	}
 
 }

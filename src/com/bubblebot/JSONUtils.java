@@ -21,6 +21,8 @@ public class JSONUtils {
 	public static String generateSimplifiedJSONString(String photoName) {
 		try {
 			String outString = generateSimplifiedJSON(photoName).toString();
+			//Here I use a regular expression to add backslashes before characters that need to be escaped,
+			//to be uploaded to the fusion table:
 			outString = outString.replaceAll("[\\[\\]\\(\\)\\\\]", "\\\\$0");
 			return outString;
 		} catch (JSONException e) {
