@@ -34,6 +34,7 @@ public class RunProcessor implements Runnable{
 	}
 	@Override
 	public void run() {
+		
 		Message msg = new Message();
 		msg.arg1 = 0;//I'm using arg1 as a success indicator. A value of 1 means success.
 		msg.what = mode.ordinal();
@@ -45,7 +46,6 @@ public class RunProcessor implements Runnable{
 										MScanUtils.getAlignedPhotoPath(photoName),
 										MScanUtils.getMarkedupPhotoPath(photoName));
 				msg.arg1 = 1;
-				
 			}
 		}
 		else if(mode == Mode.LOAD){
@@ -58,7 +58,7 @@ public class RunProcessor implements Runnable{
 		else if(mode == Mode.LOAD_ALIGN){
 			Log.i("mScan", "mProcessor successfully constructed");
 			
-			if(mProcessor.loadFormImage(MScanUtils.getPhotoPath(photoName))) {
+			if(mProcessor.loadFormImage(MScanUtils.getPhotoPath(photoName))){
 				Log.i("mScan","Loading: " + photoName);
 				
 				//TODO: consider making the mScan root part of the processor state.
@@ -76,7 +76,7 @@ public class RunProcessor implements Runnable{
 				}
 				
 				if(formIdx >= 0){
-					if(mProcessor.setTemplate(MScanUtils.appFolder + templatePaths[formIdx])) {
+					if(mProcessor.setTemplate(MScanUtils.appFolder + templatePaths[formIdx])){
 						Log.i("mScan","template loaded");
 						if( mProcessor.alignForm(MScanUtils.getAlignedPhotoPath(photoName), formIdx) ){
 							msg.arg1 = 1;//indicates success

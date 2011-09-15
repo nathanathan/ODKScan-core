@@ -4,7 +4,13 @@ import java.io.File;
 import java.io.FilenameFilter;
 import java.util.Date;
 
+import com.google.api.client.googleapis.extensions.android2.auth.GoogleAccountManager;
+
+import android.accounts.Account;
+import android.app.AlertDialog;
+import android.app.Dialog;
 import android.app.ListActivity;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
@@ -25,14 +31,14 @@ public class ViewBubbleForms extends ListActivity {
 
 	private String [] photoNames;
 	private ArrayAdapter<String> myAdapter;
-	
+
 	// Initialize the application  
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 
 		File dir = new File(MScanUtils.appFolder + MScanUtils.photoDir);	
-		
+
 		photoNames = dir.list(new FilenameFilter() {
 			public boolean accept (File dir, String name) {
 				if (new File(dir,name).isDirectory())
@@ -40,12 +46,12 @@ public class ViewBubbleForms extends ListActivity {
 				return name.toLowerCase().endsWith(".jpg");
 			}
 		});
-		
-		
+
+
 		for(int i = 0; i < photoNames.length; i++){
 			photoNames[i] = photoNames[i].substring(0, photoNames[i].lastIndexOf(".jpg"));
 		}
-		
+
 		myAdapter = new ArrayAdapter<String>(this, R.layout.filename_list_item, photoNames) {
 			@Override
 			public View getView(int position, View convertView, ViewGroup parent) {
@@ -53,7 +59,7 @@ public class ViewBubbleForms extends ListActivity {
 				LinearLayout view = (convertView != null) ? (LinearLayout) convertView : createView(parent);
 
 				String photoName = photoNames[position];
-				
+
 				TextView photoStatus = (TextView) view.findViewById(R.id.photoStatus);
 				if (new File(MScanUtils.getJsonPath(photoName)).exists()) {
 					photoStatus.setTextColor(Color.parseColor("#00FF00"));
@@ -80,7 +86,7 @@ public class ViewBubbleForms extends ListActivity {
 				return item;
 			}
 		};
-		
+
 		setListAdapter(myAdapter);
 
 		ListView lv = getListView();
@@ -90,7 +96,7 @@ public class ViewBubbleForms extends ListActivity {
 					int position, long id) {
 
 				String photoName = photoNames[position];
-				
+
 				if (new File(MScanUtils.getJsonPath(photoName)).exists()) {
 					Intent intent = new Intent(getApplication(), DisplayProcessedForm.class);
 					intent.putExtra("photoName", photoName);
@@ -104,7 +110,7 @@ public class ViewBubbleForms extends ListActivity {
 				}
 			}
 		});
-		
+
 	}
 	@Override
 	public void onResume(){
