@@ -57,6 +57,8 @@ Experiment: tests/Experiment.test
 	@rm -rf bubble_images
 	@mkdir bubble_images
 	./$< $(EXPERIMENT_FOLDER)
+#Remove the features file so I dont accidentally put in in the apk
+	@rm form_templates/SIS-A01.yml
 
 TemplateEditor: TemplateEditor.test
 	@rm -rf debug_segment_images
