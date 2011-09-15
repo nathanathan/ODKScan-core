@@ -21,6 +21,7 @@ std::vector <cv::Point> rectToQuad(const cv::Rect& r);
 Json::Value pointToJson(const cv::Point p);
 cv::Point jsonToPoint(const Json::Value& jPoint);
 Json::Value quadToJsonArray(const std::vector<cv::Point>& quad, const cv::Point& offset = cv::Point(0,0));
+Json::Value quadToJsonArray(const std::vector<cv::Point2f>& quad, const cv::Point& offset = cv::Point(0,0));
 std::vector<cv::Point> jsonArrayToQuad(const Json::Value& quadJson);
 //Pure Json:
 bool parseJsonFromFile(const char* filePath, Json::Value& myRoot);

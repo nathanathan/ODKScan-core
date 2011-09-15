@@ -13,11 +13,6 @@
 NameGenerator alignmentNamer("debug_segment_images/", false);
 #endif
 
-//#define USE_INTERSECTIONS
-//There is a tradeoff with using intersections.
-//It seems to work better on messy segments, however,
-//on segments with multiple min energy lines we are more likely
-//to choose the wrong line than with the contour method.
 
 using namespace std;
 using namespace cv;
@@ -137,40 +132,159 @@ void findLinesHelper(const Mat& img, int& start, int& end, const Rect& roi, bool
 		}
 	}
 }
+float findMultiLineEnergy(const Mat& img, int& start, int& end, vector<LineIterator>& iters) {
+	int sum = 0;
+	int totalPixels = 0;
+	for(size_t itIdx; itIdx < iters.size(); itIdx++){
+		totalPixels += iters[itIdx].count;
+		for(int i = 0; i < iters[itIdx].count; i++, ++iters[itIdx])
+			sum += (int)*iters[i];
+	}
+	return float(sum)/totalPixels;
+}
+//#define LI_TYPE 8
+//LineIterator(img, quad[0], quad[1], LI_TYPE);
+
 //Find the minimum energy lines crossing the image.
 //A and B are the start and end points of the line.
-void findLines(const Mat& img, Point& A, Point& B, const Rect& roi, bool flip, bool transpose) {
+template <class T>
+void findLines(const Mat& img, Point_<T>& A, Point_<T>& B, const Rect& roi, bool flip, bool transpose) {
 	int start, end;
 	
 	findLinesHelper(img, start, end, roi, flip, transpose);
 	
 	if(flip && transpose){
-		A = Point(img.cols - 1 - start, img.rows-1);
-		B = Point(img.cols - 1 - end, 0);
+		A = Point_<T>(img.cols - 1 - start, img.rows-1);
+		B = Point_<T>(img.cols - 1 - end, 0);
 	}
 	else if(!flip && transpose){
-		A = Point(start, 0);
-		B = Point(end, img.rows -1);
+		A = Point_<T>(start, 0);
+		B = Point_<T>(end, img.rows -1);
 	}
 	else if(flip && !transpose){
-		A = Point(0, img.rows - 1 - start);
-		B = Point(img.cols-1, img.rows - 1 - end);
+		A = Point_<T>(0, img.rows - 1 - start);
+		B = Point_<T>(img.cols-1, img.rows - 1 - end);
 	}
 	else{
-		A = Point(0, start);
-		B = Point(img.cols-1, end);
+		A = Point_<T>(0, start);
+		B = Point_<T>(img.cols-1, end);
 	}
 }
-inline Point findIntersection(const Point& P1, const Point& P2,
-						const Point& P3, const Point& P4){
+//This version doesn't seem to work for some reason...
+template <class T>
+void findLinesLIt(const Mat& img, Point_<T>& A, Point_<T>& B, const Rect& roi, bool flip, bool transpose) {
+	int vSpan, hSpan;
+	int range, midpoint;
+	float maxSlope = .15;
+
+	if(transpose){
+		vSpan = img.cols - 1;
+		hSpan = img.rows - 1;
+		midpoint = roi.x;
+		range = roi.y;
+	}
+	else{		
+		vSpan = img.rows - 1;
+		hSpan = img.cols - 1;
+		midpoint = roi.y;
+		range = roi.y;
+	}
+	
+	//The param limits the weigting to a certain magnitude, in this case 10% of the max.
+	int param = .15 * 255 * (hSpan + 1);
+	float maxSsdFromMidpoint = 2*range*range;
+	
+	int minLs = INT_MAX;
+	for(int i = midpoint - range; i < midpoint + range; i++) {
+		for(int j = MAX(i-hSpan*maxSlope, midpoint - range); j < MIN(i+hSpan*maxSlope, midpoint + range); j++) {
+
+			float ssdFromMidpoint = (i - midpoint)*(i - midpoint) + (j - midpoint)*(j - midpoint);
+			int ls = param * ssdFromMidpoint / maxSsdFromMidpoint;
+			
+			Point curA;
+			Point curB;
+			
+			if(flip){
+				curA = Point(0, vSpan - i);
+				curB = Point(hSpan, vSpan - j);
+			}
+			else{
+				curA = Point(0, i);
+				curB = Point(hSpan, j);
+			}
+			if(transpose){
+				curA = Point(curA.y, curA.x);
+				curB = Point(curB.y, curB.x);
+			}
+			
+			#define LI_TYPE 8
+			LineIterator lit(img, curA, curB, LI_TYPE);
+			if(lit.count == 0) continue;
+			for(int litIdx = 0; litIdx < lit.count; litIdx++, ++lit)
+				ls += (int)*lit;
+			ls /= lit.count;
+			
+			if( ls < minLs ){
+				A = curA;
+				B = curB;
+				minLs = ls;
+			}
+		}
+	}
+}
+template <class T>
+inline Point_<T> findIntersection(const Point_<T>& P1, const Point_<T>& P2,
+						const Point_<T>& P3, const Point_<T>& P4){
 	// From determinant formula here:
 	// http://en.wikipedia.org/wiki/Line_intersection
-	int denom = (P1.x - P2.x) * (P3.y - P4.y) - (P1.y - P2.y) * (P3.x - P4.x);
-	return Point(
+	double denom = (P1.x - P2.x) * (P3.y - P4.y) - (P1.y - P2.y) * (P3.x - P4.x);
+	return Point_<T>(
 		( (P1.x * P2.y - P1.y * P2.x) * (P3.x - P4.x) -
 		  (P1.x - P2.x) * (P3.x * P4.y - P3.y * P4.x) ) / denom,
 		( (P1.x * P2.y - P1.y * P2.x) * (P3.y - P4.y) -
 		  (P1.y - P2.y) * (P3.x * P4.y - P3.y * P4.x) ) / denom);
+}
+template <class T>
+void refineCorners(const Mat& img, vector< Point_<T> >& quad){
+	return;
+}
+void refineCorners(const Mat& img, vector< Point2f >& quad){
+	TermCriteria termcrit(CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 20, 0.03);
+	cornerSubPix(img, quad, Size(1,1), Size(-1, -1), termcrit);
+}
+template <class T, class U>
+void convertQuad(const vector< Point_<T> >& quad, vector< Point_<U> >& outQuad){
+	for(size_t i = 0; i<4; i++){
+		outQuad.push_back( Point_<U>(quad[i].x, quad[i].y) );
+	}
+}
+template <class T>
+Point_<T> getCorner(const Mat& img, const Rect&roi, const Mat& templ, const Point& offset){
+	#if 0
+	vector<Point2f> cornerVec;
+	/goodFeaturesToTrack(img(roi), cornerVec, 1, .01, 0, Mat(), 3);
+	return Point_<T>(cornerVec[0].x + roi.x, cornerVec[0].y + roi.y);
+	#endif
+	Mat result(img.size(), CV_8U);
+	int method = 3962;//CV_TM_SQDIFF;
+	if(method == 3962){
+		 createLinearFilter(templ.type(), templ.type(), 255 - templ)->apply(img, result);
+	}
+	else{
+		matchTemplate(img, templ, result, method);
+	}
+	
+	Point minLoc, maxLoc;
+	minMaxLoc(result, 0, 0, &minLoc, &maxLoc);
+	Point corner;
+	if(method == CV_TM_SQDIFF || method == CV_TM_SQDIFF_NORMED || method == 3962){
+		corner = minLoc;
+	}
+	else{
+		corner = maxLoc;
+	}
+	
+	return Point_<T>(corner.x + offset.x, corner.y + offset.y);
 }
 /*
 Pseudo-code description of findSegment:
@@ -185,14 +299,28 @@ Pseudo-code description of findSegment:
 	then use it to transform the segment into the rectangle.
 Note, this leaves out some tweaks and implementation details.
 */
+
 //TODO: reimplement scaling to 128 px
-vector<Point> findSegment(const Mat& img, const Rect& roi){
+template <class T>
+void findSegmentImpl(const Mat& img, const Rect& roi, vector< Point_<T> >& outQuad){
+
+	//quad finding modes:
+	//There is a tradeoff with using intersections.
+	//It seems to work better on messy segments, however,
+	//on segments with multiple min energy lines we are more likely
+	//to choose the wrong line than with the contour method.
+	#define QUAD_FIND_CONTOURS 0
+	#define QUAD_FIND_INTERSECTION 1
+	#define QUAD_FIND_CORNERS 2
+	
+	#define QUAD_FIND_MODE 0
+	
 	Mat imgThresh, temp_img, temp_img2;
 	
-	int blurSize = 9;
+	int blurSize = 40;
 	
 	#if 1
-		blur(img, temp_img, 2*Size(2*blurSize+1, 2*blurSize+1));
+		blur(img, temp_img, Size(blurSize, blurSize));
 	#else
 		//Not sure if this had advantages or not...
 		//My theory is that it is slower but more accurate,
@@ -207,25 +335,23 @@ vector<Point> findSegment(const Mat& img, const Rect& roi){
 	
 	imgThresh(contractedRoi) = Scalar::all(255);
 	
-	Point A1, B1, A2, B2, A3, B3, A4, B4;
+	Point_<T> A1, B1, A2, B2, A3, B3, A4, B4;
 	findLines(imgThresh, A1, B1, roi, false, true);
 	findLines(imgThresh, A2, B2, roi, false, false);
 	findLines(imgThresh, A3, B3, roi, true, true);
 	findLines(imgThresh, A4, B4, roi, true, false);
 
-
-	#ifdef USE_INTERSECTIONS
-		vector <Point> quad;
+	#if QUAD_FIND_MODE == QUAD_FIND_INTERSECTION
+		vector< Point_<T> > quad;
 		quad.push_back(findIntersection(A1, B1, A2, B2));
 		quad.push_back(findIntersection(A2, B2, A3, B3));
 		quad.push_back(findIntersection(A3, B3, A4, B4));
 		quad.push_back(findIntersection(A4, B4, A1, B1));
-		
+		outQuad = quad;
 		//TODO: add some code that does this:
 		//		lines can be used to mask off sections of the image
 		//		if there is a height/width discrepancy move the weighting line to the averate of the expected lines.
-		
-	#else
+	#elif QUAD_FIND_MODE == QUAD_FIND_CONTOURS
 		#define EXPANSION_PERCENTAGE .05
 		line( imgThresh, A1, B1, Scalar::all(0), 1, 4);
 		line( imgThresh, A2, B2, Scalar::all(0), 1, 4);
@@ -233,18 +359,39 @@ vector<Point> findSegment(const Mat& img, const Rect& roi){
 		line( imgThresh, A4, B4, Scalar::all(0), 1, 4);
 		Mat imgThresh2;
 		imgThresh.copyTo(imgThresh2);
-		vector<Point> quad = findMaxQuad(imgThresh2, 0);
+		vector< Point > quad = findMaxQuad(imgThresh2, 0);
 		quad = expandCorners(quad, EXPANSION_PERCENTAGE);
+		quad = orderCorners(quad);
+		convertQuad(quad, outQuad);
+	#elif QUAD_FIND_MODE == QUAD_FIND_CORNERS
+		vector< Point_<T> > quad;
+		Size quadrantSize = .5 * img.size();
+		Rect quadrant;
+		
+		Mat templ(Size(13,13), CV_8U, Scalar::all(255));
+		Size templSize = templ.size();
+		line( templ, Point(0, 0), Point(templSize.width, 0), Scalar::all(0), 2, 4);
+		line( templ, Point(0, 0), Point(0, templSize.height), Scalar::all(0), 2, 4);
+		quadrant = Rect(Point(0,0), quadrantSize);
+		quad.push_back(getCorner<T>(img(quadrant), roi, templ, quadrant.tl()));
+		Mat temp;
+		flip(templ, temp,0);
+		transpose(temp, templ);
+		quadrant = Rect(Point(img.cols/2,0), quadrantSize);
+		quad.push_back(getCorner<T>(img(quadrant), roi, templ, quadrant.tl() + Point(templSize.width,0)));
+		flip(templ, temp,0);
+		transpose(temp, templ);
+		quadrant = Rect(Point(img.cols/2,img.rows/2), quadrantSize);
+		quad.push_back(getCorner<T>(img(quadrant), roi, templ, quadrant.tl() + Point(templSize.width,templSize.height)));
+		flip(templ, temp,0);
+		transpose(temp, templ);
+		quadrant = Rect(Point(0,img.rows/2), quadrantSize);
+		quad.push_back(getCorner<T>(img(quadrant), roi, templ, quadrant.tl() + Point(0,templSize.height)));
+		outQuad = quad;
 	#endif
 	
-	#if 0 
-		//refine corner locations
-		//This seems to actually do worse
+	//refineCorners(img, quad);
 
-		TermCriteria termcrit(CV_TERMCRIT_ITER|CV_TERMCRIT_EPS,20,0.03);
-		cornerSubPix(img, quad, Size(3,3), Size(2, 2), termcrit);
-	#endif
-	
 	#ifdef OUTPUT_DEBUG_IMAGES
 		Mat dbg_out, dbg_out2;
 		imgThresh.copyTo(dbg_out);
@@ -252,6 +399,6 @@ vector<Point> findSegment(const Mat& img, const Rect& roi){
 		segfilename.append(".jpg");
 		imwrite(segfilename, dbg_out);
 	#endif
-
-	return quad;
 }
+void findSegment(const Mat& img, const Rect& roi, vector< Point >& outQuad){ findSegmentImpl(img, roi, outQuad); }
+void findSegment(const Mat& img, const Rect& roi, vector< Point2f >& outQuad){ findSegmentImpl(img, roi, outQuad); }

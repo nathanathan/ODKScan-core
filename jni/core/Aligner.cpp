@@ -157,6 +157,15 @@ Aligner::Aligner(){
 		//descriptorExtractor = DescriptorExtractor::create( "SURF" );
 		descriptorExtractor = Ptr<DescriptorExtractor>(new SurfDescriptorExtractor( 1, 3 ));
 		#define MATCHER_TYPE "FlannBased"
+	#elif PARAM_SET == 2
+		//Reduced number of features:
+		detector = Ptr<FeatureDetector>(new GridAdaptedFeatureDetector(
+											new SurfFeatureDetector( 395., 1, 3),
+											500, 5, 5));
+	
+		//descriptorExtractor = DescriptorExtractor::create( "SURF" );
+		descriptorExtractor = Ptr<DescriptorExtractor>(new SurfDescriptorExtractor( 1, 3 ));
+		#define MATCHER_TYPE "BruteForce"
 	#endif
 
 }
@@ -252,9 +261,11 @@ void Aligner::loadFeatureData(const string& templPath) throw(cv::Exception) {
 		templImage = imread( templPath + ".jpg", 0 );
 		resize(templImage, temp, templImage.size(), 0, 0, INTER_AREA);
 		
-		//templImage = temp;
-		//adaptiveThreshold(temp, templImage, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 9, 15);
-		//equalizeHist(temp, templImage);
+		/*
+		templImage = temp;
+		adaptiveThreshold(temp, templImage, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 9, 15);
+		equalizeHist(temp, templImage);
+		*/
 		
 		temp.release();
 		templImageSize = templImage.size();

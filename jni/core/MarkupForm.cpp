@@ -11,13 +11,14 @@
 
 #include "MarkupForm.h"
 #include "Addons.h"
+#include "AlignmentUtils.h"
 
 //#define SHOW_MIN_ERROR_CUT
 
 using namespace std;
 using namespace cv;
 
-bool markupFormHelper(const char* bvPath, Mat& markupImage) {
+bool markupFormHelper(const char* bvPath, Mat& markupImage, bool drawCounts) {
 	Scalar colors[6] = {Scalar(0,   0,   255),
 						Scalar(0,   255, 255),
 						Scalar(255, 0,   255),
@@ -32,6 +33,13 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage) {
 	const Json::Value fields = bvRoot["fields"];
 	for ( size_t i = 0; i < fields.size(); i++ ) {
 		const Json::Value field = fields[i];
+		
+		//TODO: For multi-choice forms were going to want something a little different.
+		//		This function is getting pretty complicated and should probably be split up.
+		size_t filledBubbles = 0;
+		float avgWidth = 0;
+		float avgY = 0;
+		int endOfField = 0;
 		
 		#ifdef SHOW_MIN_ERROR_CUT
 		//Should this be specified in the template??
@@ -48,7 +56,7 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage) {
 			const Json::Value segment = segments[j];
 			if(segment.isMember("quad")){//If we're dealing with a bubble-vals JSON file
 				//Draw segment rectangles:
-				vector<Point> quad = jsonArrayToQuad(segment["quad"]);
+				vector<Point> quad = orderCorners( jsonArrayToQuad(segment["quad"]) );
 				const Point* p = &quad[0];
 				int n = (int) quad.size();
 				polylines(markupImage, &p, &n, 1, true, boxColor, 2, CV_AA);
@@ -59,10 +67,23 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage) {
 				else{
 					polylines(markupImage, &p, &n, 1, true, boxColor, 2, CV_AA);
 				}
-
+				
+				if(segment.get("type", NULL) != "text"){
+					avgWidth += norm(quad[0] - quad[1]);
+					if(endOfField < quad[1].x){
+						endOfField = quad[1].x;
+					}
+					avgY += quad[3].y;// + quad[1].y + quad[2].y + quad[3].y) / 4;
+				}
+				
 				const Json::Value bubbles = segment["bubbles"];
 				for ( size_t k = 0; k < bubbles.size(); k++ ) {
 					const Json::Value bubble = bubbles[k];
+					const bool bubbleFilled = bubble["value"].asBool();
+					
+					if(bubbleFilled){
+						filledBubbles++;
+					}
 					
 					// Draw dots on bubbles colored blue if empty and red if filled
 					Point bubbleLocation(jsonToPoint(bubble["location"]));
@@ -72,7 +93,7 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage) {
 					bubbleNum++;
 					#endif
 					
-					circle(markupImage, bubbleLocation, 2, 	getColor(bubble["value"].asBool()), 1, CV_AA);
+					circle(markupImage, bubbleLocation, 2, 	getColor(bubbleFilled), 1, CV_AA);
 				}
 			}
 			else{//If we're dealing with a regular form template
@@ -88,13 +109,31 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage) {
 				}
 			}
 		}
+		
+		//Print the counts:
+		if(drawCounts && avgWidth > 0){
+			avgWidth /= segments.size();
+			avgY /= segments.size();
+			
+			
+			Point textBoxTL(endOfField + 5, (int)avgY - 5);
+			if(field.isMember("print_count_location")){
+				textBoxTL = jsonToPoint(field["print_count_location"]);
+			}
+			
+			stringstream ss;
+			ss << filledBubbles;
+			putText(markupImage, ss.str(), textBoxTL,  FONT_HERSHEY_SIMPLEX, 1., Scalar::all(0), 3, CV_AA);
+			putText(markupImage, ss.str(), textBoxTL,  FONT_HERSHEY_SIMPLEX, 1., boxColor, 2, CV_AA);
+		}
+		
 	}
 	return true;
 }
 
 //Makes a JSON file that contains only the fieldnames and their corresponding bubble counts.
 bool MarkupForm::outputFieldCounts(const char* bubbleVals, const char* outputPath){
-
+	return false; //I don't think this gets used.
 	Json::Value bvRoot;
 	
 	if( !parseJsonFromFile(bubbleVals, bvRoot) ) return false;
@@ -128,9 +167,9 @@ bool MarkupForm::outputFieldCounts(const char* bubbleVals, const char* outputPat
 }
 //Marks up formImage based on the specifications of a bubble-vals JSON file at the given path.
 //Then output the form to the given locaiton.
-bool MarkupForm::markupForm(const char* markupPath, const char* formPath, const char* outputPath){
+bool MarkupForm::markupForm(const char* markupPath, const char* formPath, const char* outputPath, bool drawCounts){
 	Mat markupImage = imread(formPath);
 	if(markupImage.empty()) return false;
-	if(!markupFormHelper(markupPath, markupImage)) return false;
+	if(!markupFormHelper(markupPath, markupImage, drawCounts)) return false;
 	return imwrite(outputPath, markupImage);
 }

@@ -4,6 +4,6 @@
 class MarkupForm {
 public:
 	static bool outputFieldCounts(const char* bubbleVals, const char* outputPath);
-	static bool markupForm(const char* markupPath, const char* formPath, const char* outputPath);
+	static bool markupForm(const char* markupPath, const char* formPath, const char* outputPath, bool drawCounts = true);
 };
 #endif

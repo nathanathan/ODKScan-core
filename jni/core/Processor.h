@@ -1,8 +1,5 @@
-/*
-Header file for image processing functions.
-*/
-#ifndef IMAGEPROCESSING_H
-#define IMAGEPROCESSING_H
+#ifndef PROCESSOR_H
+#define PROCESSOR_H
 #include "configuration.h"
 #include <tr1/memory>
 
@@ -12,15 +9,8 @@ This class handles most of the JSON parsing and provides an interface to the ima
 class Processor{
 	public:
 		//Functions are specified in the order they should be invoked.
-		
 		Processor();
-		/*
-		hello world.
-		*/
 		bool loadFormImage(const char* imagePath, bool undistort = false);
-		/**
-		loadFeatureData - hello world 2.
-		*/
 		bool loadFeatureData(const char* templatePath);
 		int detectForm();
 		bool setTemplate(const char* templatePath);

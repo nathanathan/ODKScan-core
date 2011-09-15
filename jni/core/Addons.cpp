@@ -37,13 +37,20 @@ Json::Value pointToJson(const Point p){
 Point jsonToPoint(const Json::Value& jPoint){
 	return Point(jPoint[0u].asInt(), jPoint[1u].asInt());
 }
-Json::Value quadToJsonArray(const vector<Point>& quad, const Point& offset){
+template <class T>
+Json::Value quadToJsonArrayImpl(const vector< Point_<T> >& quad, const Point& offset){
 	Json::Value out;
 	for(size_t i = 0; i < quad.size(); i++){
-		Point myPoint = offset + quad[i];
-		out.append(pointToJson(myPoint));
+		out.append(pointToJson(Point(quad[i].x + offset.x,
+									 quad[i].y + offset.y)));
 	}
 	return out;
+}
+Json::Value quadToJsonArray(const vector< Point >& quad, const Point& offset){
+	return quadToJsonArrayImpl(quad, offset);
+}
+Json::Value quadToJsonArray(const vector< Point2f >& quad, const Point& offset){
+	return quadToJsonArrayImpl(quad, offset);
 }
 vector<Point> jsonArrayToQuad(const Json::Value& quadJson){
 	vector<Point> out;
