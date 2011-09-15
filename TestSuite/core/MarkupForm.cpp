@@ -18,7 +18,7 @@
 using namespace std;
 using namespace cv;
 
-bool markupFormHelper(const char* bvPath, Mat& markupImage) {
+bool markupFormHelper(const char* bvPath, Mat& markupImage, bool drawCounts) {
 	Scalar colors[6] = {Scalar(0,   0,   255),
 						Scalar(0,   255, 255),
 						Scalar(255, 0,   255),
@@ -67,13 +67,15 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage) {
 				else{
 					polylines(markupImage, &p, &n, 1, true, boxColor, 2, CV_AA);
 				}
-
-				avgWidth += norm(quad[0] - quad[1]);
-				if(endOfField < quad[1].x){
-					endOfField = quad[1].x;
+				
+				if(segment.get("type", NULL) == "text"){
+					avgWidth += norm(quad[0] - quad[1]);
+					if(endOfField < quad[1].x){
+						endOfField = quad[1].x;
+					}
+					avgY += quad[3].y;// + quad[1].y + quad[2].y + quad[3].y) / 4;
 				}
-				avgY += quad[3].y;// + quad[1].y + quad[2].y + quad[3].y) / 4;
-
+				
 				const Json::Value bubbles = segment["bubbles"];
 				for ( size_t k = 0; k < bubbles.size(); k++ ) {
 					const Json::Value bubble = bubbles[k];
@@ -109,7 +111,7 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage) {
 		}
 		
 		//Print the counts:
-		if(avgWidth > 0){
+		if(drawCounts && avgWidth > 0){
 			avgWidth /= segments.size();
 			avgY /= segments.size();
 			
@@ -165,9 +167,9 @@ bool MarkupForm::outputFieldCounts(const char* bubbleVals, const char* outputPat
 }
 //Marks up formImage based on the specifications of a bubble-vals JSON file at the given path.
 //Then output the form to the given locaiton.
-bool MarkupForm::markupForm(const char* markupPath, const char* formPath, const char* outputPath){
+bool MarkupForm::markupForm(const char* markupPath, const char* formPath, const char* outputPath, bool drawCounts){
 	Mat markupImage = imread(formPath);
 	if(markupImage.empty()) return false;
-	if(!markupFormHelper(markupPath, markupImage)) return false;
+	if(!markupFormHelper(markupPath, markupImage, drawCounts)) return false;
 	return imwrite(outputPath, markupImage);
 }
