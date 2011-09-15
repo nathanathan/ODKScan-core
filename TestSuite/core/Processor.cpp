@@ -30,8 +30,8 @@
 //#define DO_BUBBLE_INFERENCE
 
 #ifdef OUTPUT_SEGMENT_IMAGES
-#include "NameGenerator.h"
-NameGenerator namer;
+	#include "NameGenerator.h"
+	NameGenerator namer;
 #endif
 
 using namespace std;
@@ -120,12 +120,16 @@ Json::Value processSegment(const Json::Value &segmentTemplate) {
 						SCALEPARAM * Size(segmentTemplate.get("width", INT_MIN).asInt(),
 									  segmentTemplate.get("height", INT_MIN).asInt()));
 
+	segmentJsonOut["type"] = segmentTemplate.get("type", "bubble");
+	
 	if(!segmentTemplate.get("bounded", true).asBool()){ //If segments don't have a bounding box
 		segmentImg = formImage(segmentRect);
 		segBubbleLocs = getBubbleLocations(segmentImg, segmentTemplate["bubble_locations"], false);
 		bubbleVals = classifyBubbles( segmentImg, segBubbleLocs );
 		segmentJsonOut["quad"] = quadToJsonArray(rectToQuad( segmentRect ));
-		segmentJsonOut["bubbles"] = genBubblesJson( bubbleVals, segBubbleLocs, segmentRect.tl() );
+		if(segmentJsonOut["type"] == "bubble"){
+			segmentJsonOut["bubbles"] = genBubblesJson( bubbleVals, segBubbleLocs, segmentRect.tl() );
+		}
 	}
 	else{
 		Rect expandedRect = resizeRect(segmentRect, 1 + SEGMENT_BUFFER);
@@ -161,12 +165,12 @@ Json::Value processSegment(const Json::Value &segmentTemplate) {
 			warpPerspective(segmentImg, alignedSegment, transformation, segmentRect.size());
 			segmentImg = alignedSegment;
 			
-			segBubbleLocs = getBubbleLocations( segmentImg, segmentTemplate["bubble_locations"], true);
+			segBubbleLocs = getBubbleLocations( segmentImg, segmentTemplate["bubble_locations"], true );
 			bubbleVals = classifyBubbles( segmentImg, segBubbleLocs );
 			
-			segmentJsonOut["quad"] = quadToJsonArray(quad, expandedRect.tl());
+			segmentJsonOut["quad"] = quadToJsonArray( quad, expandedRect.tl() );
 			segmentJsonOut["bubbles"] = genBubblesJson( bubbleVals, segBubbleLocs, 
-														expandedRect.tl(), transformation.inv());
+														expandedRect.tl(), transformation.inv() );
 		}
 		else{
 			#ifdef DEBUG_PROCESSOR
@@ -272,6 +276,7 @@ bool loadFormImage(const char* imagePath, bool undistort) {
 	//We want to keep the orientation consistent because:
 	//1. It seems to make a slight difference in alignment. (SURF is not *completely* rotation invariant)
 	//2. Undistortion
+	//Maybe need to watch out incase a clock-wise rotation results in upsidown photos on some phones.
 	if(formImage.cols > formImage.rows){
 		transpose(formImage, temp);
 		flip(temp,formImage, 1);
@@ -310,7 +315,6 @@ bool alignForm(const char* alignedImageOutputPath, size_t formIdx) {
 	#endif
 	
 	Mat straightenedImage;
-	
 	try{
 		Size form_sz(root.get("width", 0).asInt(), root.get("height", 0).asInt());
 		

@@ -13,10 +13,6 @@
 NameGenerator alignmentNamer("debug_segment_images/", false);
 #endif
 
-//There is a tradeoff with using intersections.
-//It seems to work better on messy segments, however,
-//on segments with multiple min energy lines we are more likely
-//to choose the wrong line than with the contour method.
 
 using namespace std;
 using namespace cv;
@@ -309,11 +305,15 @@ template <class T>
 void findSegmentImpl(const Mat& img, const Rect& roi, vector< Point_<T> >& outQuad){
 
 	//quad finding modes:
+	//There is a tradeoff with using intersections.
+	//It seems to work better on messy segments, however,
+	//on segments with multiple min energy lines we are more likely
+	//to choose the wrong line than with the contour method.
 	#define QUAD_FIND_CONTOURS 0
 	#define QUAD_FIND_INTERSECTION 1
 	#define QUAD_FIND_CORNERS 2
 	
-	#define QUAD_FIND_MODE QUAD_FIND_INTERSECTION
+	#define QUAD_FIND_MODE 0
 	
 	Mat imgThresh, temp_img, temp_img2;
 	

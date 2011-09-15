@@ -68,7 +68,7 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage, bool drawCounts) {
 					polylines(markupImage, &p, &n, 1, true, boxColor, 2, CV_AA);
 				}
 				
-				if(segment.get("type", NULL) == "text"){
+				if(segment.get("type", NULL) != "text"){
 					avgWidth += norm(quad[0] - quad[1]);
 					if(endOfField < quad[1].x){
 						endOfField = quad[1].x;
