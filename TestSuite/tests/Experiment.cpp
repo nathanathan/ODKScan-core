@@ -55,10 +55,11 @@ int main(int argc, char *argv[]) {
 			
 			init = clock();
 			
-			Processor myProcessor;
+			Processor myProcessor("../assets/");
 			
 			if( !myProcessor.loadFormImage((*it).c_str(), true)) {
 				cout << "\E[31m" <<  "Could not load. Arg: " << "\e[0m" << (*it) << endl;
+				//Note that load errors could indicate a missing camera calibration file or a missing image.
 				collectors[label].incrErrors();
 				continue;
 			}

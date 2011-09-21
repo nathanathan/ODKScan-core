@@ -8,8 +8,14 @@ This class handles most of the JSON parsing and provides an interface to the ima
 */
 class Processor{
 	public:
-		//Functions are specified in the order they should be invoked.
+		//Note: Functions are specified in the order they should be invoked.
+		
+		//The constructor takes as an arguement a "root" path that all other paths are relative to.
+		//TODO: Make all other paths relative to appRootDir
+		//The default constructor sets the root path to ""
+		//The path should end with a '/' but I might relax this requirement later on.
 		Processor();
+		Processor(const char* appRootDir);
 		bool loadFormImage(const char* imagePath, bool undistort = false);
 		bool loadFeatureData(const char* templatePath);
 		int detectForm();
