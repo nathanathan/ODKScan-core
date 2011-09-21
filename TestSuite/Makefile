@@ -9,10 +9,10 @@ ALL_SRCS := $(CORE_SRCS) StatCollector.cpp
 ALL_HEADERS := $(CORE_HEADERS) StatCollector.h configuration.h
 ALL_OBJS := $(CORE_OBJS) StatCollector.o $(JSON_PARSER_OBJS)
 
-INCLUDES := `pkg-config opencv --cflags --libs` -I../jsoncpp-src-0.5.0/include -I./core -I./
-
-Calibrate: calibration.test
-	./$< -w 6 -h 9 -s 0.025 -o camera.yml -op -oe -su calibphotos/image_list.xml
+#The OpenCV includes might need to be adjusted if you aren't running this on a linux system.
+#Even then, pkg-config might not be set up with OpenCV.
+OPENCV_INCLUDES := `pkg-config opencv --cflags --libs`
+INCLUDES := $(OPENCV_INCLUDES) -I../jsoncpp-src-0.5.0/include -I./core -I./
 
 CourseEvalTest: tests/CourseEvalTest.test
 	@rm -rf debug_segment_images
