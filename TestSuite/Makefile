@@ -21,27 +21,6 @@ CourseEvalTest: tests/CourseEvalTest.test
 	@mkdir bubble_images
 	./$<
 
-ImageProcessTest: tests/ImageProcessTest.test
-	@rm -rf debug_segment_images
-	@mkdir debug_segment_images
-	@rm -rf bubble_images
-	@mkdir bubble_images
-	./$<
-	
-FormAlignmentTest: tests/FormAlignmentTest.test
-	@rm -rf aligned_forms
-	@cp -rL form_images aligned_forms
-	./$<
-
-EverythingTest: tests/EverythingTest.test
-	@rm -rf aligned_forms
-	@cp -rL form_images aligned_forms
-	@rm -rf debug_segment_images
-	@mkdir debug_segment_images
-	@rm -rf bubble_images
-	@mkdir bubble_images
-	./$<
-
 #The experiment target runs Experiment.cpp on the specified folder.
 #Use the following syntax to specify the folder:
 #make Experiment EXPERIMENT_FOLDER=experiment_1
