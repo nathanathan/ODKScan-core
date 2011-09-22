@@ -127,9 +127,8 @@ public class DisplayProcessedData  extends ListActivity {
 			String[] vals = new String[segments.length()];
 			for (int i = 0; i < vals.length; i++) {
 				if(fields[position].getJSONArray("segments").getJSONObject(i).has("value")){
-					Log.i("mScan", "test");
+					Log.i("mScan", "has value");
 				}
-				Log.i("mScan", "test2");
 				vals[i] = segments.getJSONObject(i).optString("value");
 			}
 			builder.setItems(vals, new DialogInterface.OnClickListener() {

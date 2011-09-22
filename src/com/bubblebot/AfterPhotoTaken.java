@@ -2,10 +2,13 @@ package com.bubblebot;
 
 
 import java.util.Date;
+import java.util.Random;
 
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -51,9 +54,13 @@ public class AfterPhotoTaken extends Activity {
 		
 		photoName = extras.getString("photoName");
 		
-		runProcessor = new RunProcessor(handler, photoName);
+		final String [] didYouKnow = getResources().getStringArray(R.array.did_you_know);
+		
+		SharedPreferences settings = getSharedPreferences(getResources().getString(R.string.prefs_name), 0);
+		runProcessor = new RunProcessor(handler, photoName, settings.getBoolean("doFormDetection", false));
 		
 		pd = new ProgressDialog(this);
+		pd.setProgressDrawable(null);
 		pd.setCancelable(false);
 		//pd.setTitle("Processing...");
 		pd.setMessage("Aligning Image");
@@ -71,10 +78,7 @@ public class AfterPhotoTaken extends Activity {
 		processButton.setOnClickListener(new View.OnClickListener() {
 			public void onClick(View v) {
 				Log.i("mScan","PICTURE NAME: " + photoName);
-				pd.setMessage("Did you know... \n " +
-						"The MMR measles (sarampo) vaccination is generally not given to children younger " +
-	    				"than 18 months because they usually retain antimeasles immunoglobulins (antibodies) " +
-	    				"transmitted from the mother during pregnancy.");
+				pd.setMessage("Did you know... \n " + didYouKnow[(new Random()).nextInt(didYouKnow.length)]);
 				pd.show();
 				//It is possible to run this backgrounded with low priority to make things seems faster...
 				runProcessor.setMode(RunProcessor.Mode.PROCESS);

@@ -63,6 +63,7 @@ Json::Value root;
 Json::Value JsonOutput;
 PCA_classifier classifier;
 string templPath;
+string appRootDir;
 
 vector<bool> classifyBubbles(const Mat& segment, const vector<Point> bubbleLocations) {
 	vector<bool> out;
@@ -245,6 +246,8 @@ bool trainClassifier(string trainingImageDir) {
 
 public:
 
+ProcessorImpl(const char* appRootDir) : appRootDir(string(appRootDir)) {}
+
 bool setTemplate(const char* templatePath) {
 	#ifdef DEBUG_PROCESSOR
 		cout << "setting template..." << endl;
@@ -276,6 +279,7 @@ bool loadFormImage(const char* imagePath, bool undistort) {
 	//We want to keep the orientation consistent because:
 	//1. It seems to make a slight difference in alignment. (SURF is not *completely* rotation invariant)
 	//2. Undistortion
+	//Maybe need to watch out incase a clock-wise rotation results in upsidown photos on some phones.
 	if(formImage.cols > formImage.rows){
 		transpose(formImage, temp);
 		flip(temp,formImage, 1);
@@ -286,7 +290,7 @@ bool loadFormImage(const char* imagePath, bool undistort) {
 		Mat map1, map2;
 		Size imageSize = formImage.size();
 		
-		String cameraCalibFile("camera.yml");
+		String cameraCalibFile(appRootDir + "camera.yml");
 		
 		if( !fileExists(cameraCalibFile) ) return false;
 		
@@ -431,7 +435,10 @@ int detectForm(){
 
 
 /* This stuff hooks the Processor class up to the implementation class: */
-Processor::Processor() : processorImpl(new ProcessorImpl){
+Processor::Processor() : processorImpl(new ProcessorImpl("")){
+	LOGI("Processor successfully constructed.");
+}
+Processor::Processor(const char* appRootDir) : processorImpl(new ProcessorImpl(appRootDir)){
 	LOGI("Processor successfully constructed.");
 }
 bool Processor::loadFormImage(const char* imagePath, bool undistort){

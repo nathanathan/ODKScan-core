@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array
+        name="did_you_know">
+        <item>The MMR measles (sarampo) vacination is generally not given to children younger 
+	    	than 18 months because they usually retain antimeasles immunoglobulins (antibodies)
+	    	transmitted from the mother during pregnancy.</item>
+	    <item>e^(pi)i = -1</item>
+    </string-array>
+</resources>

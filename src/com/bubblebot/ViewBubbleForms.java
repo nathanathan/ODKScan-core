@@ -4,13 +4,7 @@ import java.io.File;
 import java.io.FilenameFilter;
 import java.util.Date;
 
-import com.google.api.client.googleapis.extensions.android2.auth.GoogleAccountManager;
-
-import android.accounts.Account;
-import android.app.AlertDialog;
-import android.app.Dialog;
 import android.app.ListActivity;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;

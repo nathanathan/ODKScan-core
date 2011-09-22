@@ -64,6 +64,15 @@ public class BubbleBot extends Activity {
 				startActivity(intent); 
 			}
 		});
+		
+		// Hook up handler for bubblebot settings button
+		Button settingsButton = (Button) findViewById(R.id.SettingsButton);
+		settingsButton.setOnClickListener(new View.OnClickListener() {
+			public void onClick(View v) {
+				Intent intent = new Intent(getApplication(), AppSettings.class);
+				startActivity(intent); 
+			}
+		});
 	}
 	@Override
 	protected void onResume() {

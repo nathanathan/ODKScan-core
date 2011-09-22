@@ -271,7 +271,7 @@ void Aligner::loadFeatureData(const string& templPath) throw(cv::Exception) {
 		templImageSize = templImage.size();
 
 		#ifdef DEBUG_ALIGN_IMAGE
-		cout << "Extracting keypoints from template image..." << endl;
+			cout << "Extracting keypoints from template image..." << endl;
 		#endif
 		
 		Mat mask = makeFieldMask(templPath + ".json");

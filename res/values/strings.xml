@@ -14,7 +14,8 @@
 <string name="ScanButton">Scan New Form</string>
 <string name="ViewFormsButton">View Images</string>
 <string name="InstructionsButton">Instructions</string>
-<string name="ProcessButton">ProcessForm</string>
+<string name="SettingsButton">Settings</string>
+<string name="ProcessButton">Process Form</string>
 <string name="ProcessForm">Processing form...</string>
 <string name="Instructions1">The BubbleBot appplication is designed to convert paper bubble forms into a digital format using computer vision.  </string>
 <string name="Instructions2">To scan a form, click the "Scan New Form" button on the main page.  This will open up a camera.  A rectangle will

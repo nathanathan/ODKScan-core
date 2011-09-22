@@ -12,6 +12,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -72,18 +73,23 @@ public class DisplayProcessedForm extends Activity {
 		switch (id) {
 		case DIALOG_ACCOUNTS:
 			builder.setTitle("Select a Google account");
+			
 			final GoogleAccountManager manager = new GoogleAccountManager(this);
-			final Account[] accounts = manager.getAccounts();
-			final int size = accounts.length;
-			String[] names = new String[size];
-			for (int i = 0; i < size; i++) {
-				names[i] = accounts[i].name;
-			}
-			builder.setItems(names, new DialogInterface.OnClickListener() {
-				public void onClick(DialogInterface dialog, int which) {
-					gotAccount(manager, accounts[which]);
+			
+			final Account [] accounts = manager.getAccounts();
+			
+			if(accounts.length > 0){
+				String[] names = new String[accounts.length];
+				for (int i = 0; i < accounts.length; i++) {
+					names[i] = accounts[i].name;
 				}
-			});
+				
+				builder.setItems(names, new DialogInterface.OnClickListener() {
+					public void onClick(DialogInterface dialog, int which) {
+						gotAccount(manager, accounts[which]);
+					}
+				});
+			}
 			break;
 		case DIALOG_SUCCESS:
 			builder.setTitle("Success!")
@@ -124,7 +130,9 @@ public class DisplayProcessedForm extends Activity {
 			else{
 				pd.dismiss();
 				Bundle args = new Bundle();
-				args.putString("reason", "Could not obtain authentication token from the account manager.");
+				args.putString("reason", "Could not obtain authentication token from the account manager." +
+										 "You might need to give the app permission to access your accounts," +
+										 "check the pull-down menu tray for notifications.");
 				showDialog(DIALOG_FAILURE, args);
 			}
 		} catch (Exception e) {
@@ -145,8 +153,8 @@ public class DisplayProcessedForm extends Activity {
 			startActivity(intent); 
 			return true;
 		case R.id.uploadData:
-			ConnectivityManager cm = (ConnectivityManager) this.getSystemService(Context.CONNECTIVITY_SERVICE);
-			if(cm.getActiveNetworkInfo().isConnected()){
+			NetworkInfo neti = ((ConnectivityManager) this.getSystemService(Context.CONNECTIVITY_SERVICE)).getActiveNetworkInfo();
+			if(neti != null && neti.isConnected()){
 				showDialog(DIALOG_ACCOUNTS);
 			}
 			else{

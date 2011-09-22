@@ -41,6 +41,7 @@
 		<activity android:name="AfterPhotoTaken"
 			android:screenOrientation="portrait" android:label="@string/after_photo_taken_activity">
 		</activity>
+		<activity android:label="Settings" android:name="AppSettings"></activity>
 	</application>
 
 	<uses-feature android:glEsVersion="0x00020000"
