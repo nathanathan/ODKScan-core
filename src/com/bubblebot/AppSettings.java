@@ -9,30 +9,43 @@ import android.widget.CompoundButton.OnCheckedChangeListener;
 
 public class AppSettings extends Activity {
 	
-	private CheckBox cb;
+	private CheckBox formDetectionCheckBox;
+	private CheckBox calibrationCheckBox;
+	private SharedPreferences settings;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.app_settings); // Setup the UI
 		
-		cb = (CheckBox) findViewById(R.id.formDetectionCheckbox);
+		settings = getSharedPreferences(getResources().getString(R.string.prefs_name), 0);
 		
-		cb.setOnCheckedChangeListener(new OnCheckedChangeListener()
+		formDetectionCheckBox = (CheckBox) findViewById(R.id.formDetectionCheckbox);
+		formDetectionCheckBox.setOnCheckedChangeListener(new OnCheckedChangeListener()
 		{
 			@Override
 			public void onCheckedChanged(CompoundButton arg0, boolean isChecked) {
-				SharedPreferences settings = getSharedPreferences(getResources().getString(R.string.prefs_name), 0);
 				SharedPreferences.Editor editor = settings.edit();
 				editor.putBoolean("doFormDetection", isChecked);
+				editor.commit();
+			}
+		});
+		
+		calibrationCheckBox = (CheckBox) findViewById(R.id.calibrationCheckbox);
+		calibrationCheckBox.setOnCheckedChangeListener(new OnCheckedChangeListener()
+		{
+			@Override
+			public void onCheckedChanged(CompoundButton arg0, boolean isChecked) {
+				SharedPreferences.Editor editor = settings.edit();
+				editor.putBoolean("calibrate", isChecked);
 				editor.commit();
 			}
 		});
 	}
 	@Override
 	protected void onResume() {
-		SharedPreferences settings = getSharedPreferences(getResources().getString(R.string.prefs_name), 0);
-		cb.setChecked(settings.getBoolean("doFormDetection", false));
+		formDetectionCheckBox.setChecked(settings.getBoolean("doFormDetection", false));
+		calibrationCheckBox.setChecked(settings.getBoolean("calibrate", false));
 		super.onResume();
 	}
 }

@@ -15,7 +15,7 @@ import android.util.Log;
  */
 public class RunSetup implements Runnable {
 	
-	public static final int version = 47;
+	public static final int version = 51;
 	public static final boolean clearOldData = false;
 	
 	private SharedPreferences settings;
@@ -46,14 +46,21 @@ public class RunSetup implements Runnable {
 		(new File(MScanUtils.appFolder + MScanUtils.markupDir)).mkdirs();
 		
 		try {
+			//Create a .nomedia file to prevent the images from showing up in he gallery.
+			//This might not be working... hiding the folder might work.
+			new File(MScanUtils.appFolder + ".nomedia").createNewFile();
+			
 			String traininExamplesPath =  MScanUtils.appFolder + MScanUtils.trainingExampleDir;
 			String formTemplatesPath = MScanUtils.appFolder + MScanUtils.templateDir;
 			
 			clearDir(traininExamplesPath);
 			clearDir(formTemplatesPath);
 			
+			//TODO: make the command below work.
+			//extractAssets("/", MScanUtils.appFolder);
 			extractAssets(MScanUtils.trainingExampleDir, traininExamplesPath);
 			extractAssets(MScanUtils.templateDir, formTemplatesPath);
+			copyAsset("camera.yml", MScanUtils.appFolder + "camera.yml");
 			editor.putInt("version", version);
 			
 		} catch (IOException e) {

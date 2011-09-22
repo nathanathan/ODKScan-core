@@ -2,9 +2,8 @@
 <resources>
     <string-array
         name="did_you_know">
-        <item>The MMR measles (sarampo) vacination is generally not given to children younger 
-	    	than 18 months because they usually retain antimeasles immunoglobulins (antibodies)
-	    	transmitted from the mother during pregnancy.</item>
-	    <item>e^(pi)i = -1</item>
+        <item>Infants usually retain antimeasles immunoglobulins (antibodies) transmitted from the mother during pregnancy.</item>
+	    <item>The venom of the lesser Asian scorpion contains proteins that are toxic to Plasmodium falciparum, a pathogenic parasite that causes malaria in humans.</item>
+	    <item>Some vaccinations contain preservatives, which are used to prevent contamination with bacteria or fungi.</item>
     </string-array>
 </resources>

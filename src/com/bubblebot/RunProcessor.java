@@ -14,16 +14,18 @@ public class RunProcessor implements Runnable{
 	}
 	
 	private boolean doFormDetection;
+	private boolean undistort;
 	
 	private Mode mode;
 	private Processor mProcessor;
 	private Handler handler;
 	private String photoName;
 
-	public RunProcessor(Handler handler, String photoName, boolean doFormDetection){
+	public RunProcessor(Handler handler, String photoName, boolean doFormDetection, boolean undistort){
 		this.handler = handler;
 		this.photoName = photoName;
 		this.doFormDetection = doFormDetection;
+		this.undistort = undistort;
 		mProcessor = new Processor(MScanUtils.appFolder);
 	}
 	/**
@@ -50,7 +52,7 @@ public class RunProcessor implements Runnable{
 			}
 		}
 		else if(mode == Mode.LOAD){
-			if( mProcessor.loadFormImage(MScanUtils.getAlignedPhotoPath(photoName)) ){
+			if( mProcessor.loadFormImage(MScanUtils.getAlignedPhotoPath(photoName), false) ){
 				if(mProcessor.setTemplate( MScanUtils.appFolder + "form_templates/SIS-A01.json" )) {
 					msg.arg1 = 1;
 				}
@@ -59,7 +61,7 @@ public class RunProcessor implements Runnable{
 		else if(mode == Mode.LOAD_ALIGN){
 			Log.i("mScan", "mProcessor successfully constructed");
 			
-			if(mProcessor.loadFormImage(MScanUtils.getPhotoPath(photoName))){
+			if(mProcessor.loadFormImage(MScanUtils.getPhotoPath(photoName), undistort)){
 				Log.i("mScan","Loading: " + photoName);
 				
 				String[] templatePaths = { "form_templates/SIS-A01", "form_templates/UW_course_eval_A_front" };

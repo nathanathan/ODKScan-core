@@ -11,5 +11,12 @@
     android:padding="20dp"
     android:text="Settings">
 </TextView>
-<CheckBox android:text="Do Form Detection" android:id="@+id/formDetectionCheckbox" android:layout_width="wrap_content" android:layout_height="wrap_content"></CheckBox>
+<CheckBox android:text="Do Form Detection"
+		  android:id="@+id/formDetectionCheckbox"
+		  android:layout_width="wrap_content"
+		  android:layout_height="wrap_content"></CheckBox>
+<CheckBox android:text="Do camera calibration\n(only works on nexus)."
+		  android:id="@+id/calibrationCheckbox"
+		  android:layout_width="wrap_content"
+		  android:layout_height="wrap_content"></CheckBox>
 </LinearLayout>

@@ -4,11 +4,13 @@ package com.bubblebot;
 import java.util.Date;
 import java.util.Random;
 
+import com.bubblebot.RunProcessor.Mode;
+
 import android.app.Activity;
-import android.app.ProgressDialog;
+import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -25,10 +27,9 @@ import android.widget.RelativeLayout;
  */
 public class AfterPhotoTaken extends Activity {
 	
-    private boolean aligned = false;
+	private boolean aligned = false;
     private String photoName;
     private RunProcessor runProcessor;
-    private ProgressDialog pd;
     private Button processButton;
     private LinearLayout content;
 
@@ -54,18 +55,20 @@ public class AfterPhotoTaken extends Activity {
 		
 		photoName = extras.getString("photoName");
 		
-		final String [] didYouKnow = getResources().getStringArray(R.array.did_you_know);
-		
 		SharedPreferences settings = getSharedPreferences(getResources().getString(R.string.prefs_name), 0);
-		runProcessor = new RunProcessor(handler, photoName, settings.getBoolean("doFormDetection", false));
+		runProcessor = new RunProcessor(handler, photoName,
+				settings.getBoolean("doFormDetection", false),
+				settings.getBoolean("calibrate", false));
 		
-		pd = new ProgressDialog(this);
-		pd.setProgressDrawable(null);
-		pd.setCancelable(false);
-		//pd.setTitle("Processing...");
-		pd.setMessage("Aligning Image");
-		pd.show();
+		if( extras.getBoolean("preAligned") ){
+			startThread(RunProcessor.Mode.LOAD);
+		}
+		else{
+			startThread(RunProcessor.Mode.LOAD_ALIGN);
+		}
 		
+
+		//Button handlers:
 		Button retake = (Button) findViewById(R.id.retake_button);
 		retake.setOnClickListener(new View.OnClickListener() {
 			public void onClick(View v) {
@@ -73,41 +76,60 @@ public class AfterPhotoTaken extends Activity {
 				startActivity(intent);
 			}
 		});
-		// If user chooses to process the form, start the BubbleProcess activity
 		processButton = (Button) findViewById(R.id.process_button);
 		processButton.setOnClickListener(new View.OnClickListener() {
 			public void onClick(View v) {
-				Log.i("mScan","PICTURE NAME: " + photoName);
-				pd.setMessage("Did you know... \n " + didYouKnow[(new Random()).nextInt(didYouKnow.length)]);
-				pd.show();
-				//It is possible to run this backgrounded with low priority to make things seems faster...
-				runProcessor.setMode(RunProcessor.Mode.PROCESS);
-				startTime = new Date().getTime();
-				Thread thread = new Thread(runProcessor);
-				thread.setPriority(Thread.MAX_PRIORITY);
-				thread.start();
+				startThread(RunProcessor.Mode.PROCESS);
 			}
 		});
-		if( extras.getBoolean("preAligned") ){
-			runProcessor.setMode(RunProcessor.Mode.LOAD);
-		}
-		else{
-			runProcessor.setMode(RunProcessor.Mode.LOAD_ALIGN);
-		}
-		Thread thread = new Thread( runProcessor );
-		thread.setPriority(Thread.MAX_PRIORITY);
+	}
+    //Launch a thread that runs runProcessor.
+    //Shows a status dialog as well.
+	protected void startThread(Mode mode) {
 		if(MScanUtils.DebugMode){
+			Log.i("mScan","photoName: " + photoName);
 			startTime = new Date().getTime();
 		}
+		showDialog(mode.ordinal());
+		runProcessor.setMode(mode);
+		
+		Thread thread = new Thread( runProcessor );
+		thread.setPriority(Thread.MAX_PRIORITY);
 		thread.start();
 	}
+
+	@Override
+	protected Dialog onCreateDialog(int id, Bundle args) {
+		
+		final String [] didYouKnow = getResources().getStringArray(R.array.did_you_know);
+		
+		AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		
+		switch (RunProcessor.Mode.values()[id]) {
+		case LOAD:
+			builder.setTitle("Loading Image");
+			break;
+		case LOAD_ALIGN:
+			builder.setTitle("Aligning Image");
+			break;
+		case PROCESS:
+			builder.setTitle("Processing Image");
+			break;
+		default:
+			return null;
+		}
+		builder.setCancelable(false)
+				.setMessage("Did you know... \n " +
+						didYouKnow[(new Random()).nextInt(didYouKnow.length)]);
+		return builder.create();
+	}
+    
     private Handler handler = new Handler() {
             @Override
             public void handleMessage(Message msg) {
             	
-            	pd.dismiss();
-            	
             	RunProcessor.Mode mode = RunProcessor.Mode.values()[msg.what];
+            	dismissDialog(msg.what);
             	
             	if(MScanUtils.DebugMode){
 	    			Log.i("mScan", "Mode: " + mode);
@@ -115,6 +137,33 @@ public class AfterPhotoTaken extends Activity {
 	    			Log.i("mScan", "Time taken:" + String.format("%.2f", timeTaken));
             	}
             	
+            	switch (mode) {
+        		case LOAD:
+        		case LOAD_ALIGN:
+            		aligned = (msg.arg1 == 1);
+	        		if ( aligned ) {
+	        			MScanUtils.displayImageInWebView((WebView)findViewById(R.id.webview),
+	        														MScanUtils.getAlignedPhotoPath(photoName));
+	        		}
+	        		else {
+	        			RelativeLayout failureMessage = (RelativeLayout) findViewById(R.id.failureMessage);
+	        			failureMessage.setVisibility(View.VISIBLE);
+	        		}
+	        		content.setVisibility(View.VISIBLE);
+	        		processButton.setEnabled(aligned);
+        			break;
+        		case PROCESS:
+            		if ( msg.arg1 == 1 ) {
+	            		Intent intent = new Intent(getApplication(), DisplayProcessedForm.class);
+	                    intent.putExtra("photoName", photoName);
+	                    startActivity(intent);
+            		}
+        			break;
+        		default:
+        			return;
+        		}
+            	
+            	/*
             	if(mode == RunProcessor.Mode.PROCESS){
             		if ( msg.arg1 == 1 ) {
 	            		Intent intent = new Intent(getApplication(), DisplayProcessedForm.class);
@@ -135,7 +184,7 @@ public class AfterPhotoTaken extends Activity {
 	        		}
 	        		content.setVisibility(View.VISIBLE);
 	        		processButton.setEnabled(aligned);
-            	}
+            	}*/
             }
     };
 }
