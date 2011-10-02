@@ -132,6 +132,7 @@ void findLinesHelper(const Mat& img, int& start, int& end, const Rect& roi, bool
 		}
 	}
 }
+/*
 float findMultiLineEnergy(const Mat& img, int& start, int& end, vector<LineIterator>& iters) {
 	int sum = 0;
 	int totalPixels = 0;
@@ -142,6 +143,8 @@ float findMultiLineEnergy(const Mat& img, int& start, int& end, vector<LineItera
 	}
 	return float(sum)/totalPixels;
 }
+*/
+
 //#define LI_TYPE 8
 //LineIterator(img, quad[0], quad[1], LI_TYPE);
 

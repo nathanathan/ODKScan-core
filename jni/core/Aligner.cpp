@@ -255,10 +255,14 @@ void Aligner::loadFeatureData(const string& templPath) throw(cv::Exception) {
 		cout << e.what() << endl;
 		cout << "Creating new feature data:" << endl;
 		
-		if(detector.empty() || descriptorExtractor.empty()) CV_Error(CV_StsError, "Cound not create detector/extractor.");
+		if(detector.empty() || descriptorExtractor.empty())
+			CV_Error(CV_StsError, "Cound not create detector/extractor.");
 		
 		Mat templImage, temp;
 		templImage = imread( templPath + ".jpg", 0 );
+		if(templImage.empty())
+			CV_Error(CV_StsError, "Template image not found.");
+
 		resize(templImage, temp, templImage.size(), 0, 0, INTER_AREA);
 		
 		/*
