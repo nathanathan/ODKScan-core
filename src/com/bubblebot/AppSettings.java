@@ -23,7 +23,7 @@ public class AppSettings extends Activity {
 		formDetectionCheckBox = (CheckBox) findViewById(R.id.formDetectionCheckbox);
 		formDetectionCheckBox.setOnCheckedChangeListener(new OnCheckedChangeListener()
 		{
-			@Override
+			//@Override
 			public void onCheckedChanged(CompoundButton arg0, boolean isChecked) {
 				SharedPreferences.Editor editor = settings.edit();
 				editor.putBoolean("doFormDetection", isChecked);
@@ -34,7 +34,7 @@ public class AppSettings extends Activity {
 		calibrationCheckBox = (CheckBox) findViewById(R.id.calibrationCheckbox);
 		calibrationCheckBox.setOnCheckedChangeListener(new OnCheckedChangeListener()
 		{
-			@Override
+			//@Override
 			public void onCheckedChanged(CompoundButton arg0, boolean isChecked) {
 				SharedPreferences.Editor editor = settings.edit();
 				editor.putBoolean("calibrate", isChecked);

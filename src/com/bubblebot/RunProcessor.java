@@ -35,7 +35,7 @@ public class RunProcessor implements Runnable{
 	public void setMode(Mode mode){
 		this.mode = mode;
 	}
-	@Override
+	//@Override
 	public void run() {
 		
 		Message msg = new Message();
