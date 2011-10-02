@@ -28,7 +28,7 @@
 //Using a mask seems to slightly help bubble alignment in the average case but cause some additional misses.
 
 //#define DISABLE_PCA
-//So PCA definately does help, but only by a few percent and speedwise...
+//PCA definately does help but only by a few percent.
 
 
 using namespace std;
@@ -43,7 +43,9 @@ int vectorFind(const vector<Tp>& vec, const Tp& element) {
 	}
 	return -1;
 }
-//The gaussian intensity isn't correctly scaling...
+//This functions sets the values of the gaussian_wights Mat,
+//which can be used to weight bubble ratings when doing bubble alignment.
+//TODO: The gaussian intensity isn't correctly scaling...
 void PCA_classifier::update_gaussian_weights() {
 	float sigma = .5; //increasing decreases spread.
 
@@ -100,41 +102,6 @@ void PCA_classifier::PCA_set_push_back(Mat& PCA_set, const Mat& img) {
 		PCA_set.push_back(PCA_set_row.reshape(0,1));
 	}
 }
-//Loads a image with the specified filename and adds it to the PCA set.
-//Classifications are inferred from the filename and added to training_bubble_values.
-void PCA_classifier::PCA_set_add(Mat& PCA_set, vector<int>& trainingBubbleValues, const string& filename, bool flipExamples) {
-
-	Mat example = imread(filename, 0);
-	if (example.data == NULL) {
-        cerr << "could not read " << filename << endl;
-        return;
-    }
-    Mat aptly_sized_example;
-	resize(example, aptly_sized_example, Size(exampleSize.width, exampleSize.height), 0, 0, INTER_AREA);
-
-	#ifdef USE_MASK
-		aptly_sized_example = aptly_sized_example & cMask;
-	#endif
-
-	#ifdef OUTPUT_EXAMPLES
-		string outfilename = filename.substr(filename.find_last_of("/"), filename.size() - filename.find_last_of("/"));
-		imwrite("example_images_used" + outfilename, aptly_sized_example);
-	#endif
-	
-	int classificationIdx = getClassificationIdx(filename);
-	
-	PCA_set_push_back(PCA_set, aptly_sized_example);
-	trainingBubbleValues.push_back(classificationIdx);
-	
-	if(flipExamples){
-		for(int i = -1; i < 2; i++){
-			Mat temp;
-			flip(aptly_sized_example, temp, i);
-			PCA_set_push_back(PCA_set, temp);
-			trainingBubbleValues.push_back(classificationIdx);
-		}
-	}
-}
 template <class Tp>
 void writeVector(FileStorage& fs, const string& label, const vector<Tp>& vec) {
 	fs << label << "[";
@@ -155,7 +122,7 @@ vector<string> readVector(FileStorage& fs, const string& label) {
 	return vec;
 }
 bool PCA_classifier::save(const string& outputPath) const {
-	//might be clearner to just have save/load throw exceptions.
+	//might be clearner to just have save/load (and maybe PCA_set_add) throw exceptions.
 	try {
 		FileStorage fs(outputPath, FileStorage::WRITE);
 		fs << "exampleSizeWidth" << exampleSize.width;
@@ -198,8 +165,44 @@ bool PCA_classifier::load(const string& inputPath, const Size& requiredExampleSi
 	}
 	return true;
 }
+//Loads a image with the specified filename and adds it to the PCA set.
+//Classifications are inferred from the filename and added to training_bubble_values.
+void PCA_classifier::PCA_set_add(Mat& PCA_set, vector<int>& trainingBubbleValues, const string& filename, bool flipExamples) {
+
+	Mat example = imread(filename, 0);
+	if (example.data == NULL) {
+		cout << "could not read " << filename << endl;
+		return;
+	}
+	Mat aptly_sized_example;
+	resize(example, aptly_sized_example, Size(exampleSize.width, exampleSize.height), 0, 0, INTER_AREA);
+
+	#ifdef USE_MASK
+		aptly_sized_example = aptly_sized_example & cMask;
+	#endif
+
+	#ifdef OUTPUT_EXAMPLES
+		string outfilename = filename.substr(filename.find_last_of("/"), filename.size() - filename.find_last_of("/"));
+		imwrite("example_images_used" + outfilename, aptly_sized_example);
+	#endif
+	
+	int classificationIdx = getClassificationIdx(filename);
+	
+	PCA_set_push_back(PCA_set, aptly_sized_example);
+	trainingBubbleValues.push_back(classificationIdx);
+	
+	if(flipExamples){
+		for(int i = -1; i < 2; i++){
+			Mat temp;
+			flip(aptly_sized_example, temp, i);
+			PCA_set_push_back(PCA_set, temp);
+			trainingBubbleValues.push_back(classificationIdx);
+		}
+	}
+}
+//TODO: Add some code to print out the training set error.
 bool PCA_classifier::train_PCA_classifier(const vector<string>& examplePaths, Size myExampleSize,
-											int eigenvalues, bool flipExamples) {
+                                          int eigenvalues, bool flipExamples) {
 	statClassifier.clear();
 	weights = (Mat_<float>(3,1) << 1, 1, 1);//TODO: fix the weighting stuff 
 	exampleSize = myExampleSize;
@@ -231,7 +234,7 @@ bool PCA_classifier::train_PCA_classifier(const vector<string>& examplePaths, Si
 		PCA_set_add(PCA_set, trainingBubbleValues, examplePaths[i], flipExamples);
 	}
 
-	if(PCA_set.rows < eigenvalues) return false;//Not completely sure about this...
+	if(PCA_set.rows < eigenvalues) return false;//I'm not completely sure about this line.
 
 	my_PCA = PCA(PCA_set, Mat(), CV_PCA_DATA_AS_ROW, eigenvalues);
 	Mat comparisonVectors = my_PCA.project(PCA_set);
@@ -244,11 +247,11 @@ bool PCA_classifier::train_PCA_classifier(const vector<string>& examplePaths, Si
 
 	#ifdef DISABLE_PCA
 		statClassifier.train_auto(PCA_set, trainingBubbleValuesMat, Mat(), Mat(), CvSVMParams());
-		return true;
+	#else
+		statClassifier.train_auto(comparisonVectors, trainingBubbleValuesMat, Mat(), Mat(), CvSVMParams());
 	#endif
 	
-	statClassifier.train_auto(comparisonVectors, trainingBubbleValuesMat, Mat(), Mat(), CvSVMParams());
-	
+	emptyClassificationIndex = vectorFind(classifications, string("empty"));
 	return true;
 }
 //Rates a range of pixels in det_img_gray on how likely it is to be a bubble.
@@ -257,13 +260,16 @@ bool PCA_classifier::train_PCA_classifier(const vector<string>& examplePaths, Si
 //The theory is that if there is little difference between the reconstructed image and the original image
 //(as measured by the SSD) then the image is probably similar to some of the images used to generate the PCA set.
 inline double PCA_classifier::rateBubble(const Mat& det_img_gray, const Point& bubble_location) const {
+	Mat query_pixels, pca_components;
 
-    Mat query_pixels, pca_components;
-
-    #ifdef USE_GET_RECT_SUB_PIX
+	#ifdef USE_GET_RECT_SUB_PIX
 		getRectSubPix(det_img_gray, exampleSize, bubble_location, query_pixels);
 	#else
-		Rect window = Rect(bubble_location - Point(exampleSize.width/2, exampleSize.height/2), exampleSize) & Rect(Point(0,0), det_img_gray.size());
+		Rect window = Rect(bubble_location - Point(exampleSize.width/2,
+		                                           exampleSize.height/2), exampleSize);
+		//Constrain the window to the image size:
+		window = window & Rect(Point(0,0), det_img_gray.size());
+
 		query_pixels = Mat::zeros(exampleSize, det_img_gray.type());
 		query_pixels(Rect(Point(0,0), window.size())) += det_img_gray(window);
 	#endif
@@ -282,9 +288,10 @@ inline double PCA_classifier::rateBubble(const Mat& det_img_gray, const Point& b
 
 	#if 0
 		Mat out;
-		matchTemplate(pca_components, my_PCA.backProject(pca_components), out, CV_TM_SQDIFF_NORMED);
+		matchTemplate( pca_components, my_PCA.backProject(pca_components),
+		               out, CV_TM_SQDIFF_NORMED);
 		return out.at<float>(0,0);
-    #endif
+	#endif
 	Mat out = my_PCA.backProject(pca_components) - query_pixels;
 	return sum(out.mul(out)).val[0];
 }
@@ -342,7 +349,6 @@ Point PCA_classifier::bubble_align(const Mat& det_img_gray, const Point& bubble_
 	#endif
 	return loc + offset;
 }
-
 #else
 //This bit of code finds the location in the search_window most likely to be a bubble
 //then it checks that rather than the exact specified location.
@@ -354,7 +360,8 @@ Point PCA_classifier::bubble_align(const Mat& det_img_gray, const Point& bubble_
 	}
 
 	Mat out(search_window, CV_32F);
-	Point offset = Point(bubble_location.x - search_window.width/2, bubble_location.y - search_window.height/2);
+	Point offset = Point(bubble_location.x - search_window.width/2,
+	                     bubble_location.y - search_window.height/2);
 	
 	for(int i = 0; i < search_window.width; i++) {
 		for(int j = 0; j < search_window.height; j++) {
@@ -377,16 +384,21 @@ Point PCA_classifier::bubble_align(const Mat& det_img_gray, const Point& bubble_
 }
 #endif
 
-inline bool isFilled( int val ) {
-	return val != 1;
-}
 //Compare the specified bubble with all the training bubbles via PCA.
 bool PCA_classifier::classifyBubble(const Mat& det_img_gray, const Point& bubble_location) const {
+
+	int classificationIndex;	
 	Mat query_pixels;
-    #ifdef USE_GET_RECT_SUB_PIX
-		getRectSubPix(det_img_gray, Size(exampleSize.width, exampleSize.height), bubble_location, query_pixels);
+	
+	#ifdef USE_GET_RECT_SUB_PIX
+		getRectSubPix(det_img_gray, Size(exampleSize.width, exampleSize.height),
+		              bubble_location, query_pixels);
 	#else									 
-		Rect window = Rect(bubble_location - Point(exampleSize.width/2, exampleSize.height/2), exampleSize) & Rect(Point(0,0), det_img_gray.size());
+		Rect window = Rect(bubble_location - Point(exampleSize.width/2,
+		                                           exampleSize.height/2), exampleSize);
+		//Constrain the window to the image size:
+		window = window & Rect(Point(0,0), det_img_gray.size());
+
 		query_pixels = Mat::zeros(exampleSize, det_img_gray.type());
 		query_pixels(Rect(Point(0,0), window.size())) += det_img_gray(window);
 	#endif
@@ -408,12 +420,10 @@ bool PCA_classifier::classifyBubble(const Mat& det_img_gray, const Point& bubble
 	#endif
 	
 	#ifdef DISABLE_PCA
-		return isFilled( statClassifier.predict( query_pixels ) );
+		classificationIndex = statClassifier.predict( query_pixels );
+	#else
+		classificationIndex = statClassifier.predict( my_PCA.project(query_pixels) );
 	#endif
-	
-	int returnVal = statClassifier.predict( my_PCA.project(query_pixels) );
-	return isFilled( returnVal );
-}
-bool PCA_classifier::trained() {
-	return my_PCA.mean.data != NULL;
+
+	return  classificationIndex != emptyClassificationIndex;
 }
