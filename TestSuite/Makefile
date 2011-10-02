@@ -9,9 +9,12 @@ ALL_SRCS := $(CORE_SRCS) StatCollector.cpp
 ALL_HEADERS := $(CORE_HEADERS) StatCollector.h configuration.h
 ALL_OBJS := $(CORE_OBJS) StatCollector.o $(JSON_PARSER_OBJS)
 
-#The OpenCV includes might need to be adjusted if you aren't running this on a linux system.
-#Even then, pkg-config might not be set up with OpenCV.
+#The OPENCV_INCLUDES will probably need to be adjusted if you aren't running this on a linux system.
+#Even then, pkg-config might not be set up.
+#Also, you might need to add this to your .bashrc
+#export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
 OPENCV_INCLUDES := `pkg-config opencv --cflags --libs`
+
 INCLUDES := $(OPENCV_INCLUDES) -I../jsoncpp-src-0.5.0/include -I./core -I./
 
 CourseEvalTest: tests/CourseEvalTest.test
@@ -26,7 +29,7 @@ CourseEvalTest: tests/CourseEvalTest.test
 #make Experiment EXPERIMENT_FOLDER=experiment_1
 #If no folder is specified it will default to experiment_1
 ifndef $(EXPERIMENT_FOLDER)
-EXPERIMENT_FOLDER := experiment_1
+	EXPERIMENT_FOLDER := experiment_1
 endif
 Experiment: tests/Experiment.test
 	@rm -rf aligned_forms/$(EXPERIMENT_FOLDER)
