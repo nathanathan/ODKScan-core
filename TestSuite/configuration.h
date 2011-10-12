@@ -39,6 +39,6 @@ extern cv::Point TEST_PARAM;
 #if 0
 extern int EIGENBUBBLES;
 #else
-#define EIGENBUBBLES 7
+#define EIGENBUBBLES 9
 #endif
 #endif

@@ -79,7 +79,7 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage, bool drawCounts) {
 				const Json::Value bubbles = segment["bubbles"];
 				for ( size_t k = 0; k < bubbles.size(); k++ ) {
 					const Json::Value bubble = bubbles[k];
-					const bool bubbleFilled = bubble["value"].asBool();
+					const int bubbleFilled = bubble["value"].asInt();
 					
 					if(bubbleFilled){
 						filledBubbles++;
@@ -93,7 +93,7 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage, bool drawCounts) {
 					bubbleNum++;
 					#endif
 					
-					circle(markupImage, bubbleLocation, 2, 	getColor(bubbleFilled), 1, CV_AA);
+					circle(markupImage, bubbleLocation, 2, 	colors[bubbleFilled], 1, CV_AA);
 				}
 			}
 			else{//If we're dealing with a regular form template
@@ -151,7 +151,7 @@ bool MarkupForm::outputFieldCounts(const char* bubbleVals, const char* outputPat
 			
 			for ( size_t k = 0; k < bubbles.size(); k++ ) {
 				const Json::Value bubble = bubbles[k];
-				if(bubble["value"].asBool()){
+				if(bubble["value"].asInt()){
 					counter++;
 				}
 			}

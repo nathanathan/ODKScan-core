@@ -22,7 +22,7 @@
 //   half pixel error.
 //2. If the rectangle crosses the image boundary (because of a large search window)
 //   it won't give an error.
-//#define USE_GET_RECT_SUB_PIX
+#define USE_GET_RECT_SUB_PIX
 
 //#define USE_MASK
 //Using a mask seems to slightly help bubble alignment in the average case but cause some additional misses.
@@ -163,6 +163,7 @@ bool PCA_classifier::load(const string& inputPath, const Size& requiredExampleSi
 		cout << err_msg << endl;
 		return false;
 	}
+	emptyClassificationIndex = vectorFind(classifications, string("empty"));
 	return true;
 }
 //Loads a image with the specified filename and adds it to the PCA set.
@@ -385,7 +386,7 @@ Point PCA_classifier::bubble_align(const Mat& det_img_gray, const Point& bubble_
 #endif
 
 //Compare the specified bubble with all the training bubbles via PCA.
-bool PCA_classifier::classifyBubble(const Mat& det_img_gray, const Point& bubble_location) const {
+int PCA_classifier::classifyBubble(const Mat& det_img_gray, const Point& bubble_location) const {
 
 	int classificationIndex;	
 	Mat query_pixels;
@@ -425,5 +426,10 @@ bool PCA_classifier::classifyBubble(const Mat& det_img_gray, const Point& bubble
 		classificationIndex = statClassifier.predict( my_PCA.project(query_pixels) );
 	#endif
 
-	return  classificationIndex != emptyClassificationIndex;
+	if(classificationIndex == emptyClassificationIndex){
+		return  0;
+	}
+	else{
+		return  classificationIndex + 1;
+	}
 }

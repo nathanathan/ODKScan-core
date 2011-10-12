@@ -49,7 +49,7 @@ class PCA_classifier
 									int eigenvalues = 7,
 									bool flipExamples = false);
 		cv::Point bubble_align(const cv::Mat& det_img_gray, const cv::Point& bubble_location) const;
-		bool classifyBubble(const cv::Mat& det_img_gray, const cv::Point& bubble_location) const;
+		int classifyBubble(const cv::Mat& det_img_gray, const cv::Point& bubble_location) const;
 
 		bool save(const std::string& outputPath) const;
 		bool load(const std::string& inputPath, const cv::Size& requiredExampleSize);

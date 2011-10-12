@@ -34,10 +34,14 @@
 	NameGenerator namer;
 #endif
 
+#define TIME_IT
+#define CLASSIFY_BUBBLES true
+#define DO_BUBBLE_ALIGNMENT true
+
 using namespace std;
 using namespace cv;
 
-Json::Value genBubblesJson( const vector<bool>& bubbleVals, const vector<Point>& bubbleLocations, 
+Json::Value genBubblesJson( const vector<int>& bubbleVals, const vector<Point>& bubbleLocations, 
                             const Point& offset, const Mat& transformation = (Mat_<double>(3,3) << 1, 0, 0, 0, 1, 0, 0, 0, 1)) {
 							
 	assert(bubbleLocations.size() == bubbleVals.size());
@@ -66,10 +70,14 @@ bool classifierTrained;
 string templPath;
 string appRootDir;
 
-vector<bool> classifyBubbles(const Mat& segment, const vector<Point> bubbleLocations) {
-	vector<bool> out;
+#ifdef TIME_IT
+clock_t init;
+#endif
+
+vector<int> classifyBubbles(const Mat& segment, const vector<Point> bubbleLocations) {
+	vector<int> out;
 	for (size_t i = 0; i < bubbleLocations.size(); i++) {
-		out.push_back( classifier.classifyBubble(segment, bubbleLocations[i]) );
+		out.push_back( classifier.classifyBubble(segment, bubbleLocations[i]) ); 
 	}
 	return out;
 }
@@ -117,7 +125,7 @@ Json::Value processSegment(const Json::Value &segmentTemplate) {
 	Json::Value segmentJsonOut;
 	Mat segmentImg;
 	vector <Point> segBubbleLocs;
-	vector <bool> bubbleVals;
+	vector <int> bubbleVals;
 
 	Rect segmentRect( SCALEPARAM * Point(segmentTemplate.get("x", INT_MIN ).asInt(),
 	                                     segmentTemplate.get("y", INT_MIN).asInt()),
@@ -158,7 +166,7 @@ Json::Value processSegment(const Json::Value &segmentTemplate) {
 		vector<Point2f> quad;
 		findSegment(segmentImg, segmentRect - expandedRect.tl(), quad);
 
-		if(testQuad(quad, segmentRect, .15)){
+		if(testQuad(quad, segmentRect, .15) && CLASSIFY_BUBBLES){
 			#ifdef DEBUG_PROCESSOR
 				//This makes a stream of dots so we can see how fast things are going.
 				//we get a ! when things go wrong.
@@ -169,7 +177,7 @@ Json::Value processSegment(const Json::Value &segmentTemplate) {
 			warpPerspective(segmentImg, alignedSegment, transformation, segmentRect.size());
 			segmentImg = alignedSegment;
 			
-			segBubbleLocs = getBubbleLocations(segmentImg, segmentTemplate["bubble_locations"], true);
+			segBubbleLocs = getBubbleLocations(segmentImg, segmentTemplate["bubble_locations"], DO_BUBBLE_ALIGNMENT);
 			bubbleVals = classifyBubbles( segmentImg, segBubbleLocs );
 			
 			segmentJsonOut["quad"] = quadToJsonArray( quad, expandedRect.tl() );
@@ -252,7 +260,11 @@ bool trainClassifier(string trainingImageDir) {
 
 public:
 
-ProcessorImpl(const char* appRootDir) : appRootDir(string(appRootDir)), classifierTrained(false) {}
+ProcessorImpl(const char* appRootDir) : appRootDir(string(appRootDir)), classifierTrained(false) {
+	#ifdef TIME_IT	
+		init = clock();
+	#endif
+}
 
 bool setTemplate(const char* templatePath) {
 	#ifdef DEBUG_PROCESSOR
@@ -275,7 +287,6 @@ bool loadFormImage(const char* imagePath, bool undistort) {
 	#ifdef DEBUG_PROCESSOR
 		cout << "loading form image..." << flush;
 	#endif
-	
 	Mat temp;
 	
 	formImage = imread(imagePath, 0);
@@ -313,6 +324,14 @@ bool loadFormImage(const char* imagePath, bool undistort) {
 
 	JsonOutput["image_path"] = imagePath;
 	
+	#ifdef TIME_IT
+		LOGI("LoadFormImage time: ");
+		ostringstream ss;
+		ss << (double)(clock()-init) / ((double)CLOCKS_PER_SEC);
+		LOGI( ss.str().c_str() );
+		init = clock();
+	#endif
+
 	#ifdef DEBUG_PROCESSOR
 		cout << "loaded" << endl;
 	#endif
@@ -322,7 +341,6 @@ bool alignForm(const char* alignedImageOutputPath, size_t formIdx) {
 	#ifdef DEBUG_PROCESSOR
 		cout << "aligning form..." << endl;
 	#endif
-	
 	Mat straightenedImage;
 	try{
 		Size form_sz(root.get("width", 0).asInt(), root.get("height", 0).asInt());
@@ -347,7 +365,14 @@ bool alignForm(const char* alignedImageOutputPath, size_t formIdx) {
 
 	formImage = straightenedImage;	
 	JsonOutput["aligned_image_path"] = alignedImageOutputPath;
-	
+
+	#ifdef TIME_IT
+		LOGI("alignForm time: ");
+		ostringstream ss;
+		ss << (double)(clock()-init) / ((double)CLOCKS_PER_SEC);
+		LOGI( ss.str().c_str() );
+		init = clock();
+	#endif
 	#ifdef DEBUG_PROCESSOR
 		cout << "aligned" << endl;
 	#endif
@@ -406,6 +431,14 @@ bool processForm(const char* outputPath) {
 	ofstream outfile(outputPath, ios::out | ios::binary);
 	outfile << JsonOutput;
 	outfile.close();
+
+	#ifdef TIME_IT
+		LOGI("Process time: ");
+		ostringstream ss;
+		ss << (double)(clock()-init) / ((double)CLOCKS_PER_SEC);
+		LOGI( ss.str().c_str() );
+		init = clock();
+	#endif
 	return true;
 }
 //Writes the form image to a file.
