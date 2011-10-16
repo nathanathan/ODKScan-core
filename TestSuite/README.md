@@ -8,7 +8,7 @@ In addition you will need to provide your own form images in a "form_images" fol
 Source file information
 -----------------------
 
-	Core Files:
+Core Files:
 
 * Processor (.h|.cpp) -- Handles JSON parsing and provides an interface.
 * Aligner (.h|.cpp) -- Class for detecting and aligning forms.
@@ -20,9 +20,9 @@ Source file information
 * FileUtils (.h|.cpp) --A utility for crawling file trees and returning all the file names.
 * MarkupForm (.h|.cpp) --Contains a function for marking up a form using a JSON form template or bubble vals file.
 
-	special note:
-	Core Files can be swapped with those in the jni directory.
-	The command "make jni-transfer" will do this swapping for you.
+Special note:
+Core Files can be swapped with those in the jni directory.
+The command "make jni-transfer" will do this swapping for you.
 
 	Test Suite Specific Files:
 
@@ -37,6 +37,7 @@ Source file information
 make Experiment EXPERIMENT_FOLDER=some_folder
 
 (It might have some parameters that are hard-coded for a specific form I've been using not publicly available)
+
 * CourseEvalTest.cpp --This test uses the course eval form included in the repository so it should work out of the box. (However, at the moment I'm writing this, I'm pretty sure it doesn't)
 							
 	calibration:
