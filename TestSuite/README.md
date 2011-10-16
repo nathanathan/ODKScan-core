@@ -8,7 +8,7 @@ In addition you will need to provide your own form images in a "form_images" fol
 Source file information
 -----------------------
 
-Core Files:
+	Core Files:
 
 * Processor (.h|.cpp) -- Handles JSON parsing and provides an interface.
 * Aligner (.h|.cpp) -- Class for detecting and aligning forms.
@@ -20,7 +20,7 @@ Core Files:
 * FileUtils (.h|.cpp) --A utility for crawling file trees and returning all the file names.
 * MarkupForm (.h|.cpp) --Contains a function for marking up a form using a JSON form template or bubble vals file.
 
-Special note:
+	Special note:
 Core Files can be swapped with those in the jni directory.
 The command "make jni-transfer" will do this swapping for you.
 
