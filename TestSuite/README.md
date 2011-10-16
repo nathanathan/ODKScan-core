@@ -40,11 +40,12 @@ Test Suite Specific Files
 Tests
 ------
 
-* Experiment.cpp -- This is the most comprehensive test. You can run it on a collection of images in some_folder with the command
+* Experiment.cpp -- This is the most comprehensive test.
 
-
+You can run it on a collection of images in some_folder with the following command:
 
 	make Experiment EXPERIMENT_FOLDER=some_folder
+
 
 * CourseEvalTest.cpp -- This test uses the course eval form included in the repository so it should work out of the box. (However, at the moment I'm writing this, I'm pretty sure it doesn't)
 
