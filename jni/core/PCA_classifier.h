@@ -16,7 +16,8 @@ class PCA_classifier
 		
 		CvSVM statClassifier;
 
-		std::vector<std::string> classifications; 
+		std::vector<std::string> classifications;
+		int emptyClassificationIndex;
 		
 		cv::PCA my_PCA;
 	
@@ -36,7 +37,8 @@ class PCA_classifier
 		int getClassificationIdx(const std::string& filepath);
 		
 		void PCA_set_push_back(cv::Mat& PCA_set, const cv::Mat& img);
-		void PCA_set_add(cv::Mat& PCA_set, std::vector<int>& trainingBubbleValues, const std::string& filename, bool flipExamples);
+		void PCA_set_add(cv::Mat& PCA_set, std::vector<int>& trainingBubbleValues,
+		                 const std::string& filename, bool flipExamples);
 	public:
 		cv::Size exampleSize; //Can I make this immutable to clients (without an accesor function)?
 
@@ -48,8 +50,6 @@ class PCA_classifier
 									bool flipExamples = false);
 		cv::Point bubble_align(const cv::Mat& det_img_gray, const cv::Point& bubble_location) const;
 		bool classifyBubble(const cv::Mat& det_img_gray, const cv::Point& bubble_location) const;
-		
-		bool trained();
 
 		bool save(const std::string& outputPath) const;
 		bool load(const std::string& inputPath, const cv::Size& requiredExampleSize);

@@ -15,8 +15,8 @@ import android.util.Log;
  */
 public class RunSetup implements Runnable {
 	
-	public static final int version = 51;
-	public static final boolean clearOldData = false;
+	public static final int version = 59;
+	public static final boolean clearOldData = true;
 	
 	private SharedPreferences settings;
 	private AssetManager assets;

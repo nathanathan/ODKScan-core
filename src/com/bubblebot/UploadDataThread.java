@@ -21,7 +21,7 @@ public class UploadDataThread implements Runnable {
 		this.handler = handler;
 		this.authToken = authToken;
 	}
-	@Override
+	//@Override
 	public void run() {
 		// Initialize FTClient
 		ftclient = new FtClient(authToken);

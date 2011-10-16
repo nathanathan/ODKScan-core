@@ -8,7 +8,11 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.util.Log;
-
+/*
+ * BubbleCollect2 launches the Android camera app and collects the picture taken.
+ */
+//TODO: Add some kind of error handling for when the device doesn't have a camera app.
+//		It's an unlikely scenario so this isn't a priority.
 public class BubbleCollect2 extends Activity {
 
 	private static final int TAKE_PICTURE = 12346789;
@@ -32,11 +36,9 @@ public class BubbleCollect2 extends Activity {
 	@Override
 	public void onActivityResult(int requestCode, int resultCode, Intent data) {
 		super.onActivityResult(requestCode, resultCode, data);
-		Log.i("mScan", "activity result");
+		Log.i("mScan", "Camera activity result: " + requestCode);
 		switch (requestCode) {
 		case TAKE_PICTURE:
-			Log.i("mScan", ":" + resultCode);
-
 			finishActivity(TAKE_PICTURE);
 
 			if (resultCode == Activity.RESULT_OK) {
@@ -65,6 +67,8 @@ public class BubbleCollect2 extends Activity {
 	//This method will generate a unique name with the given prefix by appending
 	//the current value of a counter, then incrementing the counter.
 	//Each prefix used has its own counter stored in the share preferences.
+	//TODO: This should be specified in an argument bundle that way the retake photo button
+	//		will not create a new photo.
 	protected String getUniqueName(String prefix) {
 		SharedPreferences settings = getSharedPreferences(getResources().getString(R.string.prefs_name), 0);
 		int uid = settings.getInt(prefix, 0);
