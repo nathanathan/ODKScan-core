@@ -1,14 +1,16 @@
 TestSuite
 =========
+
 This is a testing suite for the form scanning procedure.
 None of the tests work out of the box.
 You will need to have a form image and form template, and to specify their respective paths in the code for the test you are running.
 In addition you will need to provide your own form images in a "form_images" folder.
 
 Source file information
------------------------
+=======================
 
-	Core Files:
+Core Files:
+----------
 
 * Processor (.h|.cpp) -- Handles JSON parsing and provides an interface.
 * Aligner (.h|.cpp) -- Class for detecting and aligning forms.
@@ -21,25 +23,33 @@ Source file information
 * MarkupForm (.h|.cpp) --Contains a function for marking up a form using a JSON form template or bubble vals file.
 
 Special note:
-Core Files can be swapped with those in the jni directory.
-The command "make jni-transfer" will do this swapping for you.
+Core Files can be swapped with those in the jni directory. The command
 
-	Test Suite Specific Files:
+	make jni-transfer
+	
+will do this swapping for you.
 
-* TestTools.cpp --Code for use in test programs. Prints out stats.
-* ROC_plot_script --Plots ROC curves using the resultant data from tests with varying parameters. In order to generate plots you will have to install [R] the statisical programming language.
-* TemplateEditor.cpp --This is some code that might be useful for editing JSON templates. It's pretty messy so I don't know if it will be of much use to anyone but me.
-* configuration.h --The jni folder has a configuration file as well, but they are *not* interchangable. This file is used to define macros that enable test suite specific funtionality. (For example outputting debug text/images).
+Test Suite Specific Files:
+----------
 
-	Tests:
+* TestTools.cpp -- Code for use in test programs. Prints out stats.
+* ROC_plot_script -- Plots ROC curves using the resultant data from tests with varying parameters. In order to generate plots you will have to install [R] the statisical programming language.
+* TemplateEditor.cpp -- This is some code that might be useful for editing JSON templates. It's pretty messy so I don't know if it will be of much use to anyone but me.
+* configuration.h -- The jni folder has a configuration file as well, but they are *not* interchangable. This file is used to define macros that enable test suite specific funtionality. (For example outputting debug text/images).
 
-* Experiment.cpp --This is the most comprehensive test. You can run it on a collection of images in some_folder with the command "make Experiment EXPERIMENT_FOLDER=some_folder" 
-* CourseEvalTest.cpp --This test uses the course eval form included in the repository so it should work out of the box. (However, at the moment I'm writing this, I'm pretty sure it doesn't)
+Tests:
+----------
+
+* Experiment.cpp -- This is the most comprehensive test. You can run it on a collection of images in some_folder with the command
+
+	make Experiment EXPERIMENT_FOLDER=some_folder
+	
+* CourseEvalTest.cpp -- This test uses the course eval form included in the repository so it should work out of the box. (However, at the moment I'm writing this, I'm pretty sure it doesn't)
 
 Tests might have some parameters that are hard-coded for a specific form I've been using not publicly available.
 
-	Calibration:
-	test
+Calibration:
+----------
 	
 * calibration.cpp --Calibration code from OpenCV samples. Calibration can provide substancial improvement to all steps in the pipline.
 
