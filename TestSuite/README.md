@@ -24,22 +24,22 @@ Special note:
 Core Files can be swapped with those in the jni directory.
 The command "make jni-transfer" will do this swapping for you.
 
-	Test Suite Specific Files:
+	Test Suite Specific Files
 
 * TestTools.cpp --Code for use in test programs. Prints out stats.
 * ROC_plot_script --Plots ROC curves using the resultant data from tests with varying parameters. In order to generate plots you will have to install [R] the statisical programming language.
 * TemplateEditor.cpp --This is some code that might be useful for editing JSON templates. It's pretty messy so I don't know if it will be of much use to anyone but me.
 * configuration.h --The jni folder has a configuration file as well, but they are *not* interchangable. This file is used to define macros that enable test suite specific funtionality.(For example outputting debug text/images).
 
-	Tests:
-
-Tests might have some parameters that are hard-coded for a specific form I've been using not publicly available.
+	Tests
 
 * Experiment.cpp --This is the most comprehensive test. You can run it on a collection of images in some_folder with the command "make Experiment EXPERIMENT_FOLDER=some_folder" 
 
 * CourseEvalTest.cpp --This test uses the course eval form included in the repository so it should work out of the box. (However, at the moment I'm writing this, I'm pretty sure it doesn't)
 
-	Calibration:
+Tests might have some parameters that are hard-coded for a specific form I've been using not publicly available.
+
+	Calibration
 	
 * calibration.cpp --Calibration code from OpenCV samples. Calibration can provide substancial improvement to all steps in the pipline.
 
