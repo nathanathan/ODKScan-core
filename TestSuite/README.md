@@ -10,10 +10,6 @@ Source file information
 
 	Core Files:
 
-Special note:
-Core Files can be swapped with those in the jni directory.
-The command "make jni-transfer" will do this swapping for you.
-
 * Processor (.h|.cpp) -- Handles JSON parsing and provides an interface.
 * Aligner (.h|.cpp) -- Class for detecting and aligning forms.
 * SegmentAligner (.h|.cpp) -- Contains code for aligning segments.
@@ -24,6 +20,10 @@ The command "make jni-transfer" will do this swapping for you.
 * FileUtils (.h|.cpp) --A utility for crawling file trees and returning all the file names.
 * MarkupForm (.h|.cpp) --Contains a function for marking up a form using a JSON form template or bubble vals file.
 
+Special note:
+Core Files can be swapped with those in the jni directory.
+The command "make jni-transfer" will do this swapping for you.
+
 	Test Suite Specific Files:
 
 * TestTools.cpp --Code for use in test programs. Prints out stats.
@@ -31,17 +31,15 @@ The command "make jni-transfer" will do this swapping for you.
 * TemplateEditor.cpp --This is some code that might be useful for editing JSON templates. It's pretty messy so I don't know if it will be of much use to anyone but me.
 * configuration.h --The jni folder has a configuration file as well, but they are *not* interchangable. This file is used to define macros that enable test suite specific funtionality.(For example outputting debug text/images).
 
-	tests:
+	Tests:
 
-* Experiment.cpp --This is the most comprehensive test. You can run it on a collection of images in some_folder with the command:
+Tests might have some parameters that are hard-coded for a specific form I've been using not publicly available.
 
-make Experiment EXPERIMENT_FOLDER=some_folder
-
-(It might have some parameters that are hard-coded for a specific form I've been using not publicly available)
+* Experiment.cpp --This is the most comprehensive test. You can run it on a collection of images in some_folder with the command "make Experiment EXPERIMENT_FOLDER=some_folder" 
 
 * CourseEvalTest.cpp --This test uses the course eval form included in the repository so it should work out of the box. (However, at the moment I'm writing this, I'm pretty sure it doesn't)
-							
-	calibration:
+
+	Calibration:
 	
 * calibration.cpp --Calibration code from OpenCV samples. Calibration can provide substancial improvement to all steps in the pipline.
 
