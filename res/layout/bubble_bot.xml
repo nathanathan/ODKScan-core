@@ -5,38 +5,49 @@
     android:layout_height="fill_parent" 
     android:orientation="vertical">
 <TextView  
-    android:layout_width="fill_parent" 
-    android:layout_height="wrap_content" 
-    android:gravity="center"
+    style="@style/StandardFont"
+    android:textSize="80dip"
+    android:text="mScan"
+    android:textColor="#fff"
+    android:background="#025"
+    android:layout_margin="5dp"/>
+<TableLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="wrap_content">
+    <TableRow>
+		<Button 
+			android:text="@string/ScanButton" 
+			android:id="@+id/ScanButton" 
+			style="@style/StandardButton">	
+		</Button>
+		<Button 
+			android:text="@string/ViewFormsButton" 
+			android:id="@+id/ViewFormsButton" 
+			style="@style/StandardButton">
+		</Button>
+    </TableRow>
+
+    <TableRow>
+		<Button 
+			android:text="@string/InstructionsButton" 
+			android:id="@+id/InstructionsButton" 
+			style="@style/StandardButton">
+		</Button>
+		<Button 
+			android:text="@string/SettingsButton" 
+			android:id="@+id/SettingsButton" 
+			style="@style/StandardButton">
+		</Button>
+    </TableRow>
+</TableLayout>
+<TextView  
+    style="@style/StandardFont"
     android:padding="20dp"
-    android:text="@string/WelcomeScreen">
+    android:text="The current health center is:">
 </TextView>
-<Button 
-	android:text="@string/ScanButton" 
-	android:id="@+id/ScanButton" 
-	android:layout_width="fill_parent" 
-	android:layout_height="70dp"
-	android:layout_margin="3dp">	
-</Button>
-<Button 
-	android:text="@string/ViewFormsButton" 
-	android:id="@+id/ViewFormsButton" 
-	android:layout_width="fill_parent" 
-	android:layout_height="70dp"
-	android:layout_margin="3dp">
-</Button>
-<Button 
-	android:text="@string/InstructionsButton" 
-	android:id="@+id/InstructionsButton" 
-	android:layout_width="fill_parent" 
-	android:layout_height="70dp"
-	android:layout_margin="3dp">
-</Button>
-<Button 
-	android:text="@string/SettingsButton" 
-	android:id="@+id/SettingsButton" 
-	android:layout_width="fill_parent" 
-	android:layout_height="70dp"
-	android:layout_margin="3dp">
-</Button>
+<Spinner
+    android:id="@+id/healthCenterSpinner"
+    style="@style/StandardFont"
+    android:layout_margin="3dp" />
+    
 </LinearLayout>
