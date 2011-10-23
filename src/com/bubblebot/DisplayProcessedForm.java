@@ -167,6 +167,10 @@ public class DisplayProcessedForm extends Activity {
 			intent = new Intent(getApplication(), BubbleCollect2.class);
 			startActivity(intent);
 			return true;
+		case R.id.startOver:
+			intent = new Intent(getApplication(), BubbleBot.class);
+			startActivity(intent);
+			return true;
 		default:
 			return super.onOptionsItemSelected(item);
 		}

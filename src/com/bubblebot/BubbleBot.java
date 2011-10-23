@@ -10,7 +10,12 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.Spinner;
+import android.widget.Toast;
 
 /* Bubblebot activity
  * 
@@ -21,7 +26,7 @@ public class BubbleBot extends Activity {
 
 	ProgressDialog pd;
 	public boolean spaceAlerted = false;
-	
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -35,7 +40,9 @@ public class BubbleBot extends Activity {
 			Thread thread = new Thread(new RunSetup(handler, settings, getAssets()));
 			thread.start();
 		}
-
+		
+		SetupSpinner();
+		
 		// Hook up handler for scan form button
 		Button scanForm = (Button) findViewById(R.id.ScanButton);
 		scanForm.setOnClickListener(new View.OnClickListener() {
@@ -74,6 +81,43 @@ public class BubbleBot extends Activity {
 			}
 		});
 	}
+
+	// Method to initialize UI
+	public void SetupSpinner()
+	{
+		final String [] healthCenterNames = getResources().getStringArray(R.array.healthCenterNames);
+		Spinner spinny = (Spinner) findViewById(R.id.healthCenterSpinner);
+		ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, healthCenterNames);
+		
+		/*
+		spinny.setOnItemClickListener(new OnItemClickListener(){
+
+			public void onItemClick(AdapterView<?> arg0, View arg1, int arg2,
+					long arg3) {
+				Toast.makeText(getApplicationContext(), healthCenterNames[arg2], 5).show();
+			}
+
+        });
+		*/
+		adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+		spinny.setAdapter(adapter);
+		spinny.setOnItemSelectedListener(new mySpinnerListener());
+	}
+	
+	class mySpinnerListener implements Spinner.OnItemSelectedListener
+	{
+		public void onItemSelected(AdapterView<?> parent, View v, int position, long id) {
+			// TODO Auto-generated method stub
+			Toast.makeText(parent.getContext(), parent.getItemAtPosition(position).toString(), Toast.LENGTH_LONG).show();
+		}
+		public void onNothingSelected(AdapterView<?> parent) {
+			// TODO Auto-generated method stub
+			// Do nothing.
+		}
+	
+	}
+	
+	
 	@Override
 	protected void onResume() {
 		super.onResume();

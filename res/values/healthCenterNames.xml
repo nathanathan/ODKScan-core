@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array
+        name="healthCenterNames">
+        <item>Health Center A</item>
+	    <item>Health Center B</item>
+    </string-array>
+</resources>
