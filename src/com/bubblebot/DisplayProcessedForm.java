@@ -20,7 +20,6 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.webkit.WebView;
-import android.widget.TextView;
 
 /* DisplayProcessedForm activity
  * 
@@ -28,7 +27,6 @@ import android.widget.TextView;
  */
 public class DisplayProcessedForm extends Activity {
 
-	private TextView text;
 	private String photoName;
 
 	private ProgressDialog pd;
@@ -48,10 +46,12 @@ public class DisplayProcessedForm extends Activity {
 		if (extras != null) {
 			photoName = extras.getString("photoName");
 		}
-
+/*
+		//I think we can do without this
 		text = (TextView) findViewById(R.id.text);
 		text.setText("Displaying " + photoName);
-
+*/
+		setTitle("Displaying " + photoName);
 		MScanUtils.displayImageInWebView((WebView)findViewById(R.id.webview2),
 				MScanUtils.getMarkedupPhotoPath(photoName));
 	}

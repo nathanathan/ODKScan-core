@@ -11,7 +11,6 @@ import android.os.Handler;
 import android.os.Message;
 import android.view.View;
 import android.widget.AdapterView;
-import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.Spinner;
@@ -82,41 +81,29 @@ public class BubbleBot extends Activity {
 		});
 	}
 
-	// Method to initialize UI
 	public void SetupSpinner()
 	{
 		final String [] healthCenterNames = getResources().getStringArray(R.array.healthCenterNames);
 		Spinner spinny = (Spinner) findViewById(R.id.healthCenterSpinner);
 		ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, healthCenterNames);
-		
-		/*
-		spinny.setOnItemClickListener(new OnItemClickListener(){
+		adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+		spinny.setPrompt("Select Health Center");
+		spinny.setAdapter(adapter);
+		spinny.setOnItemSelectedListener(new Spinner.OnItemSelectedListener(){
 
-			public void onItemClick(AdapterView<?> arg0, View arg1, int arg2,
-					long arg3) {
-				Toast.makeText(getApplicationContext(), healthCenterNames[arg2], 5).show();
+			public void onItemSelected(AdapterView<?> parent, View v,
+					int position, long id) {
+				Toast.makeText(parent.getContext(), parent.getItemAtPosition(position).toString(), Toast.LENGTH_LONG).show();
+				
 			}
 
-        });
-		*/
-		adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-		spinny.setAdapter(adapter);
-		spinny.setOnItemSelectedListener(new mySpinnerListener());
+			public void onNothingSelected(AdapterView<?> parent) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+		});
 	}
-	
-	class mySpinnerListener implements Spinner.OnItemSelectedListener
-	{
-		public void onItemSelected(AdapterView<?> parent, View v, int position, long id) {
-			// TODO Auto-generated method stub
-			Toast.makeText(parent.getContext(), parent.getItemAtPosition(position).toString(), Toast.LENGTH_LONG).show();
-		}
-		public void onNothingSelected(AdapterView<?> parent) {
-			// TODO Auto-generated method stub
-			// Do nothing.
-		}
-	
-	}
-	
 	
 	@Override
 	protected void onResume() {

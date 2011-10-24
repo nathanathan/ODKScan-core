@@ -67,8 +67,6 @@ public class BubbleCollect2 extends Activity {
 	//This method will generate a unique name with the given prefix by appending
 	//the current value of a counter, then incrementing the counter.
 	//Each prefix used has its own counter stored in the share preferences.
-	//TODO: This should be specified in an argument bundle that way the retake photo button
-	//		will not create a new photo.
 	protected String getUniqueName(String prefix) {
 		SharedPreferences settings = getSharedPreferences(getResources().getString(R.string.prefs_name), 0);
 		int uid = settings.getInt(prefix, 0);
