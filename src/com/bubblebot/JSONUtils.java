@@ -140,11 +140,13 @@ public class JSONUtils {
 			try{
 				JSONArray bubbleValArray = jArray.getJSONObject(i).getJSONArray("bubbles");
 				for (int j = 0; j < bubbleValArray.length(); j++) {
-					if( bubbleValArray.getJSONObject(j).getBoolean("value") ){
+					if( bubbleValArray.getJSONObject(j).getInt("value") > 0 ){
 						numFilled++;
 					}
 				}
-			}catch(JSONException e){}
+			}catch(JSONException e){
+				//Log.i("mScan", "getSegmentCounts Exception: " + e.toString());
+			}
 			
 			bubbleCounts[i] = numFilled;
 		}
