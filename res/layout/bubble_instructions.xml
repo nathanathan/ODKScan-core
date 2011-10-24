@@ -6,39 +6,20 @@
     android:layout_width="fill_parent"
     android:layout_height="fill_parent" 
     android:orientation="vertical">
-<!--     
-<TextView  
-    android:layout_width="fill_parent" 
-    android:layout_height="wrap_content" 
-    android:gravity="left"
-    android:padding="3dp"
-    android:text="@string/Instructions1">
-</TextView>
-<TextView  
-    android:layout_width="fill_parent" 
-    android:layout_height="wrap_content" 
-    android:gravity="left"
-    android:padding="3dp"
-    android:text="@string/Instructions2">
-</TextView>
- -->
 <TextView 
-    android:layout_width="fill_parent" 
-    android:layout_height="wrap_content" 
+    style="@style/StandardFont"
     android:gravity="left"
     android:padding="3dp"
     android:text="mScan uses computer vision to covert paper forms into digital information.">
 </TextView>
 <TextView  
-    android:layout_width="fill_parent" 
-    android:layout_height="wrap_content" 
+    style="@style/StandardFont"
     android:gravity="left"
     android:padding="3dp"
     android:text="When photographing a form these are some guidelines you can follow in order to help prevent mScan from making mistakes:">
 </TextView>
 <TextView  
-    android:layout_width="fill_parent" 
-    android:layout_height="wrap_content" 
+    style="@style/StandardFont"
     android:gravity="left"
     android:padding="3dp"
     android:text="1. Make sure everything on the form is visable in the photo. Even sections that do not contain information you want to collect might contain features that help mScan align the form properly.">
@@ -49,8 +30,7 @@
 	android:src="@drawable/bad_picture">
 </ImageView>
 <TextView  
-    android:layout_width="fill_parent" 
-    android:layout_height="wrap_content" 
+    style="@style/StandardFont"
     android:gravity="left"
     android:padding="3dp"
     android:text="2. The form should take up about 80% of the screen space and be vertically aligned.">
@@ -61,22 +41,17 @@
 	android:src="@drawable/good_picture">
 </ImageView>
 <TextView  
-    android:layout_width="fill_parent" 
-    android:layout_height="wrap_content" 
-    android:gravity="left"
-    android:padding="3dp"
+    style="@style/StandardFont"
     android:text="3. Taking pictures in well lit locations, and avoiding shadows falling accross the form also helps.">
 </TextView>
 <TextView  
-    android:layout_width="fill_parent" 
-    android:layout_height="wrap_content" 
+    style="@style/StandardFont"
     android:gravity="left"
     android:padding="3dp"
     android:text="4. Finally, keep the camera as steady as possible.">
 </TextView>
 <TextView  
-    android:layout_width="fill_parent" 
-    android:layout_height="wrap_content" 
+    style="@style/StandardFont"
     android:gravity="left"
     android:padding="3dp"
     android:text="Using a stand like the one pictured below can make these guidelines much easier to follow.">
@@ -87,15 +62,13 @@
 	android:src="@drawable/stand_example">
 </ImageView>
 <TextView  
-    android:layout_width="fill_parent" 
-    android:layout_height="wrap_content" 
+    style="@style/StandardFont"
     android:gravity="left"
     android:padding="3dp"
-    android:text="@string/Instructions3">
+    android:text="After the photo is taken the image is aligned then processed. This may take around half a minute but the time varies a lot depending on the device you are using.">
 </TextView>
 <TextView  
-    android:layout_width="fill_parent" 
-    android:layout_height="wrap_content" 
+    style="@style/StandardFont"
     android:gravity="left"
     android:padding="3dp"
     android:text="@string/Instructions4">

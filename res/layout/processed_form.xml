@@ -5,11 +5,13 @@
     android:layout_height="fill_parent"
     >
 
-<TextView android:id="@+id/text" android:layout_width="fill_parent" android:layout_height="wrap_content" android:gravity="center" android:padding="10dp" android:text="Filename"/>
-<WebView  xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/webview2"
-    android:layout_width="fill_parent"
-    android:layout_height="fill_parent"
-    android:background="#000000"
-	android:scrollbars="none"/>
+	<!-- 
+	<TextView android:id="@+id/text" android:layout_width="fill_parent" android:layout_height="wrap_content" android:gravity="center" android:padding="10dp" android:text="Filename"/>
+	 -->
+	 <WebView  xmlns:android="http://schemas.android.com/apk/res/android"
+	    android:id="@+id/webview2"
+	    android:layout_width="fill_parent"
+	    android:layout_height="fill_parent"
+	    android:background="#000000"
+		android:scrollbars="none"/>
 </LinearLayout>
