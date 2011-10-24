@@ -15,7 +15,7 @@ import android.util.Log;
  */
 public class RunSetup implements Runnable {
 	
-	public static final int version = 60;
+	public static final int version = 71;
 	public static final boolean clearOldData = false;
 	
 	private SharedPreferences settings;
@@ -32,35 +32,29 @@ public class RunSetup implements Runnable {
 		SharedPreferences.Editor editor = settings.edit();
 		
 		if(clearOldData){
-			clearDir(MScanUtils.appFolder + MScanUtils.photoDir);
-			clearDir(MScanUtils.appFolder + MScanUtils.alignedPhotoDir);
-			clearDir(MScanUtils.appFolder + MScanUtils.jsonDir);
-			clearDir(MScanUtils.appFolder + MScanUtils.markupDir);
+			rmdir(new File(MScanUtils.appFolder));
 			editor.clear();
 		}
 		
-		// Set up directories if they do not exist
+		// Create necessary directories if they do not exist
 		(new File(MScanUtils.appFolder + MScanUtils.photoDir)).mkdirs();
 		(new File(MScanUtils.appFolder + MScanUtils.alignedPhotoDir)).mkdirs();
 		(new File(MScanUtils.appFolder + MScanUtils.jsonDir)).mkdirs();
 		(new File(MScanUtils.appFolder + MScanUtils.markupDir)).mkdirs();
 		
 		try {
-			//Create a .nomedia file to prevent the images from showing up in he gallery.
-			//This might not be working... hiding the folder might work.
+			//Creates a .nomedia file to prevent the images from showing up in he gallery.
 			new File(MScanUtils.appFolder + ".nomedia").createNewFile();
 			
-			String traininExamplesPath =  MScanUtils.appFolder + MScanUtils.trainingExampleDir;
-			String formTemplatesPath = MScanUtils.appFolder + MScanUtils.templateDir;
+			File traininExamplesDir =  new File(MScanUtils.appFolder, MScanUtils.trainingExampleDir);
+			File formTemplatesDir = new File(MScanUtils.appFolder, MScanUtils.templateDir);
 			
-			clearDir(traininExamplesPath);
-			clearDir(formTemplatesPath);
+			//Note: If clearOldData is true these directories will be deleted twice.
+			rmdir(traininExamplesDir);
+			rmdir(formTemplatesDir);
+
+			extractAssets(new File(""), new File(MScanUtils.appFolder));
 			
-			//TODO: make the command below work.
-			//extractAssets("/", MScanUtils.appFolder);
-			extractAssets(MScanUtils.trainingExampleDir, traininExamplesPath);
-			extractAssets(MScanUtils.templateDir, formTemplatesPath);
-			copyAsset("camera.yml", MScanUtils.appFolder + "camera.yml");
 			editor.putInt("version", version);
 			
 		} catch (IOException e) {
@@ -72,35 +66,32 @@ public class RunSetup implements Runnable {
 		handler.sendEmptyMessage(0);
 	}
 	// This method copies the files within a given directory (with path relative to the assets folder).
-	protected void extractAssets(String assetsDir, String outputPath) throws IOException{
-		
-		assetsDir = removeSuffix(assetsDir, "/");
-		outputPath = removeSuffix(outputPath, "/");
-		
-		File dir = new File(outputPath);
-		dir.mkdirs();
-		String[] assetNames = assets.list(assetsDir);
+	protected void extractAssets(File assetsDir, File outputDir) throws IOException{
+
+		outputDir.mkdirs();
+		String[] assetNames = assets.list(assetsDir.toString());
 		for(int i = 0; i < assetNames.length; i++){
-			if(assets.list(assetsDir + "/" + assetNames[i]).length == 0){
-				copyAsset(assetsDir + "/" + assetNames[i], outputPath + "/" + assetNames[i]);
+			
+			File nextAssetsDir = new File(assetsDir, assetNames[i]);
+			File nextOutputDir = new File(outputDir, assetNames[i]);
+			
+			
+			if(assets.list(nextAssetsDir.toString()).length == 0){
+				copyAsset(nextAssetsDir, nextOutputDir);
 			}
 			else{
-				extractAssets(assetsDir + "/" + assetNames[i], outputPath + "/" + assetNames[i]);
+				extractAssets(nextAssetsDir, nextOutputDir);
 			}
 		}
 	}
-	protected String removeSuffix(String s, String suffix){
-		if(s.endsWith(suffix)){
-			return s.substring(0, s.length() - suffix.length());
-		}
-		return s;
-	}
-	protected void copyAsset(String assetLoc, String outputLoc) throws IOException {
-		//Log.i("mScan", "copy from " + assetLoc + " to " + outputLoc);
-		InputStream fis = assets.open(assetLoc);
-		File trainingExampleFile = new File(outputLoc);
-		trainingExampleFile.createNewFile();
-		FileOutputStream fos = new FileOutputStream(trainingExampleFile);
+	protected void copyAsset(File assetDir, File outputDir) throws IOException {
+		
+		Log.i("mScan", "Copying " + assetDir + " to " + outputDir.toString());
+		
+		InputStream fis = assets.open(assetDir.toString());
+
+		outputDir.createNewFile();
+		FileOutputStream fos = new FileOutputStream(outputDir);
 
 		// Transfer bytes from in to out
 		byte[] buf = new byte[1024];
@@ -112,18 +103,16 @@ public class RunSetup implements Runnable {
 		fos.close();
 		fis.close();
 	}
-	public void clearDir(String dirPath){
+	//Recursively remove all the files in a directory, then the directory.
+	public void rmdir(File dir){
 		
-		dirPath = removeSuffix(dirPath, "/");
-		
-		File dir = new File(dirPath);
 		if(dir.exists()){
 			String[] files = dir.list();
 			for(int i = 0; i < files.length; i++){
-				File file = new File(dirPath + "/" + files[i]);
-				Log.i("mScan", dirPath + "/" + files[i]);
+				File file = new File(dir, files[i]);
+				Log.i("mScan", "Removing: " + file.toString());
 				if(file.isDirectory()){
-					clearDir(dirPath + "/" + files[i]);
+					rmdir(file);
 				}
 				else{
 					file.delete();
@@ -132,7 +121,7 @@ public class RunSetup implements Runnable {
 			dir.delete();
 		}
 		else{
-			Log.i("mScan", "clearDir error");
+			Log.i("mScan", "Cound not remove directory, it does not exist:" + dir.toString());
 		}
 	}
 }
