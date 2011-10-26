@@ -1,8 +1,14 @@
 package com.bubblebot;
 
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.Date;
 import java.util.Random;
+
+import org.json.*;
 
 import com.bubblebot.RunProcessor.Mode;
 
@@ -30,10 +36,13 @@ public class AfterPhotoTaken extends Activity {
 	private boolean aligned = false;
     private String photoName;
     private RunProcessor runProcessor;
+    
     private Button processButton;
     private LinearLayout content;
-
-    private long startTime;
+    
+    private SharedPreferences settings;
+    
+    private long startTime;//only needed in debugMode
 
     @Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -55,7 +64,7 @@ public class AfterPhotoTaken extends Activity {
 		
 		photoName = extras.getString("photoName");
 		
-		SharedPreferences settings = getSharedPreferences(getResources().getString(R.string.prefs_name), 0);
+		settings = getSharedPreferences(getResources().getString(R.string.prefs_name), 0);
 		runProcessor = new RunProcessor(handler, photoName,
 				settings.getBoolean("doFormDetection", false),
 				settings.getBoolean("calibrate", false));
@@ -129,6 +138,7 @@ public class AfterPhotoTaken extends Activity {
             public void handleMessage(Message msg) {
             	
             	RunProcessor.Mode mode = RunProcessor.Mode.values()[msg.what];
+            	
             	dismissDialog(msg.what);
             	
             	if(MScanUtils.DebugMode){
@@ -154,6 +164,64 @@ public class AfterPhotoTaken extends Activity {
         			break;
         		case PROCESS:
             		if ( msg.arg1 == 1 ) {
+            			
+            			//Append the output to a CSV output file with the health center name included
+            			//The original output is not modified, and does not have any app specified data included in it
+            			//TODO: I want to move this to DisplayProcessedForm where it will be triggered by a Save Data button.
+            			try {
+							JSONObject formRoot = JSONUtils.parseFileToJSONObject(MScanUtils.getJsonPath(photoName));
+							JSONArray fields = formRoot.getJSONArray("fields");
+							int fieldsLength = fields.length();
+							
+							File file = new File(MScanUtils.appFolder + "all-data.csv");
+							 
+							FileWriter fileWritter;
+							BufferedWriter bufferWritter;
+							
+				    		//if file doesn't exists, then create it
+				    		if(!file.exists()){
+				    			
+				    			file.createNewFile();
+				    			
+				    			fileWritter = new FileWriter(file.toString());
+								bufferWritter = new BufferedWriter(fileWritter);
+								
+				    			for(int i = 0; i < fieldsLength; i++){
+				    				bufferWritter.write(fields.getJSONObject(i).getString("label") + "," );
+				    			}
+				    			
+				    			bufferWritter.write("Health Center");
+				    			bufferWritter.newLine();
+				    		}
+				    		else{
+				    			fileWritter = new FileWriter(file.toString(), true);
+								bufferWritter = new BufferedWriter(fileWritter);
+				    		}
+
+				    		for(int i = 0; i < fieldsLength; i++){
+			    				JSONObject field = fields.getJSONObject(i);
+								if( field.getJSONArray("segments").getJSONObject(0).getString("type").equals("bubble") ){
+									Integer[] segmentCounts = JSONUtils.getSegmentCounts(field);
+									bufferWritter.write(MScanUtils.sum(segmentCounts) + "," );
+								}
+								else{
+									bufferWritter.write(field.getJSONArray("segments").getJSONObject(0).getString("type") + "," );
+								}
+			    			}
+				    		bufferWritter.write(settings.getString("healthCenter", "unspecifiedHC"));
+				    		bufferWritter.newLine();
+							bufferWritter.close();
+							
+            			} catch (JSONException e) {
+            				// TODO Auto-generated catch block
+            				e.printStackTrace();
+            				Log.i("mScan", "JSON excetion in AfterPhotoTaken.");
+            			} catch (IOException e) {
+            				// TODO Auto-generated catch block
+            				e.printStackTrace();
+            				Log.i("mScan", "IO excetion in AfterPhotoTaken.");
+            			}
+            			
 	            		Intent intent = new Intent(getApplication(), DisplayProcessedForm.class);
 	                    intent.putExtra("photoName", photoName);
 	                    startActivity(intent);
@@ -162,29 +230,6 @@ public class AfterPhotoTaken extends Activity {
         		default:
         			return;
         		}
-            	
-            	/*
-            	if(mode == RunProcessor.Mode.PROCESS){
-            		if ( msg.arg1 == 1 ) {
-	            		Intent intent = new Intent(getApplication(), DisplayProcessedForm.class);
-	                    intent.putExtra("photoName", photoName);
-	                    startActivity(intent);
-            		}
-            	}
-            	else if(mode == RunProcessor.Mode.LOAD_ALIGN ||
-            			mode == RunProcessor.Mode.LOAD){
-            		aligned = (msg.arg1 == 1);
-	        		if ( aligned ) {
-	        			MScanUtils.displayImageInWebView((WebView)findViewById(R.id.webview),
-	        														MScanUtils.getAlignedPhotoPath(photoName));
-	        		}
-	        		else {
-	        			RelativeLayout failureMessage = (RelativeLayout) findViewById(R.id.failureMessage);
-	        			failureMessage.setVisibility(View.VISIBLE);
-	        		}
-	        		content.setVisibility(View.VISIBLE);
-	        		processButton.setEnabled(aligned);
-            	}*/
             }
     };
 }

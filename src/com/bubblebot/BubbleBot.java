@@ -25,13 +25,24 @@ public class BubbleBot extends Activity {
 
 	ProgressDialog pd;
 	public boolean spaceAlerted = false;
+	SharedPreferences settings;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.bubble_bot); // Setup the UI
 		
-		SharedPreferences settings = getSharedPreferences(getResources().getString(R.string.prefs_name), 0);
+		settings = getSharedPreferences(getResources().getString(R.string.prefs_name), 0);
+		
+		checkVersion();
+		
+		hookupButtonHandlers();
+		
+		setupSpinner();
+	}
+	
+	//Checks if the app is up-to-date and runs the setup if necessary
+	private void checkVersion() {
 		int currentVersion = settings.getInt("version", 0);
 		if(currentVersion < RunSetup.version) {
 			//TODO: It might be simpler to have all the runnables in separate files.
@@ -39,9 +50,9 @@ public class BubbleBot extends Activity {
 			Thread thread = new Thread(new RunSetup(handler, settings, getAssets()));
 			thread.start();
 		}
-		
-		SetupSpinner();
-		
+	}
+
+	private void hookupButtonHandlers() {
 		// Hook up handler for scan form button
 		Button scanForm = (Button) findViewById(R.id.ScanButton);
 		scanForm.setOnClickListener(new View.OnClickListener() {
@@ -81,8 +92,7 @@ public class BubbleBot extends Activity {
 		});
 	}
 
-	public void SetupSpinner()
-	{
+	public void setupSpinner() {
 		final String [] healthCenterNames = getResources().getStringArray(R.array.healthCenterNames);
 		Spinner spinny = (Spinner) findViewById(R.id.healthCenterSpinner);
 		ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, healthCenterNames);
@@ -91,15 +101,20 @@ public class BubbleBot extends Activity {
 		spinny.setAdapter(adapter);
 		spinny.setOnItemSelectedListener(new Spinner.OnItemSelectedListener(){
 
-			public void onItemSelected(AdapterView<?> parent, View v,
-					int position, long id) {
-				Toast.makeText(parent.getContext(), parent.getItemAtPosition(position).toString(), Toast.LENGTH_LONG).show();
+			public void onItemSelected(AdapterView<?> parent, View v, int position, long id) {
 				
+				String healthCenter = parent.getItemAtPosition(position).toString();
+				
+				SharedPreferences.Editor editor = settings.edit();
+				editor.putString("healthCenter", healthCenter);
+				//Note: I was worried about a bug where the healthCenter setting wouldn't match the spinner if it got reinitialized,
+				//      but I think they will always match because onItemSelected seems to be called when the spinner is initialized.
+				editor.commit();
+				//Toast.makeText(parent.getContext(), parent.getItemAtPosition(position).toString(), Toast.LENGTH_LONG).show();
 			}
 
 			public void onNothingSelected(AdapterView<?> parent) {
-				// TODO Auto-generated method stub
-				
+				Toast.makeText(parent.getContext(), "Nothing selected.", Toast.LENGTH_LONG).show();
 			}
 			
 		});
@@ -108,6 +123,8 @@ public class BubbleBot extends Activity {
 	@Override
 	protected void onResume() {
 		super.onResume();
+
+		//Check that there is room to store more images
 		final int APROX_IMAGE_SIZE = 1000000;
 		long usableSpace = MScanUtils.getUsableSpace(MScanUtils.appFolder);
 		if(!spaceAlerted && usableSpace >= 0 && usableSpace < 4 * APROX_IMAGE_SIZE) {

@@ -18,6 +18,43 @@ public class JSONUtils {
 	//Prevent instantiations
 	private JSONUtils(){}
 	
+/*
+	public static void simplifyOutput(String photoName, String outPath) {
+		try {
+			BufferedWriter out = new BufferedWriter(new FileWriter(outPath));
+			out.write(generateSimplifiedJSON(photoName).toString());
+			out.close();
+		} catch (JSONException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			Log.i("mScan", "JSON excetion in JSONUtils.");
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			Log.i("mScan", "IO excetion in JSONUtils.");
+		}
+	}
+	*/
+	public static JSONObject generateSimplifiedJSON(String photoName) throws JSONException, IOException {
+		JSONObject outRoot = new JSONObject();
+		JSONObject bubbleVals = parseFileToJSONObject(MScanUtils.getJsonPath(photoName));
+		JSONArray fields = bubbleVals.getJSONArray("fields");
+		
+		outRoot.put("form_name", bubbleVals.getString("template_path"));
+		
+		outRoot.put("location", "location_name");
+		
+		outRoot.put("data_capture_date",
+				new Date(new File(MScanUtils.getPhotoPath(photoName)).lastModified()).toString());
+		
+		JSONObject outFields = new JSONObject();
+		for(int i = 0; i < fields.length(); i++){
+			outFields.put(fields.getJSONObject(i).getString("label"),
+						  MScanUtils.sum(getSegmentCounts(fields.getJSONObject(i))));
+		}
+		outRoot.put("fields", outFields);
+		return outRoot;
+	}
 	public static String generateSimplifiedJSONString(String photoName) {
 		try {
 			String outString = generateSimplifiedJSON(photoName).toString();
@@ -37,41 +74,10 @@ public class JSONUtils {
 			return "";
 		}
 	}
-	public static void simplifyOutput(String photoName, String outPath) {
-		try {
-			BufferedWriter out = new BufferedWriter(new FileWriter(outPath));
-			out.write(generateSimplifiedJSON(photoName).toString());
-			out.close();
-		} catch (JSONException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			Log.i("mScan", "JSON excetion in JSONUtils.");
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			Log.i("mScan", "IO excetion in JSONUtils.");
-		}
-	}
-	public static JSONObject generateSimplifiedJSON(String photoName) throws JSONException, IOException {
-		JSONObject outRoot = new JSONObject();
-		
-		JSONObject bubbleVals = parseFileToJSONObject(MScanUtils.getJsonPath(photoName));
-		JSONArray fields = bubbleVals.getJSONArray("fields");
-		
-		outRoot.put("form_name", bubbleVals.getString("template_path"));
-		
-		outRoot.put("location", "location name");
-		
-		outRoot.put("data_capture_date",
-				new Date(new File(MScanUtils.getPhotoPath(photoName)).lastModified()).toString());
-		
-		JSONObject outFields = new JSONObject();
-		for(int i = 0; i < fields.length(); i++){
-			outFields.put(fields.getJSONObject(i).getString("label"),
-						  MScanUtils.sum(getSegmentCounts(fields.getJSONObject(i))));
-		}
-		outRoot.put("fields", outFields);
-		return outRoot;
+	public static void writeJSONObjectToFile(JSONObject obj, String outPath) throws JSONException, IOException {
+		BufferedWriter out = new BufferedWriter(new FileWriter(outPath));
+		out.write(obj.toString(4));
+		out.close();
 	}
 	public static JSONObject parseFileToJSONObject(String bvFilename) throws JSONException, IOException {
 		File jsonFile = new File(bvFilename);

@@ -46,11 +46,7 @@ public class DisplayProcessedForm extends Activity {
 		if (extras != null) {
 			photoName = extras.getString("photoName");
 		}
-/*
-		//I think we can do without this
-		text = (TextView) findViewById(R.id.text);
-		text.setText("Displaying " + photoName);
-*/
+
 		setTitle("Displaying " + photoName);
 		MScanUtils.displayImageInWebView((WebView)findViewById(R.id.webview2),
 				MScanUtils.getMarkedupPhotoPath(photoName));
@@ -153,6 +149,7 @@ public class DisplayProcessedForm extends Activity {
 			startActivity(intent); 
 			return true;
 		case R.id.uploadData:
+			//TODO: Put the upload stuff into another file/activity to keep things cleaner
 			NetworkInfo neti = ((ConnectivityManager) this.getSystemService(Context.CONNECTIVITY_SERVICE)).getActiveNetworkInfo();
 			if(neti != null && neti.isConnected()){
 				showDialog(DIALOG_ACCOUNTS);

@@ -8,13 +8,13 @@ import android.view.View;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 /*
- * MScanUtils contains methods and data share across the mScan application.
+ * MScanUtils contains methods and data shared across the mScan application.
  */
 public class MScanUtils {
 	//Prevent instantiations
 	private MScanUtils(){}
 
-	public static final boolean DebugMode = true;
+	public static final boolean DebugMode = false;
 	
 	public static final String appFolder = "/sdcard/mScan/";
 	public static final String photoDir = "photos/";
