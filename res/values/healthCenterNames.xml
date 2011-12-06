@@ -2,7 +2,9 @@
 <resources>
     <string-array
         name="healthCenterNames">
-        <item>Health Center A</item>
-	    <item>Health Center B</item>
+        <item>Metoro, Ancabe</item>
+	    <item>Ngeue, Anacabe</item>
+	    <item>Nacota, Chiure</item>
+	    <item>Hocua, Chiure</item>
     </string-array>
 </resources>

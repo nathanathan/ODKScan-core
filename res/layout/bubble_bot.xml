@@ -7,11 +7,21 @@
 <TextView  
     style="@style/StandardFont"
     android:textSize="80dip"
-    android:text="mScan"
+    android:text="@string/app_name"
     android:textColor="#fff"
     android:background="#025"
     android:layout_margin="5dp"/>
-<TableLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<TextView  
+    style="@style/StandardFont"
+    android:padding="20dp"
+    android:text="@string/the_current_health_center_is"/>
+<Spinner
+    android:id="@+id/healthCenterSpinner"
+    style="@style/StandardFont"
+    android:layout_margin="3dp" />
+<TableLayout 
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_marginTop="20dp"
     android:layout_width="fill_parent"
     android:layout_height="wrap_content">
     <TableRow>
@@ -39,15 +49,5 @@
 			style="@style/StandardButton">
 		</Button>
     </TableRow>
-</TableLayout>
-<TextView  
-    style="@style/StandardFont"
-    android:padding="20dp"
-    android:text="The current health center is:">
-</TextView>
-<Spinner
-    android:id="@+id/healthCenterSpinner"
-    style="@style/StandardFont"
-    android:layout_margin="3dp" />
-    
+</TableLayout>    
 </LinearLayout>

@@ -2,14 +2,19 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item 
     	android:id="@+id/displayData"
-    	android:title="Display Data" />
+    	android:title="@string/display_data" />
     <item 
 	    android:id="@+id/uploadData"
-	    android:title="Upload Data" />
-	<item 
+	    android:title="Upload Data"
+	    android:visible="false" />
+    <item 
+	    android:id="@+id/saveData"
+	    android:title="@string/save_data" />
+    <item 
 	    android:id="@+id/scanNewForm"
-	    android:title="Scan New Form" android:visible="false"/>
+	    android:title="Scan New Form"
+	    android:visible="false" />
 	<item 
 	    android:id="@+id/startOver"
-	    android:title="Start Over" />
+	    android:title="@string/main_menu" />
 </menu>

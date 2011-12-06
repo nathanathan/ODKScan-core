@@ -2,26 +2,28 @@
 <LinearLayout
 	xmlns:android="http://schemas.android.com/apk/res/android"
 	android:visibility="gone"
-	android:orientation="vertical" android:layout_width="fill_parent"
-	android:layout_height="fill_parent" android:id="@+id/myLinearLayout">
+	android:orientation="vertical"
+	android:layout_width="fill_parent"
+	android:layout_height="fill_parent"
+	android:id="@+id/myLinearLayout">
 	
 	<LinearLayout
 		android:layout_width="fill_parent"
-		android:layout_height="wrap_content" android:orientation="horizontal" android:layout_weight="0"
+		android:layout_height="wrap_content" android:orientation="horizontal"
+		android:layout_weight="0"
 		android:paddingTop="4dp" android:paddingLeft="4dp"
 		android:paddingRight="4dp" android:layout_gravity="center_horizontal|bottom|left">
 		<Button 
-			style="@android:style/Widget.Button.Small"
-			android:layout_height="wrap_content"
-			android:layout_width="0px" android:id="@+id/retake_button"
-			android:text="Retake Picture" android:gravity="center"
+			style="@style/APTButton"
+			android:id="@+id/retake_button"
+			android:text="@string/retake_photo"
 			android:layout_weight="1" />
 		<Button
-			style="@android:style/Widget.Button.Small"
-			android:layout_height="wrap_content"
-			android:layout_width="0px" android:id="@+id/process_button"
-			android:text="Process Form" android:gravity="center"
-			android:layout_weight="1" android:enabled="false" />
+			style="@style/APTButton"
+			android:id="@+id/process_button"
+			android:text="@string/process_form"
+			android:layout_weight="1"
+			android:enabled="false" />
 	</LinearLayout>
 	
 	<WebView
@@ -35,12 +37,16 @@
 		android:visibility="gone" 
 		android:layout_weight="1"
 		android:layout_width="fill_parent"
-		android:layout_height="fill_parent" xmlns:android="http://schemas.android.com/apk/res/android">
+		android:layout_height="fill_parent"
+		xmlns:android="http://schemas.android.com/apk/res/android">
 		<TextView
 			xmlns:android="http://schemas.android.com/apk/res/android"
-			android:layout_width="wrap_content" android:layout_height="wrap_content"
-			android:textColor="#FFFFFF" android:textSize="24dp"
-			android:layout_centerInParent="true" android:text="Failed to align form.\nSorry :(" />
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:textColor="#FFFFFF"
+			android:textSize="24dp"
+			android:layout_centerInParent="true"
+			android:text="@string/could_not_register" />
 	</RelativeLayout>
 	
 </LinearLayout>

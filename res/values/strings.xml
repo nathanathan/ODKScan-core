@@ -3,20 +3,34 @@
 <string name="prefs_name">"mScanPrefs"</string>
 <string name="app_name">mScan</string>
 <string name="app_description">Scan and process bubble forms</string>
-<string name="bubblebot_activity">BubbleBot</string>
 <string name="bubble_process_activity">Processing Scanned Form</string>
 <string name="view_bubble_forms_activity">View Images</string>
 <string name="bubble_instructions_activity">Instructions</string>
 <string name="display_processed_form_activity">Display Processed Form</string>
 <string name="display_processed_data_activity">Display Processed Data</string>
 <string name="after_photo_taken_activity">Captured Image</string>
-<string name="WelcomeScreen">To begin, select an option below:</string>
+
+<!-- For Main Screen -->
+<string name="Health_Center">Health Center</string>
+<string name="the_current_health_center_is">The current health center is:</string>
 <string name="ScanButton">Scan New Form</string>
 <string name="ViewFormsButton">View Images</string>
 <string name="InstructionsButton">Instructions</string>
 <string name="SettingsButton">Settings</string>
-<string name="ProcessButton">Process Form</string>
-<string name="ProcessForm">Processing form...</string>
+
+<!-- AfterPhotoTaken -->
+<string name="process_form">Process Form</string>
+<string name="retake_photo">Retake Photo</string>
+<string name="aligning_form">Aligning form...</string>
+<string name="processing_form">Processing form...</string>
+<string name="could_not_register">Sorry, the form could not be registered.</string>
+
+<!-- Popup menu -->
+<string name="save_data">Save Data</string>
+<string name="display_data">Display Data</string>
+<string name="main_menu">Main Menu</string>
+    
+<!-- Instructions -->
 <string name="Instructions1">The BubbleBot appplication is designed to convert paper bubble forms into a digital format using computer vision.  </string>
 <string name="Instructions2">To scan a form, click the "Scan New Form" button on the main page.  This will open up a camera.  A rectangle will
 							be overlaid on top of the viewfinder.  In order to capture your paper form correctly, orient the phone so that your
@@ -30,9 +44,4 @@
 <string name="Instructions4">To view forms that have already been scanned, click the "View Scanned Forms" page on the main screen.  You will
 							be able to view both the textual data collected and the image displaying which bubbles were recognized by the
 							computer vision algorithm.  You may retake the picture from here as well.</string>
-<string name="ViewFormsText">Select a form to view:</string>
-<string name="BubbleCollect_help_toast">Match the form to the red rectangle.\nA picture will be taken automatically when the rectangle turns bright green.</string>
-<string name="DetectForm">Analyzing photo...</string>
-<string name="DetectFormFailed">Failed to detect form. Please retake the photo.</string>
-<string name="VerifyForm">Form detected in file %s. Please check the green rectangle below and retake the photo if the green rectangle does not closely match with the outline of the form paper.</string>
 </resources>
