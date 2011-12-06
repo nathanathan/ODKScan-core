@@ -98,7 +98,6 @@ public class RunProcessor implements Runnable {
 				Log.i("mScan","Faled to load image: " + photoName);
 			}
 		}
-		
 		handler.sendMessage(msg);
 	
 	}

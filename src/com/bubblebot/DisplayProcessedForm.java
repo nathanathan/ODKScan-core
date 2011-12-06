@@ -1,5 +1,14 @@
 package com.bubblebot;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import android.accounts.Account;
 import android.accounts.AccountManager;
 import com.google.api.client.googleapis.extensions.android2.auth.GoogleAccountManager;
@@ -11,22 +20,26 @@ import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.webkit.WebView;
 
-/* DisplayProcessedForm activity
+/**
  * 
  * This activity displays the image of a processed form
  */
 public class DisplayProcessedForm extends Activity {
 
+	//TODO: Look into using AccountAuthenticatorActivity for uploading data.
+	
 	private String photoName;
 
 	private ProgressDialog pd;
@@ -47,7 +60,10 @@ public class DisplayProcessedForm extends Activity {
 			photoName = extras.getString("photoName");
 		}
 
-		setTitle("Displaying " + photoName);
+		setTitle(getResources().getString(R.string.Health_Center) + ": " +
+                 getSharedPreferences(getResources().getString(R.string.prefs_name), 0)
+                 .getString("healthCenter", "unspecifiedHC"));
+		
 		MScanUtils.displayImageInWebView((WebView)findViewById(R.id.webview2),
 				MScanUtils.getMarkedupPhotoPath(photoName));
 	}
@@ -150,6 +166,7 @@ public class DisplayProcessedForm extends Activity {
 			return true;
 		case R.id.uploadData:
 			//TODO: Put the upload stuff into another file/activity to keep things cleaner
+			//It should throw exceptions that can be used for the failure dialog
 			NetworkInfo neti = ((ConnectivityManager) this.getSystemService(Context.CONNECTIVITY_SERVICE)).getActiveNetworkInfo();
 			if(neti != null && neti.isConnected()){
 				showDialog(DIALOG_ACCOUNTS);
@@ -159,6 +176,10 @@ public class DisplayProcessedForm extends Activity {
 				args.putString("reason", "Connectivity is not available.");
 				showDialog(DIALOG_FAILURE, args);
 			}
+			return true;
+		case R.id.saveData:
+			saveData();
+			//TODO: Disable the button if this succeeds
 			return true;
 		case R.id.scanNewForm:
 			intent = new Intent(getApplication(), BubbleCollect2.class);
@@ -170,6 +191,79 @@ public class DisplayProcessedForm extends Activity {
 			return true;
 		default:
 			return super.onOptionsItemSelected(item);
+		}
+	}
+	//Append the output to a CSV output file with the health center name included
+	//The original output is not modified, and does not have any app specified data included in it.
+	private void saveData() {
+		SharedPreferences settings = getSharedPreferences(getResources().getString(R.string.prefs_name), 0);
+
+		try {
+			//The health center will be the currently selected HC,
+			//not the HC selected when the photo was taken.
+			//An activity state machine/graph might help here.
+			JSONObject formRoot = JSONUtils.parseFileToJSONObject(MScanUtils.getJsonPath(photoName));
+			JSONArray fields = formRoot.getJSONArray("fields");
+			int fieldsLength = fields.length();
+			
+			if(fieldsLength == 0) {
+				//TODO: make this function throw exceptions
+				Log.i("mScan", "fieldsLength is zero");
+				return;
+			}
+			
+			File file = new File(MScanUtils.appFolder + "all-data.csv");
+			 
+			FileWriter fileWritter;
+			BufferedWriter bufferWritter;
+			
+    		//if file doesn't exists, then create it
+    		if(!file.exists()){
+    			
+    			file.createNewFile();
+    			
+    			fileWritter = new FileWriter(file.toString());
+				bufferWritter = new BufferedWriter(fileWritter);
+				
+    			for(int i = 0; i < fieldsLength; i++){
+    				bufferWritter.write(fields.getJSONObject(i).getString("label") + "," );
+    			}
+    			
+    			bufferWritter.write("Health Center");
+    			bufferWritter.newLine();
+    		}
+    		else{
+    			fileWritter = new FileWriter(file.toString(), true);
+				bufferWritter = new BufferedWriter(fileWritter);
+    		}
+
+    		for(int i = 0; i < fieldsLength; i++){
+				JSONObject field = fields.getJSONObject(i);
+				if( field.getJSONArray("segments").getJSONObject(0).getString("type").equals("bubble") ){
+					Integer[] segmentCounts = JSONUtils.getSegmentCounts(field);
+					bufferWritter.write(MScanUtils.sum(segmentCounts));
+				}
+				else{
+					JSONArray textSegments = field.getJSONArray("segments");
+					int textSegmentsLength = textSegments.length();
+					for(int j = 0; j < textSegmentsLength; j++){
+						bufferWritter.write(textSegments.getJSONObject(j).optString("value", ""));
+					}
+				}
+				bufferWritter.write(",");
+			}
+    		bufferWritter.write(settings.getString("healthCenter", "unspecifiedHC"));
+    		bufferWritter.newLine();
+			bufferWritter.close();
+			
+		} catch (JSONException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			Log.i("mScan", "JSON excetion while saving data.");
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			Log.i("mScan", "IO excetion while saving data.");
 		}
 	}
 	private Handler handler = new Handler() {

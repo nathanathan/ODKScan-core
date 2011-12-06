@@ -7,6 +7,7 @@ import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.CompoundButton.OnCheckedChangeListener;
 
+//TODO: Replace with PreferenceActivity
 public class AppSettings extends Activity {
 	
 	private CheckBox formDetectionCheckBox;

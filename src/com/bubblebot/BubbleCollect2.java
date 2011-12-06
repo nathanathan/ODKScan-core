@@ -30,6 +30,8 @@ public class BubbleCollect2 extends Activity {
 		
 		//intent.putExtra(MediaStore.EXTRA_SCREEN_ORIENTATION, "");
 		//intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+		
+		//TODO: I don't think I need this flag.
 		intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
 		startActivityForResult(intent, TAKE_PICTURE);
 	}
@@ -40,7 +42,6 @@ public class BubbleCollect2 extends Activity {
 		switch (requestCode) {
 		case TAKE_PICTURE:
 			finishActivity(TAKE_PICTURE);
-
 			if (resultCode == Activity.RESULT_OK) {
 				Intent intent = new Intent(getApplication(), AfterPhotoTaken.class);
 				intent.putExtra("photoName", photoName);

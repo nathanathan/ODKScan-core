@@ -34,7 +34,31 @@ public class JSONUtils {
 			Log.i("mScan", "IO excetion in JSONUtils.");
 		}
 	}
-	*/
+	
+	public static JSONObject putFieldValue(JSONObject formRoot, String fieldLabel, String value) throws JSONException{
+		int segIdx = 0;
+		JSONArray fields = formRoot.getJSONArray("fields");
+		int fieldsLength = fields.length();
+		for(int i = 0; i < fieldsLength; i++){
+			JSONObject field = fields.getJSONObject(i);
+			if(field.getString("label").equals(value)){
+				JSONArray segments = field.getJSONArray("segments");
+				JSONObject segment = segments.getJSONObject(segIdx);
+				segment.put("value", value);
+				segments.put(segIdx, segment);
+				field.put("segments", segments);
+				fields.put(i, field);
+				formRoot.put("fields", fields);
+				return formRoot;
+			}
+		}
+		segment.put("value", value);
+		segments.put(segIdx, segment);
+		field.put("segments", segments);
+		fields.put(i, field);
+		formRoot.put("fields", fields);
+		return formRoot;
+	}*/
 	public static JSONObject generateSimplifiedJSON(String photoName) throws JSONException, IOException {
 		JSONObject outRoot = new JSONObject();
 		JSONObject bubbleVals = parseFileToJSONObject(MScanUtils.getJsonPath(photoName));

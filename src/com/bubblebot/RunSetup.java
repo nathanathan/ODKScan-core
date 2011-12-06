@@ -15,7 +15,7 @@ import android.util.Log;
  */
 public class RunSetup implements Runnable {
 	
-	public static final int version = 71;
+	public static final int version = 76;  
 	public static final boolean clearOldData = false;
 	
 	private SharedPreferences settings;

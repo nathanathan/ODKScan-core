@@ -1,31 +1,31 @@
 package com.bubblebot;
 
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.util.Date;
 import java.util.Random;
 
-import org.json.*;
+import org.json.JSONObject;
 
 import com.bubblebot.RunProcessor.Mode;
 
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
 import android.webkit.WebView;
 import android.widget.Button;
+import android.widget.CompoundButton;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
+import android.widget.CompoundButton.OnCheckedChangeListener;
 
 /*
  * This activity runs the form processor and provides user feedback
@@ -39,8 +39,6 @@ public class AfterPhotoTaken extends Activity {
     
     private Button processButton;
     private LinearLayout content;
-    
-    private SharedPreferences settings;
     
     private long startTime;//only needed in debugMode
 
@@ -64,7 +62,7 @@ public class AfterPhotoTaken extends Activity {
 		
 		photoName = extras.getString("photoName");
 		
-		settings = getSharedPreferences(getResources().getString(R.string.prefs_name), 0);
+	    SharedPreferences settings = getSharedPreferences(getResources().getString(R.string.prefs_name), 0);
 		runProcessor = new RunProcessor(handler, photoName,
 				settings.getBoolean("doFormDetection", false),
 				settings.getBoolean("calibrate", false));
@@ -110,7 +108,7 @@ public class AfterPhotoTaken extends Activity {
 	@Override
 	protected Dialog onCreateDialog(int id, Bundle args) {
 		
-		final String [] didYouKnow = getResources().getStringArray(R.array.did_you_know);
+		//final String [] didYouKnow = getResources().getStringArray(R.array.did_you_know);
 		
 		AlertDialog.Builder builder = new AlertDialog.Builder(this);
 		
@@ -119,27 +117,31 @@ public class AfterPhotoTaken extends Activity {
 			builder.setTitle("Loading Image");
 			break;
 		case LOAD_ALIGN:
-			builder.setTitle("Aligning Image");
+			builder.setTitle(getResources().getString(R.string.aligning_form));
 			break;
 		case PROCESS:
-			builder.setTitle("Processing Image");
+			builder.setTitle(getResources().getString(R.string.processing_form));
 			break;
 		default:
 			return null;
 		}
-		builder.setCancelable(false)
-				.setMessage("Did you know... \n " +
-						didYouKnow[(new Random()).nextInt(didYouKnow.length)]);
+		builder.setCancelable(false);
+		//		.setMessage("Did you know... \n " + didYouKnow[(new Random()).nextInt(didYouKnow.length)]);
+		
 		return builder.create();
 	}
-    
+
     private Handler handler = new Handler() {
             @Override
             public void handleMessage(Message msg) {
             	
             	RunProcessor.Mode mode = RunProcessor.Mode.values()[msg.what];
-            	
-            	dismissDialog(msg.what);
+            	try{
+            		dismissDialog(msg.what);
+            	}
+            	catch(IllegalArgumentException e){
+            		Log.i("mScan", "Exception: Dialog with id " + msg.what + " was not previously shown.");
+            	}
             	
             	if(MScanUtils.DebugMode){
 	    			Log.i("mScan", "Mode: " + mode);
@@ -164,67 +166,18 @@ public class AfterPhotoTaken extends Activity {
         			break;
         		case PROCESS:
             		if ( msg.arg1 == 1 ) {
-            			
-            			//Append the output to a CSV output file with the health center name included
-            			//The original output is not modified, and does not have any app specified data included in it
-            			//TODO: I want to move this to DisplayProcessedForm where it will be triggered by a Save Data button.
-            			try {
-							JSONObject formRoot = JSONUtils.parseFileToJSONObject(MScanUtils.getJsonPath(photoName));
-							JSONArray fields = formRoot.getJSONArray("fields");
-							int fieldsLength = fields.length();
-							
-							File file = new File(MScanUtils.appFolder + "all-data.csv");
-							 
-							FileWriter fileWritter;
-							BufferedWriter bufferWritter;
-							
-				    		//if file doesn't exists, then create it
-				    		if(!file.exists()){
-				    			
-				    			file.createNewFile();
-				    			
-				    			fileWritter = new FileWriter(file.toString());
-								bufferWritter = new BufferedWriter(fileWritter);
-								
-				    			for(int i = 0; i < fieldsLength; i++){
-				    				bufferWritter.write(fields.getJSONObject(i).getString("label") + "," );
-				    			}
-				    			
-				    			bufferWritter.write("Health Center");
-				    			bufferWritter.newLine();
-				    		}
-				    		else{
-				    			fileWritter = new FileWriter(file.toString(), true);
-								bufferWritter = new BufferedWriter(fileWritter);
-				    		}
-
-				    		for(int i = 0; i < fieldsLength; i++){
-			    				JSONObject field = fields.getJSONObject(i);
-								if( field.getJSONArray("segments").getJSONObject(0).getString("type").equals("bubble") ){
-									Integer[] segmentCounts = JSONUtils.getSegmentCounts(field);
-									bufferWritter.write(MScanUtils.sum(segmentCounts) + "," );
-								}
-								else{
-									bufferWritter.write(field.getJSONArray("segments").getJSONObject(0).getString("type") + "," );
-								}
-			    			}
-				    		bufferWritter.write(settings.getString("healthCenter", "unspecifiedHC"));
-				    		bufferWritter.newLine();
-							bufferWritter.close();
-							
-            			} catch (JSONException e) {
-            				// TODO Auto-generated catch block
-            				e.printStackTrace();
-            				Log.i("mScan", "JSON excetion in AfterPhotoTaken.");
-            			} catch (IOException e) {
-            				// TODO Auto-generated catch block
-            				e.printStackTrace();
-            				Log.i("mScan", "IO excetion in AfterPhotoTaken.");
-            			}
-            			
+            			//JSONObject formRoot = JSONUtils.parseFileToJSONObject(MScanUtils.getJsonPath(photoName));
+            			//TODO: Attach clinic and other user specified data to JSON output.		
+            			//writeJSONObjectToFile(formRoot);
 	            		Intent intent = new Intent(getApplication(), DisplayProcessedForm.class);
 	                    intent.putExtra("photoName", photoName);
 	                    startActivity(intent);
+	        			finish(); 
+	        			//Not sure this finish is necessary, but it might fix the inexplicable crashes
+	        			//we've been having (since they might have something to do with the processor not being freed)
+	        			//however, this has the downside of preventing users from going back to the aligned image
+	                    //One possible reason for crashing is the user accidentally hitting the search button
+	        			//during the dialog.
             		}
         			break;
         		default:

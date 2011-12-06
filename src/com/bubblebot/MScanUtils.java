@@ -43,7 +43,9 @@ public class MScanUtils {
 		myWebView.setVisibility(View.VISIBLE);
 		
 		// HTML is used to display the image.
-		String html =   "<body bgcolor=\"Black\"><center> <img src=\"file:///" +
+		String html =   "<body bgcolor=\"Black\">+" +
+						//"<p>" +  + "</p>" +
+						"<center> <img src=\"file:///" +
 						imagePath +
 						// Appending the time stamp to the filename is a hack to prevent caching.
 						"?" + new Date().getTime() + 
