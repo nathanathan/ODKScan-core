@@ -26,21 +26,37 @@ CourseEvalTest: tests/CourseEvalTest.test
 
 #The experiment target runs Experiment.cpp on the specified folder.
 #Use the following syntax to specify the folder:
-#make Experiment EXPERIMENT_FOLDER=experiment_1
+#make Experiment INPUT_FOLDER=experiment_1
 #If no folder is specified it will default to experiment_1
-ifndef $(EXPERIMENT_FOLDER)
-	EXPERIMENT_FOLDER := experiment_1
+ifndef $(INPUT_FOLDER)
+	INPUT_FOLDER := experiment_1
 endif
 Experiment: tests/Experiment.test
-	@rm -rf aligned_forms/$(EXPERIMENT_FOLDER)
-	@mkdir aligned_forms/$(EXPERIMENT_FOLDER)
+	@rm -rf aligned_forms/$(INPUT_FOLDER)
+	@mkdir aligned_forms/$(INPUT_FOLDER)
 	@rm -rf debug_segment_images
 	@mkdir debug_segment_images
 	@rm -rf bubble_images
 	@mkdir bubble_images
-	./$< $(EXPERIMENT_FOLDER)
-#Remove the features file so I dont accidentally put in in the apk
+	./$< $(INPUT_FOLDER)
+#Remove the features file so I dont accidentally put in in the apk (it's too big)
 	@rm form_templates/SIS-A01.yml
+
+Checkbox: tests/Checkbox.test
+	@rm -rf aligned_forms/$(INPUT_FOLDER)
+	@mkdir aligned_forms/$(INPUT_FOLDER)
+	@rm -rf debug_segment_images
+	@mkdir debug_segment_images
+	@rm -rf bubble_images
+	@mkdir bubble_images
+	./$< $(INPUT_FOLDER)
+
+TemplateGenerator: TemplateGenerator.test
+	@rm -rf debug_segment_images
+	@mkdir debug_segment_images
+	@rm -rf bubble_images
+	@mkdir bubble_images
+	./$<
 
 TemplateEditor: TemplateEditor.test
 	@rm -rf debug_segment_images
