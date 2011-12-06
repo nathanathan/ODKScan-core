@@ -25,25 +25,27 @@
 // I think .5 is the largest value that won't cause ambiguous cases.
 #define SEGMENT_BUFFER .25
 
-#define REFINE_ALL_BUBBLE_LOCATIONS true
 
-//#define DO_BUBBLE_INFERENCE
 
 #ifdef OUTPUT_SEGMENT_IMAGES
 	#include "NameGenerator.h"
 	NameGenerator namer;
 #endif
 
-#define TIME_IT
+//#define TIME_IT
 #define CLASSIFY_BUBBLES true
 #define DO_BUBBLE_ALIGNMENT true
+
+#define REFINE_ALL_BUBBLE_LOCATIONS true
+
+//#define DO_BUBBLE_INFERENCE
 
 using namespace std;
 using namespace cv;
 
 Json::Value genBubblesJson( const vector<int>& bubbleVals, const vector<Point>& bubbleLocations, 
                             const Point& offset, const Mat& transformation = (Mat_<double>(3,3) << 1, 0, 0, 0, 1, 0, 0, 0, 1)) {
-							
+					
 	assert(bubbleLocations.size() == bubbleVals.size());
 	Json::Value out;
 	for(size_t i = 0; i < bubbleVals.size(); i++){
@@ -81,7 +83,6 @@ vector<int> classifyBubbles(const Mat& segment, const vector<Point> bubbleLocati
 	}
 	return out;
 }
-
 vector<Point> getBubbleLocations(const Mat& segment, const Json::Value& bubbleLocationsJSON, bool refine) {
 
 	vector <Point> bubbleLocations;
@@ -261,9 +262,6 @@ bool trainClassifier(string trainingImageDir) {
 public:
 
 ProcessorImpl(const char* appRootDir) : appRootDir(string(appRootDir)), classifierTrained(false) {
-	#ifdef TIME_IT	
-		init = clock();
-	#endif
 }
 
 bool setTemplate(const char* templatePath) {
@@ -286,6 +284,9 @@ bool setTemplate(const char* templatePath) {
 bool loadFormImage(const char* imagePath, bool undistort) {
 	#ifdef DEBUG_PROCESSOR
 		cout << "loading form image..." << flush;
+	#endif
+	#ifdef TIME_IT	
+		init = clock();
 	#endif
 	Mat temp;
 	
@@ -329,9 +330,7 @@ bool loadFormImage(const char* imagePath, bool undistort) {
 		ostringstream ss;
 		ss << (double)(clock()-init) / ((double)CLOCKS_PER_SEC);
 		LOGI( ss.str().c_str() );
-		init = clock();
 	#endif
-
 	#ifdef DEBUG_PROCESSOR
 		cout << "loaded" << endl;
 	#endif
@@ -340,6 +339,9 @@ bool loadFormImage(const char* imagePath, bool undistort) {
 bool alignForm(const char* alignedImageOutputPath, size_t formIdx) {
 	#ifdef DEBUG_PROCESSOR
 		cout << "aligning form..." << endl;
+	#endif
+	#ifdef TIME_IT	
+		init = clock();
 	#endif
 	Mat straightenedImage;
 	try{
@@ -371,7 +373,6 @@ bool alignForm(const char* alignedImageOutputPath, size_t formIdx) {
 		ostringstream ss;
 		ss << (double)(clock()-init) / ((double)CLOCKS_PER_SEC);
 		LOGI( ss.str().c_str() );
-		init = clock();
 	#endif
 	#ifdef DEBUG_PROCESSOR
 		cout << "aligned" << endl;
@@ -381,6 +382,9 @@ bool alignForm(const char* alignedImageOutputPath, size_t formIdx) {
 bool processForm(const char* outputPath) {
 	#ifdef  DEBUG_PROCESSOR
 		cout << "Processing form" << flush;
+	#endif
+	#ifdef TIME_IT	
+		init = clock();
 	#endif
 	
 	if( !root || formImage.empty() || !classifierTrained ){
@@ -437,7 +441,6 @@ bool processForm(const char* outputPath) {
 		ostringstream ss;
 		ss << (double)(clock()-init) / ((double)CLOCKS_PER_SEC);
 		LOGI( ss.str().c_str() );
-		init = clock();
 	#endif
 	return true;
 }

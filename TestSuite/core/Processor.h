@@ -26,7 +26,7 @@ class Processor{
 
 	private:
 		class ProcessorImpl;
-    	std::tr1::shared_ptr<ProcessorImpl> processorImpl;
+    		std::tr1::shared_ptr<ProcessorImpl> processorImpl;
 };
 
 

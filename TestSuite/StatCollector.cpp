@@ -158,14 +158,29 @@ void StatCollector::print(ostream& myOut) const{
 	
 	if(numImages > 0){
 		myOut << endl << "Total success rate: " << 100.f *
-												  (numImages > 0 ? formAlignmentRatio() : 1.0) *
-												  (numSegments > 0 ? segmentAlignmentRatio() : 1.0) *
-												  correctClassificationRatio() << "%" << endl;
+		                                           (numImages > 0 ? formAlignmentRatio() : 1.0) *
+		                                           (numSegments > 0 ? segmentAlignmentRatio() : 1.0) *
+		                                           correctClassificationRatio() << "%" << endl;
 	}
 	myOut << "Average image processing time: "<< vecSum(times) / times.size() << " seconds" << endl;
 	myOut << linebreak << endl;
 }
+void StatCollector::printAsRow(ostream& myOut) const{
 
+	if(numImages <= 0 || offsets.empty() || numSegments <= 0){
+		myOut << "error" << endl;
+		return;
+	}
+	//Form Alignment
+	myOut << numImages - errors << ", " << errors << ", " << formAlignmentRatio() << ", ";
+	
+	//Segment Alignment
+	myOut << numSegments - missedSegments << ", " << missedSegments << ", " << segmentAlignmentRatio() << ", ";
+
+	//Bubble Classification
+	myOut << fn << ", " << fp << ", " << tn << ", " << tp << ", " << correctClassificationRatio();
+	myOut << endl;
+}
 ostream& operator<<(ostream& os, const StatCollector& sc){
 	sc.print(os);
 	return os;

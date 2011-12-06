@@ -10,7 +10,6 @@ enum ComparisonMode{COMP_BUBBLE_VALS, COMP_BUBBLE_OFFSETS};
 class StatCollector
 {
 int tp, fp, tn, fn;
-int errors, numImages;
 int missedSegments, numSegments;
 std::vector<double> times;
 std::vector<cv::Point> offsets;
@@ -20,6 +19,8 @@ private:
 	std::vector<cv::Point> compareSegmentBubbleOffsets(const Json::Value& foundSeg, const Json::Value& actualSeg) const;
 	void compareFields(const Json::Value& foundField, const Json::Value& actualField, ComparisonMode mode);
 public:
+	int errors, numImages;
+
 	StatCollector():
 		tp(0), fp(0), tn(0), fn(0),
 		errors(0), numImages(0),
@@ -44,6 +45,7 @@ public:
 	float segmentAlignmentRatio() const { return 1.f * (numSegments - missedSegments) / numSegments; }
 	float correctClassificationRatio() const { return 1.f * (tp + tn) / (tp+fp+tn+fn); }
 	
+	void printAsRow(std::ostream& myOut) const;
 	void print(std::ostream& myOut) const;
 	
 	StatCollector& operator+=(const StatCollector& sc){

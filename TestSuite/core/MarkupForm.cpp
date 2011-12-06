@@ -19,12 +19,13 @@ using namespace std;
 using namespace cv;
 
 bool markupFormHelper(const char* bvPath, Mat& markupImage, bool drawCounts) {
-	Scalar colors[6] = {Scalar(0,   0,   255),
-						Scalar(0,   255, 255),
-						Scalar(255, 0,   255),
-						Scalar(0,   255, 0),
-						Scalar(255, 255, 0),
-						Scalar(255, 0,   0)};
+	Scalar colors[6] = {
+	 Scalar(0,   0,   255),
+	 Scalar(0,   255, 255),
+	 Scalar(255, 0,   255),
+	 Scalar(0,   255, 0),
+	 Scalar(255, 255, 0),
+	 Scalar(255, 0,   0)};
 	
 	Json::Value bvRoot;
 	
@@ -35,16 +36,16 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage, bool drawCounts) {
 		const Json::Value field = fields[i];
 		
 		//TODO: For multi-choice forms were going to want something a little different.
-		//		This function is getting pretty complicated and should probably be split up.
+		//	This function is getting pretty complicated and should probably be split up.
 		size_t filledBubbles = 0;
 		float avgWidth = 0;
 		float avgY = 0;
 		int endOfField = 0;
 		
 		#ifdef SHOW_MIN_ERROR_CUT
-		//Should this be specified in the template??
-		int cutIdx = minErrorCut(computedFilledIntegral(field));
-		int bubbleNum = 0;
+			//Should this be specified in the template??
+			int cutIdx = minErrorCut(computedFilledIntegral(field));
+			int bubbleNum = 0;
 		#endif
 		
 		string fieldName = field.get("label", "Unlabeled").asString();
@@ -97,7 +98,7 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage, bool drawCounts) {
 				}
 			}
 			else{//If we're dealing with a regular form template
-				//TODO: Watch out for templates with double type points.
+				//TODO: What happens if points are doubles?
 				Point tl(segment["x"].asInt(), segment["y"].asInt());
 				rectangle(markupImage, tl, tl + Point(segment["width"].asInt(), segment["height"].asInt()),
 							boxColor, 2);
