@@ -13,7 +13,7 @@ This class implements bubble classification using OpenCV's support vector machin
 class PCA_classifier
 {
 	private:	
-		CvSVM statClassifier;
+		cv::Ptr<CvSVM> statClassifier;
 
 		std::vector<std::string> classifications;
 		int emptyClassificationIndex;
@@ -43,6 +43,8 @@ class PCA_classifier
 	public:
 		cv::Size exampleSize;
 
+		PCA_classifier(): statClassifier(new CvSVM){}
+
 		void set_search_window(cv::Size sw);
 
 		//Given a image and location in that image rates how similar it is to the training examples
@@ -61,6 +63,13 @@ class PCA_classifier
 		
 		bool save(const std::string& outputPath) const;
 		bool load(const std::string& inputPath, const cv::Size& requiredExampleSize);
+/*
+		virtual ~PCA_classifier(){
+			std::cout << "destructor" << std::endl;
+			//statClassifier.clear();
+			std::cout << "done" << std::endl;
+		}
+*/
 };
 
 #endif

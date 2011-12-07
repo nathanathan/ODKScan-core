@@ -14,15 +14,8 @@ using namespace cv;
 
 #define EDIT_VIEW
 
-void inheritJson(Json::Value & child, Json::Value parent) {
-	Json::Value::Members members = child.getMemberNames();
-	for( Json::Value::Members::iterator itr = members.begin() ; itr != members.end() ; itr++ ) {
-		cout << *itr << flush;
-		parent[*itr] = child[*itr];
-	}
-	child = parent;
-}
-void generateSegment(Json::Value segment, Mat& markupImage) {
+
+void generateSegment(const Json::Value& segment, Mat& markupImage) {
 
 	//TODO: What happens if points are doubles?
 	Point tl(segment["x"].asInt(), segment["y"].asInt());
@@ -45,18 +38,17 @@ void generateSegment(Json::Value segment, Mat& markupImage) {
 		                       tl + bubbleLocation + .5 * classifer_size, Scalar::all(0), 1);
 	}
 }
-void generateField(Json::Value field, Mat& markupImage) {
+void generateField(const Json::Value& field, Mat& markupImage) {
 	const Json::Value segments = field["segments"];
 		
 	for ( size_t j = 0; j < segments.size(); j++ ) {
 		Json::Value segment = segments[j];
-		inheritJson(segment, field);
+		inheritMembers(segment, field);
 		generateSegment(segment, markupImage);
 	}
 }
 
 bool generateForm(const char* templatePath, Mat& markupImage) {
-
 
 	Json::Value templateRoot;
 	
@@ -66,7 +58,7 @@ bool generateForm(const char* templatePath, Mat& markupImage) {
 	
 	for ( size_t i = 0; i < fields.size(); i++ ) {
 		Json::Value field = fields[i];
-		inheritJson(field, templateRoot);
+		inheritMembers(field, templateRoot);
 		generateField(field, markupImage);
 		
 	}
@@ -84,8 +76,6 @@ int main(int argc, char *argv[]) {
 	const string winName = "editing window";
 	namedWindow(winName, CV_WINDOW_NORMAL);
 	
-
-
 	for(;;) {
         	char c = (char)waitKey(0);
 		if( c == '\x1b' ) // esc

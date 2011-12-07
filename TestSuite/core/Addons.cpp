@@ -5,6 +5,21 @@
 using namespace std;
 using namespace cv;
 
+
+//inheritMembers makes the child value inherit the members that it does not override from the specified parent json value.
+//The parent is copied so it can be written over, while the child is passed in and returned with added members by refrence.
+Json::Value& inheritMembers(Json::Value& child, Json::Value parent) {
+	Json::Value::Members members = child.getMemberNames();
+	for( Json::Value::Members::iterator itr = members.begin() ; itr != members.end() ; itr++ ) {
+		//cout << *itr << flush;
+		//TODO: If inheriting a Json Object, perhaps I could recusively inherit:
+		//parent[*itr] = inheritMembers(child[*itr], parent[*itr]);
+		parent[*itr] = child[*itr];
+	}
+	//I'm worried that we end up with refrences to elements of the stack allocated parent copy.
+	//However, I think operator= is overloaded so that this doesn't happen.
+	return child = parent;
+}
 //TODO: maybe move to markup form
 Scalar getColor(bool filled) {
 	if(filled){
