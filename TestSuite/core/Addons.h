@@ -9,11 +9,9 @@ It's a pretty random mix of stuff and it if grows much larger it should probably
 
 #include <opencv2/core/core.hpp>
 
-
 #include <json/value.h>
 
 
-Json::Value& inheritMembers(Json::Value& child, Json::Value parent);
 //OpenCV oriented functions:
 cv::Scalar getColor(bool filled);
 cv::Size operator * (float lhs, cv::Size rhs);

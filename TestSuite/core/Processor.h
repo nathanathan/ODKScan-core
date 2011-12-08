@@ -13,7 +13,6 @@ class Processor{
 		//The constructor takes as an arguement a "root" path that all other paths are relative to.
 		//TODO: Make all other paths relative to appRootDir
 		//The default constructor sets the root path to ""
-		//The path should end with a '/' but I might relax this requirement later on.
 		Processor();
 		Processor(const char* appRootDir);
 		bool loadFormImage(const char* imagePath, bool undistort = false);

@@ -3,6 +3,7 @@
 
 #include "Addons.h"
 #include "AlignmentUtils.h"
+#include "TemplateProcessor.h"
 
 #include <json/json.h>
 
@@ -14,57 +15,43 @@ using namespace cv;
 
 #define EDIT_VIEW
 
+class GenerateForm : public TemplateProcessor
+{
+	private:
+	typedef TemplateProcessor super;
+	Mat markupImage;
 
-void generateSegment(const Json::Value& segment, Mat& markupImage) {
-
-	//TODO: What happens if points are doubles?
-	Point tl(segment["x"].asInt(), segment["y"].asInt());
-
-	rectangle(markupImage, tl, tl + Point(segment["width"].asInt(), segment["height"].asInt()),
-	          Scalar::all(0), 2);
-
-	const Json::Value bubble_locations = segment["bubble_locations"];
-	for ( size_t k = 0; k < bubble_locations.size(); k++ ) {
-		Point bubbleLocation(jsonToPoint(bubble_locations[k]));
-		//Not quite sure what the best way to deal with padding will be.
-		Point padding(4,4);
-		Point classifer_size = Point(jsonToPoint(segment["classifier_size"])) - padding;
-
-		cout << classifer_size << endl;
-		#ifdef EDIT_VIEW
-			circle(markupImage, tl + bubbleLocation, 3, Scalar(0, 255, 20), -1);
-		#endif
-		rectangle(markupImage, tl + bubbleLocation - .5 * classifer_size,
-		                       tl + bubbleLocation + .5 * classifer_size, Scalar::all(0), 1);
+	public:
+	GenerateForm(Mat markupImageInit):markupImage(markupImageInit){}
+	virtual Json::Value formFunction(const Json::Value& form){
+		super::formFunction(form);
 	}
-}
-void generateField(const Json::Value& field, Mat& markupImage) {
-	const Json::Value segments = field["segments"];
+	virtual Json::Value segmentFunction(const Json::Value& segment){
 		
-	for ( size_t j = 0; j < segments.size(); j++ ) {
-		Json::Value segment = segments[j];
-		inheritMembers(segment, field);
-		generateSegment(segment, markupImage);
+		//TODO: What happens if points are doubles?
+		Point tl(segment["x"].asInt(), segment["y"].asInt());
+
+		rectangle(markupImage, tl, tl + Point(segment["segment_width"].asInt(), segment["segment_height"].asInt()),
+			  Scalar::all(0), 2);
+
+		const Json::Value bubble_locations = segment["bubble_locations"];
+		for ( size_t k = 0; k < bubble_locations.size(); k++ ) {
+			Point bubbleLocation(jsonToPoint(bubble_locations[k]));
+			//Not quite sure what the best way to deal with padding will be.
+			Point padding(4,4);
+			Point classifer_size = Point(jsonToPoint(segment["classifier_size"])) - padding;
+
+			//cout << classifer_size << endl;
+			#ifdef EDIT_VIEW
+				circle(markupImage, tl + bubbleLocation, 3, Scalar(0, 255, 20), -1);
+			#endif
+			rectangle(markupImage, tl + bubbleLocation - .5 * classifer_size,
+				               tl + bubbleLocation + .5 * classifer_size, Scalar::all(0), 1);
+		}
+		super::segmentFunction(segment);
 	}
-}
-
-bool generateForm(const char* templatePath, Mat& markupImage) {
-
-	Json::Value templateRoot;
-	
-	if( !parseJsonFromFile(templatePath, templateRoot) ) return false;
-
-	const Json::Value fields = templateRoot["fields"];
-	
-	for ( size_t i = 0; i < fields.size(); i++ ) {
-		Json::Value field = fields[i];
-		inheritMembers(field, templateRoot);
-		generateField(field, markupImage);
-		
-	}
-	return true;
-}
-
+	virtual ~GenerateForm(){}
+};
 int main(int argc, char *argv[]) {
 
 	Mat markupImage;
@@ -88,7 +75,11 @@ int main(int argc, char *argv[]) {
 			markupImage = imread(formPath);
 			if(markupImage.empty()) return false;
 
-			if(!generateForm(templatePath.c_str(), markupImage)) return false;
+			//if(!generateForm(templatePath.c_str(), markupImage)) return false;
+
+			GenerateForm g(markupImage);
+			if( !g.start(templatePath.c_str()) ) return false;
+
 			imshow( winName, markupImage );
 
 		}
@@ -98,4 +89,3 @@ int main(int argc, char *argv[]) {
 		}
 	}
 }
-

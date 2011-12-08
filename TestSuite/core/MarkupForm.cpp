@@ -69,14 +69,14 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage, bool drawCounts) {
 					polylines(markupImage, &p, &n, 1, true, boxColor, 2, CV_AA);
 				}
 				
-				if(segment.get("type", "") != "text"){
-					avgWidth += norm(quad[0] - quad[1]);
-					if(endOfField < quad[1].x){
-						endOfField = quad[1].x;
-					}
-					avgY += quad[3].y;// + quad[1].y + quad[2].y + quad[3].y) / 4;
+				//Compute some stuff to figure out where to draw output on the form
+				avgWidth += norm(quad[0] - quad[1]);
+				if(endOfField < quad[1].x){
+					endOfField = quad[1].x;
 				}
+				avgY += quad[3].y;// + quad[1].y + quad[2].y + quad[3].y) / 4;
 				
+
 				const Json::Value bubbles = segment["bubbles"];
 				for ( size_t k = 0; k < bubbles.size(); k++ ) {
 					const Json::Value bubble = bubbles[k];
@@ -111,7 +111,7 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage, bool drawCounts) {
 			}
 		}
 		
-		//Print the counts:
+		//Print the counts on the form:
 		if(drawCounts && avgWidth > 0){
 			avgWidth /= segments.size();
 			avgY /= segments.size();
@@ -131,7 +131,7 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage, bool drawCounts) {
 	}
 	return true;
 }
-
+//DEPRECATED?
 //Makes a JSON file that contains only the fieldnames and their corresponding bubble counts.
 bool MarkupForm::outputFieldCounts(const char* bubbleVals, const char* outputPath){
 	return false; //I don't think this gets used.

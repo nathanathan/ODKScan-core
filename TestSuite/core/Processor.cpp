@@ -6,6 +6,7 @@
 #include "SegmentAligner.h"
 #include "AlignmentUtils.h"
 #include "Addons.h"
+#include "TemplateProcessor.h"
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -24,7 +25,6 @@
 // Creates a buffer around segments porpotional to their size.
 // I think .5 is the largest value that won't cause ambiguous cases.
 #define SEGMENT_BUFFER .25
-
 
 
 #ifdef OUTPUT_SEGMENT_IMAGES
@@ -61,21 +61,22 @@ Json::Value genBubblesJson( const vector<int>& bubbleVals, const vector<Point>& 
 	return out;
 }
 
-class Processor::ProcessorImpl {
-
+class Processor::ProcessorImpl : public TemplateProcessor
+{
 private:
-Mat formImage;
-Aligner aligner;
-Json::Value root;
-Json::Value JsonOutput;
-typedef std::map<const std::string, cv::Ptr< PCA_classifier> > ClassiferMap;
-ClassiferMap classifiers;
-string templPath;
-string appRootDir;
+	typedef TemplateProcessor super;
+	Mat formImage;
+	Aligner aligner;
+	Json::Value root;
+	Json::Value JsonOutput;
+	typedef std::map<const std::string, cv::Ptr< PCA_classifier> > ClassiferMap;
+	ClassiferMap classifiers;
+	string templPath;
+	string appRootDir;
 
-#ifdef TIME_IT
-clock_t init;
-#endif
+	#ifdef TIME_IT
+		clock_t init;
+	#endif
 
 
 //NOTE: training_data_uri must be a directory with no leading or trailing slashes.
@@ -198,15 +199,13 @@ vector<Point> getBubbleLocations(const PCA_classifier& classifier, const Mat& se
 	}
 	return bubbleLocations;
 }
-//TODO: pass back refrence?
-Json::Value processSegment(const Json::Value& segmentTemplate) {
-	
+Json::Value segmentFunction(const Json::Value& segmentTemplate) {
+
 	Json::Value segmentJsonOut;
 	Mat segmentImg;
 	vector <Point> segBubbleLocs;
 	vector <int> bubbleVals;
 
-	//getClassifier(segmentTemplate["training_data_uri"].asString(), jsonToPoint(segmentTemplate["classifier_size"]));
 	Ptr<PCA_classifier> classifier = getClassifier(segmentTemplate["training_data_uri"].asString(),
 	                                               jsonToPoint(segmentTemplate["classifier_size"]));
 
@@ -215,14 +214,14 @@ Json::Value processSegment(const Json::Value& segmentTemplate) {
 	                                     SCALEPARAM * Size(segmentTemplate.get("segment_width", INT_MIN).asInt(),
 	                                                       segmentTemplate.get("segment_height", INT_MIN).asInt()));
 
-	segmentJsonOut["type"] = segmentTemplate.get("type", "bubble");
+	string inputType = segmentTemplate.get("in_type", "classifier").asString();
 	
 	if(!segmentTemplate.get("bounded", true).asBool()) { //If segments don't have a bounding box
 		segmentImg = formImage(segmentRect);
-		segBubbleLocs = getBubbleLocations(*classifier, segmentImg, segmentTemplate["bubble_locations"], false);
-		bubbleVals = classifyBubbles( segmentImg, segBubbleLocs, *classifier );
 		segmentJsonOut["quad"] = quadToJsonArray(rectToQuad( segmentRect ));
-		if(segmentJsonOut["type"] == "bubble"){
+		if(inputType == "classifier"){
+			segBubbleLocs = getBubbleLocations(*classifier, segmentImg, segmentTemplate["bubble_locations"], false);
+			bubbleVals = classifyBubbles( segmentImg, segBubbleLocs, *classifier );
 			segmentJsonOut["bubbles"] = genBubblesJson( bubbleVals, segBubbleLocs, segmentRect.tl() );
 		}
 	}
@@ -260,11 +259,14 @@ Json::Value processSegment(const Json::Value& segmentTemplate) {
 			warpPerspective(segmentImg, alignedSegment, transformation, segmentRect.size());
 			segmentImg = alignedSegment;
 			
-			segBubbleLocs = getBubbleLocations(*classifier, segmentImg, segmentTemplate["bubble_locations"], DO_BUBBLE_ALIGNMENT);
-			bubbleVals = classifyBubbles( segmentImg, segBubbleLocs, *classifier );
 			segmentJsonOut["quad"] = quadToJsonArray( quad, expandedRect.tl() );
-			segmentJsonOut["bubbles"] = genBubblesJson( bubbleVals, segBubbleLocs, 
-			                                            expandedRect.tl(), transformation.inv() );
+
+			if(inputType == "classifier"){
+				segBubbleLocs = getBubbleLocations(*classifier, segmentImg, segmentTemplate["bubble_locations"], DO_BUBBLE_ALIGNMENT);
+				bubbleVals = classifyBubbles( segmentImg, segBubbleLocs, *classifier );
+				segmentJsonOut["bubbles"] = genBubblesJson( bubbleVals, segBubbleLocs, 
+					                                    expandedRect.tl(), transformation.inv() );
+			}
 		}
 		else{
 			#ifdef DEBUG_PROCESSOR
@@ -300,12 +302,31 @@ Json::Value processSegment(const Json::Value& segmentTemplate) {
 
 	return segmentJsonOut;
 }
+Json::Value fieldFunction(const Json::Value& field){
+	Json::Value fieldJsonOut;
 
+	if(field.get("mask", false).asBool()) Json::Value();
+	//cout << field.get("label", "unlabeled") << endl;
+	#ifdef OUTPUT_SEGMENT_IMAGES
+		namer.setPrefix(field.get("label", "unlabeled").asString());
+	#endif
+
+	fieldJsonOut = super::fieldFunction(field);
+	fieldJsonOut["label"] = field.get("label", "unlabeled");
+	fieldJsonOut["out_type"] = field.get("out_type", "number");
+	fieldJsonOut["key"] = field.get("key", -1);//TODO: I want to get rid of this
+
+	return fieldJsonOut;
+}
+Json::Value formFunction(const Json::Value& templateRoot){
+	Json::Value outForm = super::formFunction(templateRoot);
+	outForm["form_scale"] = Json::Value(SCALEPARAM);
+	return outForm;
+}
 
 public:
 
-ProcessorImpl(const char* appRootDir) : appRootDir(string(appRootDir)) {
-}
+ProcessorImpl(const string& appRootDir) : appRootDir(string(appRootDir)) {}
 
 bool setTemplate(const char* templatePath) {
 	#ifdef DEBUG_PROCESSOR
@@ -422,6 +443,7 @@ bool alignForm(const char* alignedImageOutputPath, size_t formIdx) {
 	#endif
 	return writeFormImage(alignedImageOutputPath);
 }
+//Sorry for the confusing names
 bool processForm(const char* outputPath) {
 	#ifdef  DEBUG_PROCESSOR
 		cout << "Processing form" << endl;
@@ -436,44 +458,8 @@ bool processForm(const char* outputPath) {
 		return false;
 	}
 	
-	const Json::Value fields = root["fields"];
-	Json::Value JsonOutputFields;
-	
-	for ( size_t i = 0; i < fields.size(); i++ ) {
-		Json::Value field = fields[i];
-		inheritMembers(field, root);
+	JsonOutput = formFunction(root);
 
-		const Json::Value segments = field["segments"];
-		
-		Json::Value fieldJsonOut;
-		fieldJsonOut["label"] = field.get("label", "unlabeled");
-		
-		if(field.get("mask", false).asBool()) continue;
-		
-		for ( size_t j = 0; j < segments.size(); j++ ) {
-			Json::Value segmentTemplate = segments[j];
-			#ifdef OUTPUT_SEGMENT_IMAGES
-				namer.setPrefix(field.get("label", "unlabeled").asString() + "_" +
-				                namer.intToString(j) + "_");
-			#endif
-
-			inheritMembers(segmentTemplate, field);
-
-			Json::Value segmentJsonOut = processSegment(segmentTemplate);
-			//TODO: Do we need keys?
-			//segmentJsonOut["key"] = segmentTemplate.get("key", -1);
-			fieldJsonOut["segments"].append(segmentJsonOut);
-		}
-		fieldJsonOut["key"] = field.get("key", -1);
-		
-		#ifdef DO_BUBBLE_INFERENCE
-			inferBubbles(fieldJsonOut, INFER_LTR_TTB);
-		#endif
-		
-		JsonOutputFields.append(fieldJsonOut);
-	}
-	JsonOutput["form_scale"] = Json::Value(SCALEPARAM);
-	JsonOutput["fields"] = JsonOutputFields;
 	#ifdef  DEBUG_PROCESSOR
 		cout << "done" << endl;
 	#endif
@@ -481,6 +467,7 @@ bool processForm(const char* outputPath) {
 	#ifdef  DEBUG_PROCESSOR
 		cout << "outputting bubble vals... " << endl;
 	#endif
+
 	ofstream outfile(outputPath, ios::out | ios::binary);
 	outfile << JsonOutput;
 	outfile.close();
@@ -526,12 +513,18 @@ int detectForm(){
 }
 };
 
+string addSlashIfNeeded(const string& str){
+	if(*str.rbegin() != '/'){
+		return str + "/";
+	}
+	return str;
+}
 
 /* This stuff hooks the Processor class up to the implementation class: */
 Processor::Processor() : processorImpl(new ProcessorImpl("")){
 	LOGI("Processor successfully constructed.");
 }
-Processor::Processor(const char* appRootDir) : processorImpl(new ProcessorImpl(appRootDir)){
+Processor::Processor(const char* appRootDir) : processorImpl(new ProcessorImpl(addSlashIfNeeded(string(appRootDir)))){
 	LOGI("Processor successfully constructed.");
 }
 bool Processor::loadFormImage(const char* imagePath, bool undistort){

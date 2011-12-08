@@ -3,6 +3,7 @@
 #include "AlignmentUtils.h"
 #include "Addons.h"
 #include "FileUtils.h"
+#include "TemplateProcessor.h"
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -32,6 +33,40 @@ using namespace cv;
 	Mat featureSource;
 	vector<Mat> templateImages;
 #endif
+
+
+class MaskGenerator : public TemplateProcessor
+{
+	private:
+	typedef TemplateProcessor super;
+	Mat markupImage;
+
+	public:
+	//templImageSize might be different from the size specified in the template if the scale param is used.
+	Mat generate(const string& templatePath, const Size& templImageSize){
+		//templSize = templImageSize;
+		bool rv = start(templatePath.c_str());
+		Mat temp;
+		resize(markupImage, temp, templImageSize, 0, 0, INTER_AREA);
+		erode(temp, markupImage, Mat(), Point(-1,-1), 1);
+		return markupImage;
+	}
+	virtual Json::Value segmentFunction(const Json::Value& segment){
+		Rect segRect( Point( segment.get("x", INT_MIN ).asInt(),
+		                     segment.get("y", INT_MIN).asInt()),
+		              Size( segment.get("segment_width", INT_MIN).asInt(),
+		                    segment.get("segment_height", INT_MIN).asInt()));
+		rectangle( markupImage, segRect.tl(), segRect.br(), Scalar::all(0), -1);
+		return super::segmentFunction(segment);
+	}
+	virtual Json::Value formFunction(const Json::Value& templateRoot){
+		markupImage = Mat(templateRoot.get("height", 0).asInt(), templateRoot.get("width", 0).asInt(),
+		                  CV_8UC1, Scalar::all(255));
+		
+		return super::formFunction(templateRoot);
+	}
+	virtual ~MaskGenerator(){}
+};
 
 //This is from the OpenCV descriptor matcher example.
 void crossCheckMatching( Ptr<DescriptorMatcher>& descriptorMatcher,
@@ -63,34 +98,7 @@ void crossCheckMatching( Ptr<DescriptorMatcher>& descriptorMatcher,
         }
     }
 }
-//I think the proper way to do this would be to make a FormAlignment class
-//then pass in the mask from Processor.cpp
-//Maybe not because I'll want to do this for all the templates... maybe I could crawl the files from Processor though?
-Mat makeFieldMask(const string& jsonTemplate){
-	
-	cout << jsonTemplate;
-	//Should there be a file that has all the JSON functions?
-	Json::Value myRoot;
-	parseJsonFromFile(jsonTemplate, myRoot);
-	
-	Mat mask(myRoot.get("height", 0).asInt(), myRoot.get("width", 0).asInt(),
-			CV_8UC1, Scalar::all(255));
-	const Json::Value fields = myRoot["fields"];
-	for ( size_t i = 0; i < fields.size(); i++ ) {
-		const Json::Value field = fields[i];
-		const Json::Value segments = field["segments"];
-		for ( size_t j = 0; j < segments.size(); j++ ) {
-			const Json::Value segmentTemplate = segments[j];
 
-			Rect segRect( Point( segmentTemplate.get("x", INT_MIN ).asInt(),
-								   segmentTemplate.get("y", INT_MIN).asInt()),
-							Size(segmentTemplate.get("width", INT_MIN).asInt(),
-							segmentTemplate.get("height", INT_MIN).asInt()));
-			rectangle(mask, segRect.tl(), segRect.br(), Scalar::all(0), -1);				
-		}
-	}
-	return mask;
-}
 void loadFeatures( const string& featuresFile, Size& templImageSize,
 					vector<KeyPoint>& templKeypoints, Mat& templDescriptors) throw(cv::Exception) {
 							
@@ -277,10 +285,9 @@ void Aligner::loadFeatureData(const string& templPath) throw(cv::Exception) {
 		#ifdef DEBUG_ALIGN_IMAGE
 			cout << "Extracting keypoints from template image..." << endl;
 		#endif
-		
-		Mat mask = makeFieldMask(templPath + ".json");
-		resize(mask, temp, templImage.size(), 0, 0, INTER_AREA);
-		erode(temp, mask, Mat(), Point(-1,-1), 1);
+
+		MaskGenerator g;
+		Mat mask = g.generate(templPath + ".json", templImageSize);
 		
 		/*
 		#ifdef MASK_CENTER_AMOUNT
