@@ -9,13 +9,13 @@ import android.content.SharedPreferences;
 import android.content.res.AssetManager;
 import android.os.Handler;
 import android.util.Log;
-/*
- * The RunSetup class is used to extract the assets on a separate thread.
+/**
+ * The RunSetup class is used to extract the assets while running on a separate thread so as to avoid locking up the UI.
  * It also does some version control stuff.
  */
 public class RunSetup implements Runnable {
 	
-	public static final int version = 76;  
+	public static final int version = 79;  
 	public static final boolean clearOldData = false;
 	
 	private SharedPreferences settings;
@@ -65,7 +65,12 @@ public class RunSetup implements Runnable {
 		editor.commit();
 		handler.sendEmptyMessage(0);
 	}
-	// This method copies the files within a given directory (with path relative to the assets folder).
+	/**
+	 * Recursively copy all the assets in the specified assets directory to the specified output directory
+	 * @param assetsDir
+	 * @param outputDir
+	 * @throws IOException
+	 */
 	protected void extractAssets(File assetsDir, File outputDir) throws IOException{
 
 		outputDir.mkdirs();
@@ -84,6 +89,12 @@ public class RunSetup implements Runnable {
 			}
 		}
 	}
+	/**
+	 * Copy a single asset file to the specified directory.
+	 * @param assetDir
+	 * @param outputDir
+	 * @throws IOException
+	 */
 	protected void copyAsset(File assetDir, File outputDir) throws IOException {
 		
 		Log.i("mScan", "Copying " + assetDir + " to " + outputDir.toString());
@@ -103,7 +114,10 @@ public class RunSetup implements Runnable {
 		fos.close();
 		fis.close();
 	}
-	//Recursively remove all the files in a directory, then the directory.
+	/**
+	 * Recursively remove all the files in a directory, then the directory.
+	 * @param dir
+	 */
 	public void rmdir(File dir){
 		
 		if(dir.exists()){

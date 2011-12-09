@@ -7,7 +7,7 @@ import java.util.Date;
 import android.view.View;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
-/*
+/**
  * MScanUtils contains methods and data shared across the mScan application.
  */
 public class MScanUtils {
@@ -54,8 +54,13 @@ public class MScanUtils {
 		myWebView.loadDataWithBaseURL("file:///unnecessairy/",
 								 html, "text/html", "utf-8", "");
     }
-    //Check if the given class has the given method.
-    //Useful for dealing with android comparability issues (see getUsableSpace)
+    /**
+     * Check if the given class has the given method.
+     * Useful for dealing with android comparability issues (see getUsableSpace)
+     * @param c
+     * @param method
+     * @return
+     */
 	public static <T> boolean hasMethod(Class<T> c, String method){
 		Method methods[] = c.getMethods();
 		for(int i = 0; i < methods.length; i++){
@@ -71,10 +76,25 @@ public class MScanUtils {
 		} 
 		return -1;
 	}
-	public static Integer sum(Integer[] integerArray){
-		int sum = 0;
-		for(int i = 0; i < integerArray.length; i++){
-			sum += integerArray[i];
+	/**
+	 * Combine the elements in the array using the + operator
+	 * @param array
+	 */
+	public static String sum(String[] stringArray){
+		String sum = "";
+		for(int i = 0; i < stringArray.length; i++){
+			sum += stringArray[i];
+		}
+		return sum;
+	}
+	/**
+	 * Combine the elements in the array using the + operator
+	 * @param array
+	 */
+	public static Number sum(Number[] numberArray){
+		Double sum = 0.0;
+		for(int i = 0; i < numberArray.length; i++){
+			sum += numberArray[i].doubleValue();
 		}
 		return sum;
 	}

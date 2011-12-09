@@ -7,6 +7,7 @@ import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.view.View;
@@ -24,7 +25,6 @@ import android.widget.Toast;
 public class BubbleBot extends Activity {
 
 	ProgressDialog pd;
-	public boolean spaceAlerted = false;
 	SharedPreferences settings;
 
 	@Override
@@ -33,6 +33,8 @@ public class BubbleBot extends Activity {
 		setContentView(R.layout.bubble_bot); // Setup the UI
 		
 		settings = getSharedPreferences(getResources().getString(R.string.prefs_name), 0);
+		
+		if(!checkSDCard()) return;
 		
 		checkVersion();
 		
@@ -119,20 +121,32 @@ public class BubbleBot extends Activity {
 			
 		});
 	}
-	
-	@Override
-	protected void onResume() {
-		super.onResume();
+	private boolean checkSDCard() {
+		//http://developer.android.com/guide/topics/data/data-storage.html#filesExternal
+		String state = Environment.getExternalStorageState();
 
-		//Check that there is room to store more images
-		final int APROX_IMAGE_SIZE = 1000000;
-		long usableSpace = MScanUtils.getUsableSpace(MScanUtils.appFolder);
-		if(!spaceAlerted && usableSpace >= 0 && usableSpace < 4 * APROX_IMAGE_SIZE) {
-			AlertDialog alert = new AlertDialog.Builder(this).create();
-			alert.setMessage("It looks like there isn't enough space to store more images.");
-			alert.show();
-			spaceAlerted = true;
+		String errorMsg = "";
+		
+		if (Environment.MEDIA_MOUNTED.equals(state)) {
+			 // We can read and write the media
+			// Now Check that there is room to store more images
+			final int APROX_IMAGE_SIZE = 1000000;
+			long usableSpace = MScanUtils.getUsableSpace(MScanUtils.appFolder);
+			if(usableSpace >= 0 && usableSpace < 4 * APROX_IMAGE_SIZE) {
+				errorMsg = "It looks like there isn't enough space to store more images.";
+			}
+		} else if (Environment.MEDIA_MOUNTED_READ_ONLY.equals(state)) {
+			errorMsg = "We cannot write the media.";
+		} else {
+			errorMsg = "We can neither read nor write the media.";
 		}
+		if(errorMsg.isEmpty()){
+			return true;
+		}
+		AlertDialog alert = new AlertDialog.Builder(this).create();
+		alert.setMessage(errorMsg);
+		alert.show();
+		return false;
 	}
 	@Override
 	public void onBackPressed() {

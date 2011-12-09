@@ -66,6 +66,7 @@ public class RunProcessor implements Runnable {
 				Log.i("mScan","Loading: " + photoName);
 				
 				String[] templatePaths = { "form_templates/SIS-A01", "form_templates/UW_course_eval_A_front" };
+				//String[] templatePaths = { "form_templates/checkbox_form" };
 				int formIdx = 0;
 				
 				if(doFormDetection) {

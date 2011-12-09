@@ -61,8 +61,27 @@ public class DisplayProcessedData  extends ListActivity {
 					
 					TextView fieldName = (TextView) view.findViewById(R.id.fieldName);
 					TextView fieldCount = (TextView) view.findViewById(R.id.fieldCount);
+					
+					
+					
 					try {
 						fieldName.setText(field.getString("label"));
+						
+						String outType = field.optString("out_type");
+						
+						if( outType.equals("number") ){
+							Number[] segmentCounts = JSONUtils.getSegmentValues(field);
+							fieldCount.setText("" + MScanUtils.sum(segmentCounts).intValue());
+						}
+						else if( outType.equals("text") ){
+							//TODO: Make a nice way to expand these.
+							fieldCount.setText("text");
+						}
+						else{
+							fieldCount.setText( "NA" );
+						}
+						
+						/*
 						//TODO: Figure out a better way to display the data so that fields can have multiple segment types.
 						if( field.getJSONArray("segments").getJSONObject(0).getString("type").equals("bubble") ){
 							Integer[] segmentCounts = JSONUtils.getSegmentCounts(field);
@@ -70,10 +89,10 @@ public class DisplayProcessedData  extends ListActivity {
 						}
 						else{
 							fieldCount.setText(field.getJSONArray("segments").getJSONObject(0).getString("type"));
-						}
+						}*/
 					} catch (JSONException e) {
 						fieldName.setText( "ERROR" );
-						fieldCount.setText("NA");
+						fieldCount.setText( "NA" );
 					}
 					return view;
 				}

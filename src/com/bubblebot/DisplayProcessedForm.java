@@ -240,8 +240,8 @@ public class DisplayProcessedForm extends Activity {
     		for(int i = 0; i < fieldsLength; i++){
 				JSONObject field = fields.getJSONObject(i);
 				if( field.getJSONArray("segments").getJSONObject(0).getString("type").equals("bubble") ){
-					Integer[] segmentCounts = JSONUtils.getSegmentCounts(field);
-					bufferWritter.write(MScanUtils.sum(segmentCounts));
+					Number[] segmentCounts = JSONUtils.getSegmentValues(field);
+					bufferWritter.write(MScanUtils.sum(segmentCounts).intValue());
 				}
 				else{
 					JSONArray textSegments = field.getJSONArray("segments");

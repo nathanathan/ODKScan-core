@@ -74,7 +74,7 @@ public class JSONUtils {
 		JSONObject outFields = new JSONObject();
 		for(int i = 0; i < fields.length(); i++){
 			outFields.put(fields.getJSONObject(i).getString("label"),
-						  MScanUtils.sum(getSegmentCounts(fields.getJSONObject(i))));
+						  MScanUtils.sum(getSegmentValues(fields.getJSONObject(i))));
 		}
 		outRoot.put("fields", outFields);
 		return outRoot;
@@ -146,24 +146,30 @@ public class JSONUtils {
 		JSONArray fields = bubbleVals.getJSONArray("fields");
 		String[] fieldString = new String[fields.length()];
 		for(int i = 0; i < fields.length(); i++){
-			Integer[] segmentCounts = getSegmentCounts(fields.getJSONObject(i));
+			Number[] segmentCounts = getSegmentValues(fields.getJSONObject(i));
 			fieldString[i] = fields.getJSONObject(i).getString("label") + " : \n" + MScanUtils.sum(segmentCounts);
 		}
 		return fieldString;
 	}
-	public static Integer[] getFieldCounts(JSONObject bubbleVals) throws JSONException {
+	public static Number[] getFieldCounts(JSONObject bubbleVals) throws JSONException {
 		JSONArray fields = bubbleVals.getJSONArray("fields");
-		Integer[] fieldCounts = new Integer[fields.length()];
+		Number[] fieldCounts = new Number[fields.length()];
 		for(int i = 0; i < fields.length(); i++){
-			Integer[] segmentCounts = getSegmentCounts(fields.getJSONObject(i));
+			Number[] segmentCounts = getSegmentValues(fields.getJSONObject(i));
 			fieldCounts[i] = MScanUtils.sum(segmentCounts);
 		}
 		return fieldCounts;
 	}
-	public static Integer[] getSegmentCounts(JSONObject field) throws JSONException {
+	/**
+	 * Assumes segments have integer values and returns them in an array.
+	 * @param field
+	 * @return
+	 * @throws JSONException
+	 */
+	public static Number[] getSegmentValues(JSONObject field) throws JSONException {
 
 		JSONArray jArray = field.getJSONArray("segments");
-		Integer[] bubbleCounts = new Integer[jArray.length()];
+		Number[] bubbleCounts = new Number[jArray.length()];
 
 		for (int i = 0; i < jArray.length(); i++) {
 			int numFilled = 0;
