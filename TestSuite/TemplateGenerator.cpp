@@ -13,7 +13,7 @@
 using namespace std;
 using namespace cv;
 
-#define EDIT_VIEW
+//#define EDIT_VIEW
 
 class GenerateForm : public TemplateProcessor
 {
@@ -23,9 +23,6 @@ class GenerateForm : public TemplateProcessor
 
 	public:
 	GenerateForm(Mat markupImageInit):markupImage(markupImageInit){}
-	virtual Json::Value formFunction(const Json::Value& form){
-		super::formFunction(form);
-	}
 	virtual Json::Value segmentFunction(const Json::Value& segment){
 		
 		//TODO: What happens if points are doubles?
@@ -45,10 +42,17 @@ class GenerateForm : public TemplateProcessor
 			#ifdef EDIT_VIEW
 				circle(markupImage, tl + bubbleLocation, 3, Scalar(0, 255, 20), -1);
 			#endif
-			rectangle(markupImage, tl + bubbleLocation - .5 * classifer_size,
-				               tl + bubbleLocation + .5 * classifer_size, Scalar::all(0), 1);
+			if(segment["training_data_uri"].asString() == "bubbles"){
+				ellipse(markupImage, tl + bubbleLocation, Size(.5 * classifer_size.x,
+				                                               .5 * classifer_size.y ),
+				        0, 0, 360, Scalar::all(0), 1, CV_AA);
+			}
+			else{
+				rectangle(markupImage, tl + bubbleLocation - .5 * classifer_size,
+						       tl + bubbleLocation + .5 * classifer_size, Scalar::all(0), 1);
+			}
 		}
-		super::segmentFunction(segment);
+		return super::segmentFunction(segment);
 	}
 	virtual ~GenerateForm(){}
 };

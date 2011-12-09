@@ -5,7 +5,16 @@
 
 //TODO: return refrence instead?
 //TODO: Make it so empty json values are not appended, if they are appended.
+//TODO: Add exceptions
+//TODO: Split this into a cpp file
 
+/**
+	This class allows you to specify functions that will be applied to the form/field/segment objects 
+	as they are recursed over in a pre-order traversal.
+	We assume templates that are nested like this:
+		{fields : [ segments : [] ]}
+	You need to call the base class functions for the recursion to happen.
+ */
 class TemplateProcessor
 {
 	public:
