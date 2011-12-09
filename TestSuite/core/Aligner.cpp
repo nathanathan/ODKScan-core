@@ -15,7 +15,7 @@
 #include <fstream>
 
 //vaying the reproject threshold can make a big difference in performance.
-#define FH_REPROJECT_THRESH 4.0 //4 might be the best
+#define FH_REPROJECT_THRESH 4.0
 
 //#define ALWAYS_COMPUTE_TEMPLATE_FEATURES
 //#define SHOW_MATCHES_WINDOW
@@ -149,27 +149,30 @@ Aligner::Aligner(){
 	
 	#define PARAM_SET 1
 	#if PARAM_SET == 0
-		detector = Ptr<FeatureDetector>(new GridAdaptedFeatureDetector(
-											new SurfFeatureDetector( 250., 1, 3),
-											3500, 7, 7));
+		detector = Ptr<FeatureDetector>(
+			new GridAdaptedFeatureDetector(
+				new SurfFeatureDetector( 250., 1, 3),
+				3500, 7, 7));
 	
 		//descriptorExtractor = DescriptorExtractor::create( "SURF" );
 		descriptorExtractor = Ptr<DescriptorExtractor>(new SurfDescriptorExtractor( 1, 3 ));
 		#define MATCHER_TYPE "FlannBased"
 	#elif PARAM_SET == 1
 		//Optimal hessian level seems to vary by phone
-		detector = Ptr<FeatureDetector>(new GridAdaptedFeatureDetector(
-											new SurfFeatureDetector( 395., 1, 3),
-											3500, 7, 7));
+		detector = Ptr<FeatureDetector>(
+			new GridAdaptedFeatureDetector(
+				new SurfFeatureDetector( 395., 1, 3),
+				3500, 7, 7));
 	
 		//descriptorExtractor = DescriptorExtractor::create( "SURF" );
 		descriptorExtractor = Ptr<DescriptorExtractor>(new SurfDescriptorExtractor( 1, 3 ));
 		#define MATCHER_TYPE "FlannBased"
 	#elif PARAM_SET == 2
 		//Reduced number of features:
-		detector = Ptr<FeatureDetector>(new GridAdaptedFeatureDetector(
-											new SurfFeatureDetector( 395., 1, 3),
-											500, 5, 5));
+		detector = Ptr<FeatureDetector>(
+			new GridAdaptedFeatureDetector(
+				new SurfFeatureDetector( 395., 1, 3),
+				500, 5, 5));
 	
 		//descriptorExtractor = DescriptorExtractor::create( "SURF" );
 		descriptorExtractor = Ptr<DescriptorExtractor>(new SurfDescriptorExtractor( 1, 3 ));
@@ -179,12 +182,6 @@ Aligner::Aligner(){
 }
 void Aligner::setImage( const cv::Mat& img ){
 
-	#if 0
-	//TODO: Figure out a way to set the camera params here.
-	Mat dcm = getDefaultNewCameraMatrix((Mat_<float>(3,3) << 612.02,0,319.5,0,612.02,239.5,0,0,1), img.size(), true);
-	//cout << dcm << endl;
-	undistort(img, currentImg, dcm, (Mat_<double>(5,1) << .0660769, -.32678, -.0011122, -.002264932, 1.5752));
-	#endif
 	currentImg = img;
 	
 	Mat currentImgResized;
@@ -209,18 +206,7 @@ void Aligner::setImage( const cv::Mat& img ){
 	#endif
 	
 	#if 0
-		namedWindow("outliers", CV_WINDOW_NORMAL);
-		imshow( "outliers", currentImgResized );
-	
-		for(;;)
-		{
-			char c = (char)waitKey(0);
-			if( c == '\x1b' ) // esc
-			{
-				cvDestroyWindow("outliers");
-			    break;
-			}
-		}
+		debugShow(currentImgResized);
 	#endif
 	
 	Mat mask(currentImgResized.rows, currentImgResized.cols, CV_8UC1, Scalar::all(255));
@@ -294,21 +280,8 @@ void Aligner::loadFeatureData(const string& templPath) throw(cv::Exception) {
 			Rect roi = resizeRect(Rect(Point(0,0), templImage.size()), MASK_CENTER_AMOUNT);
 			rectangle(mask, roi.tl(), roi.br(), Scalar::all(0), -1);
 		#endif
+		//debugShow(templImage & mask);
 		*/
-		
-		#if 0
-		imshow( "outliers", templImage & mask);
-		for(;;)
-		{
-		    char c = (char)waitKey(0);
-		    if( c == '\x1b' ) // esc
-		    {
-		    	cvDestroyWindow("inliers");
-		    	cvDestroyWindow("outliers");
-		        break;
-		    }
-		}
-		#endif
 		
 		temp.release();
 		detector->detect( templImage, templKeypoints, mask );
@@ -337,11 +310,13 @@ void Aligner::loadFeatureData(const string& templPath) throw(cv::Exception) {
 }
 size_t Aligner::detectForm() const{
 	//TODO: Make this code unterrible
+	LOGI("Detect from");
 	Ptr<DescriptorMatcher> descriptorMatcher = DescriptorMatcher::create( MATCHER_TYPE );
 	size_t formIdx = 0;
 	size_t previousBest = 0;
 	
 	for(size_t i = 0; i < templDescriptorsVec.size(); i++){
+		LOGI("Detect from for loop");
 		vector<DMatch> filteredMatches;
 		size_t inliers = 0;
 		crossCheckMatching( descriptorMatcher, currentImgDescriptors, templDescriptorsVec[i], filteredMatches);
@@ -371,22 +346,22 @@ size_t Aligner::detectForm() const{
 		}
 	}
 	return formIdx;
-/*
+	/*
 	Ptr<BOWImgDescriptorExtractor> bowExtractor =
 			new BOWImgDescriptorExtractor( descriptorExtractor, DescriptorMatcher::create( MATCHER_TYPE ));
 	
 	Mat vocabulary = trainVocabulary( "BOWfile", vocData, vocabTrainParams,
-                                      detector, descriptorExtractor );
+	                                  detector, descriptorExtractor );
                                       
 	CvSVM svm;
 	trainSVMClassifier( svm, svmTrainParamsExt, objClasses[classIdx], vocData,
-                            bowExtractor, featureDetector, resPath );
+	                    bowExtractor, featureDetector, resPath );
                                       
 	bowExtractor->setVocabulary( vocabulary );
 	
 	Mat bowDescriptor;
 	bowExtractor->compute( currentImg, currentImgKeypoints, bowDescriptor );
-*/
+	*/
 }
 void Aligner::alignFormImage(Mat& aligned_img, const Size& aligned_img_sz, size_t featureDataIdx ) throw(cv::Exception) {
 	
@@ -435,8 +410,8 @@ void Aligner::alignFormImage(Mat& aligned_img, const Size& aligned_img_sz, size_
 		Mat points1t; perspectiveTransform(Mat(points1), points1t, H);
 		for( size_t i1 = 0; i1 < points1.size(); i1++ )
 		{
-		    if( norm(points2[i1] - points1t.at<Point2f>((int)i1,0)) < FH_REPROJECT_THRESH ) // inlier
-		        matchesMask[i1] = 1;
+			if( norm(points2[i1] - points1t.at<Point2f>((int)i1,0)) < FH_REPROJECT_THRESH ) // inlier
+				matchesMask[i1] = 1;
 		}
 	
 		Mat drawImg;
@@ -444,29 +419,16 @@ void Aligner::alignFormImage(Mat& aligned_img, const Size& aligned_img_sz, size_
 		drawMatches( featureSource, currentImgKeypoints, templateImages[featureDataIdx], templKeypoints, filteredMatches, drawImg,
 					CV_RGB(0, 255, 0), CV_RGB(255, 0, 255), matchesMask, DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
 	
-		namedWindow("inliers", CV_WINDOW_NORMAL);
-		imshow( "inliers", drawImg );
+		debugShow(drawImg);
 		
-        for( size_t i1 = 0; i1 < matchesMask.size(); i1++ )
-            matchesMask[i1] = !matchesMask[i1];
-            
-        drawMatches( featureSource, currentImgKeypoints, templateImages[featureDataIdx], templKeypoints, filteredMatches, drawImg,
-        			CV_RGB(0, 0, 255), CV_RGB(255, 0, 0), matchesMask,
-        			DrawMatchesFlags::DRAW_OVER_OUTIMG | DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
-		
-		namedWindow("outliers", CV_WINDOW_NORMAL);
-		imshow( "outliers", drawImg );
-		
-		for(;;)
-		{
-		    char c = (char)waitKey(0);
-		    if( c == '\x1b' ) // esc
-		    {
-		    	cvDestroyWindow("inliers");
-		    	cvDestroyWindow("outliers");
-		        break;
-		    }
+		for( size_t i1 = 0; i1 < matchesMask.size(); i1++ ){
+			matchesMask[i1] = !matchesMask[i1];
 		}
+		drawMatches( featureSource, currentImgKeypoints, templateImages[featureDataIdx], templKeypoints, filteredMatches, drawImg,
+        	             CV_RGB(0, 0, 255), CV_RGB(255, 0, 0), matchesMask,
+        	             DrawMatchesFlags::DRAW_OVER_OUTIMG | DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
+		
+		debugShow(drawImg);
 	#endif
 
 	#ifdef OUTPUT_DEBUG_IMAGES

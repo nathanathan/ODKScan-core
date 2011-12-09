@@ -40,4 +40,5 @@ template <class Tp>
 bool returnTrue(Tp& anything){
 	return true;
 }
+void debugShow(const cv::Mat & image);
 #endif

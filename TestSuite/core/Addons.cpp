@@ -1,6 +1,7 @@
 #include "Addons.h"
 #include <json/json.h>
 #include <fstream>
+#include <opencv2/highgui/highgui.hpp>
 
 using namespace std;
 using namespace cv;
@@ -129,4 +130,18 @@ vector<int> computedFilledIntegral(const Json::Value& field){
 string replaceFilename(const string& filepath, const string& newName ){
 	int nameIdx = filepath.find_last_of("/");
 	return filepath.substr(0,nameIdx + 1) + newName;
+}
+void debugShow(const Mat& img){
+	namedWindow("debug window", CV_WINDOW_NORMAL);
+	imshow("debug window", img );
+
+	for(;;)
+	{
+		char c = (char)waitKey(0);
+		if( c == '\x1b' ) // esc
+		{
+			cvDestroyWindow("debug window");
+			break;
+		}
+	}
 }
