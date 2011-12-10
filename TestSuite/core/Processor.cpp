@@ -130,10 +130,11 @@ Ptr<PCA_classifier>& getClassifier(const string& training_data_uri, const Point&
 				cout << acutal_classifier_size.width << endl;
 				cout << filepaths.size() << endl;
 				cout << classifiers.size() << endl;
+			#endif
 			*/
 			bool success = classifiers[key]->train_PCA_classifier( filepaths,
-				                                              acutal_classifier_size,
-				                                              EIGENBUBBLES, true);//flip training examples. TODO: put this stuff in template
+				                                               acutal_classifier_size,
+				                                               EIGENBUBBLES, true);//flip training examples. TODO: put this stuff in template
 			if( !success ) {
 				LOGI("\n\nThings are going to break.\n\n");
 				return classifiers[key];
@@ -159,9 +160,8 @@ vector<int> classifyBubbles(const Mat& segment, const vector<Point> bubbleLocati
 	}
 	return out;
 }
-//TODO: Here's a problem, I have to pass in the classifer, which doesn't seem nice.
-//	Maybe this should be part of the classifier class?
-vector<Point> getBubbleLocations(const PCA_classifier& classifier, const Mat& segment, const Json::Value& bubbleLocationsJSON, bool refine) {
+vector<Point> getBubbleLocations(const PCA_classifier& classifier, const Mat& segment,
+                                 const Json::Value& bubbleLocationsJSON, bool refine) {
 
 	vector <Point> bubbleLocations;
 	vector<Point2f> points1, points2;
@@ -454,7 +454,7 @@ bool processForm(const char* outputPath) {
 	
 	if( !root || formImage.empty() ){
 		cout << "Unable to process form. Error code: " <<
-				(int)!root << (int)formImage.empty() << endl;
+		        (int)!root << (int)formImage.empty() << endl;
 		return false;
 	}
 	
@@ -488,6 +488,7 @@ bool writeFormImage(const char* outputPath) {
 	//see http://stackoverflow.com/questions/675039/how-can-i-create-directory-tree-in-c-linux
 	return imwrite(outputPath, formImage);
 }
+//TODO: If the wrong path is specified this causes a freeze which I should fix.
 bool loadFeatureData(const char* templatePath){
 	try{
 		aligner.loadFeatureData(templatePath);
@@ -501,7 +502,7 @@ bool loadFeatureData(const char* templatePath){
 int detectForm(){
 	int formIdx;
 	try{
-		cout << "Detecting form..." << endl;
+		LOGI("Detecting form...");
 		aligner.setImage(formImage);
 		formIdx = aligner.detectForm();
 	}

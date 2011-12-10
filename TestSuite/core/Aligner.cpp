@@ -247,7 +247,7 @@ void Aligner::loadFeatureData(const string& templPath) throw(cv::Exception) {
 	catch( cv::Exception& e ) {
 	
 		cout << e.what() << endl;
-		cout << "Creating new feature data:" << endl;
+		LOGI("Creating new feature data:");
 		
 		if(detector.empty() || descriptorExtractor.empty())
 			CV_Error(CV_StsError, "Cound not create detector/extractor.");

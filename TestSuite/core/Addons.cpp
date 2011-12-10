@@ -62,19 +62,6 @@ vector<Point> jsonArrayToQuad(const Json::Value& quadJson){
 	}
 	return out;
 }
-bool parseJsonFromFile(const char* filePath, Json::Value& myRoot){
-	ifstream JSONin;
-	Json::Reader reader;
-	
-	JSONin.open(filePath, ifstream::in);
-	bool parse_successful = reader.parse( JSONin, myRoot );
-	
-	JSONin.close();
-	return parse_successful;
-}
-bool parseJsonFromFile(const string& filePath, Json::Value& myRoot){
-	return parseJsonFromFile(filePath.c_str(), myRoot);
-}
 void inferBubbles(Json::Value& field, inferenceMethod method){
 
 	int cutIdx = minErrorCut(computedFilledIntegral(field));

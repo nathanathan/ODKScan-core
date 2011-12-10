@@ -1,7 +1,25 @@
 #include "TemplateProcessor.h"
+#include <json/json.h>
 #include <iostream>
 #include <fstream>
 
+using namespace std;
+
+bool parseJsonFromFile(const char* filePath, Json::Value& myRoot) {
+	ifstream JSONin;
+	Json::Reader reader;
+	
+	JSONin.open(filePath, ifstream::in);
+	bool parse_successful = reader.parse( JSONin, myRoot );
+	
+	JSONin.close();
+	return parse_successful;
+}
+bool parseJsonFromFile(const string& filePath, Json::Value& myRoot) {
+	return parseJsonFromFile(filePath.c_str(), myRoot);
+}
+
+//TODO: Make it so empty json values are not appended, if they are appended.
 
 //inheritMembers makes the child value inherit the members that it does not override from the specified parent json value.
 //The parent is copied so it can be written over, while the child is passed in and returned with added members by refrence.
@@ -19,12 +37,12 @@ Json::Value& TemplateProcessor::inheritMembers(Json::Value& child, Json::Value p
 }
 
 //XXX: If you override these, you should call the base class functions after your code to keep descending.
-virtual Json::Value TemplateProcessor::segmentFunction(const Json::Value& segment){
+Json::Value TemplateProcessor::segmentFunction(const Json::Value& segment){
 	//This will usually be the function to override
-	std::cout << "AAA" << std::endl;
+	//std::cout << "test" << std::endl;
 	return Json::Value();
 }
-virtual Json::Value TemplateProcessor::fieldFunction(const Json::Value& field){
+Json::Value TemplateProcessor::fieldFunction(const Json::Value& field){
 	const Json::Value segments = field["segments"];
 	Json::Value outfield;
 	Json::Value outSegments;
@@ -38,7 +56,7 @@ virtual Json::Value TemplateProcessor::fieldFunction(const Json::Value& field){
 	outfield["segments"] = outSegments;
 	return outfield;
 }
-virtual Json::Value TemplateProcessor::formFunction(const Json::Value& templateRoot){
+Json::Value TemplateProcessor::formFunction(const Json::Value& templateRoot){
 	const Json::Value fields = templateRoot["fields"];
 	Json::Value outform;
 	Json::Value outfields;
@@ -52,7 +70,7 @@ virtual Json::Value TemplateProcessor::formFunction(const Json::Value& templateR
 	outform["fields"] = outfields;
 	return outform;
 }
-virtual bool TemplateProcessor::start(const char* templatePath){
+bool TemplateProcessor::start(const char* templatePath){
 	Json::Value templateRoot;
 	if( parseJsonFromFile(templatePath, templateRoot) ){
 		formFunction(templateRoot);
@@ -60,3 +78,4 @@ virtual bool TemplateProcessor::start(const char* templatePath){
 	}
 	return false;
 }
+

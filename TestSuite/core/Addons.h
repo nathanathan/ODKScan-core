@@ -23,9 +23,6 @@ cv::Point jsonToPoint(const Json::Value& jPoint);
 Json::Value quadToJsonArray(const std::vector<cv::Point>& quad, const cv::Point& offset = cv::Point(0,0));
 Json::Value quadToJsonArray(const std::vector<cv::Point2f>& quad, const cv::Point& offset = cv::Point(0,0));
 std::vector<cv::Point> jsonArrayToQuad(const Json::Value& quadJson);
-//Pure Json:
-bool parseJsonFromFile(const char* filePath, Json::Value& myRoot);
-bool parseJsonFromFile(const std::string& filePath, Json::Value& myRoot);
 //Indexing is a little bit complicated here.
 //The first element of the filledIntegral is always 0.
 //A min error cut at 0 means no bubbles are considered filled.

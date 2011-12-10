@@ -1,6 +1,7 @@
 #include <json/value.h>
+#include <iostream>
+#include <fstream>
 
-//TODO: Make it so empty json values are not appended, if they are appended.
 //TODO: Add exceptions
 
 /**
@@ -13,11 +14,9 @@
 class TemplateProcessor
 {
 	public:
-
 	//inheritMembers makes the child value inherit the members that it does not override from the specified parent json value.
 	//The parent is copied so it can be written over, while the child is passed in and returned with added members by refrence.
-	Json::Value& inheritMembers(Json::Value& child, Json::Value parent);
-
+	Json::Value& inheritMembers(Json::Value& child, Json::Value parent) const;
 	//XXX: If you override these, you should call the base class functions after your code to keep descending.
 	virtual Json::Value segmentFunction(const Json::Value& segment);
 	virtual Json::Value fieldFunction(const Json::Value& field);
@@ -27,3 +26,6 @@ class TemplateProcessor
 
 	virtual ~TemplateProcessor(){}
 };
+
+bool parseJsonFromFile(const char* filePath, Json::Value& myRoot);
+bool parseJsonFromFile(const std::string& filePath, Json::Value& myRoot);

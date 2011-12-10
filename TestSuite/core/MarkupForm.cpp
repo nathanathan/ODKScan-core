@@ -12,11 +12,28 @@
 #include "MarkupForm.h"
 #include "Addons.h"
 #include "AlignmentUtils.h"
+#include "TemplateProcessor.h"
 
 //#define SHOW_MIN_ERROR_CUT
 
 using namespace std;
 using namespace cv;
+
+//TODO: Simplify this using the template processor class
+//	Or maybe it's not worth the effort since we might go to marking up photos with JSON
+/*
+class MarkupForm : public TemplateProcessor
+{
+	private:
+	typedef TemplateProcessor super;
+
+	Json::Value segmentFunction(const Json::Value& segment);
+	Json::Value fieldFunction(const Json::Value& field);
+	Json::Value formFunction(const Json::Value& templateRoot);
+	bool start(const char* templatePath);
+
+};
+*/
 
 bool markupFormHelper(const char* bvPath, Mat& markupImage, bool drawCounts) {
 	Scalar colors[6] = {
