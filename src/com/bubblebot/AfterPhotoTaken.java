@@ -27,7 +27,7 @@ import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.CompoundButton.OnCheckedChangeListener;
 
-/*
+/**
  * This activity runs the form processor and provides user feedback
  * displaying progress dialogs and the alignment results.
  */
