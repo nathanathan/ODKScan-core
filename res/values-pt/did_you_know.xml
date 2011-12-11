@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array
+        name="did_you_know">
+        <item>Infants usually retain antimeasles immunoglobulins (antibodies) transmitted from the mother during pregnancy for up to one year.</item>
+	    <item>The venom of the lesser Asian scorpion contains proteins that are toxic to Plasmodium falciparum, a pathogenic parasite that causes malaria in humans.</item>
+	    <item>Some vaccinations contain preservatives, which are used to prevent contamination with bacteria or fungi.</item>
+	    <item>The DTPw-HB/Hib pentavalent vaccine protects against 5 childhood diseases.</item>
+	    <item>BCG has a small protective effect against leprosy of around 26%, although it is not used specifically for this purpose.</item>
+    </string-array>
+</resources>

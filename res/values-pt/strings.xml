@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-<!-- <string name="prefs_name">"mScanPrefs"</string> -->
+<string name="prefs_name">"mScanPrefs"</string>
 <string name="app_name">mScan</string>
 <string name="app_description">Scan and process bubble forms</string>
 <string name="bubble_process_activity">Processing Scanned Form</string>
@@ -10,23 +10,23 @@
 <string name="display_processed_data_activity">Display Processed Data</string>
 <string name="after_photo_taken_activity">Captured Image</string>
 
+<!-- For Main Screen -->
+<string name="Health_Center">Health Center</string>
+<string name="the_current_health_center_is">a unidade sanitaria e:</string>
+<string name="ScanButton">scanar nova ficha</string>
+<string name="ViewFormsButton">ver imagens</string>
+<string name="InstructionsButton">instruncoes</string>
+<string name="SettingsButton">definicoes</string>
+
 <!-- For Preferences -->
 <string name="calibrate">Calibrate</string>
 <string name="doFormDetection">Do Form Detection</string>
-    
-<!-- For Main Screen -->
-<string name="Health_Center">Health Center</string>
-<string name="the_current_health_center_is">The current health center is:</string>
-<string name="ScanButton">Scan New Form</string>
-<string name="ViewFormsButton">View Images</string>
-<string name="InstructionsButton">Instructions</string>
-<string name="SettingsButton">Settings</string>
 
 <!-- AfterPhotoTaken -->
-<string name="process_form">Process Form</string>
-<string name="retake_photo">Retake Photo</string>
-<string name="aligning_form">Aligning form...</string>
-<string name="processing_form">Processing form...</string>
+<string name="process_form">processar fotos</string>
+<string name="retake_photo">tirar fotos</string>
+<string name="aligning_form">alinhar ficha</string>
+<string name="processing_form">processar ficha</string>
 <string name="could_not_register">Sorry, the form could not be registered.</string>
 
 <!-- Popup menu -->
