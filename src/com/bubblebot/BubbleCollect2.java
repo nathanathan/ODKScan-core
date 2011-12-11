@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.provider.MediaStore;
 import android.util.Log;
 /*
@@ -69,7 +70,8 @@ public class BubbleCollect2 extends Activity {
 	//the current value of a counter, then incrementing the counter.
 	//Each prefix used has its own counter stored in the share preferences.
 	protected String getUniqueName(String prefix) {
-		SharedPreferences settings = getSharedPreferences(getResources().getString(R.string.prefs_name), 0);
+		//SharedPreferences settings = getSharedPreferences(getResources().getString(R.string.prefs_name), 0);
+		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
 		int uid = settings.getInt(prefix, 0);
 		SharedPreferences.Editor editor = settings.edit();
 		editor.putInt(prefix, uid + 1);

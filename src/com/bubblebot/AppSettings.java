@@ -3,13 +3,21 @@ package com.bubblebot;
 import android.app.Activity;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.preference.PreferenceActivity;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.CompoundButton.OnCheckedChangeListener;
 
 //TODO: Replace with PreferenceActivity
-public class AppSettings extends Activity {
+public class AppSettings extends PreferenceActivity {
 	
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+            super.onCreate(savedInstanceState);
+            addPreferencesFromResource(R.xml.prefs);
+    }
+	
+	/*
 	private CheckBox formDetectionCheckBox;
 	private CheckBox calibrationCheckBox;
 	private SharedPreferences settings;
@@ -48,5 +56,5 @@ public class AppSettings extends Activity {
 		formDetectionCheckBox.setChecked(settings.getBoolean("doFormDetection", false));
 		calibrationCheckBox.setChecked(settings.getBoolean("calibrate", false));
 		super.onResume();
-	}
+	}*/
 }

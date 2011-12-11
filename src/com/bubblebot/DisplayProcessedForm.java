@@ -26,6 +26,7 @@ import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -61,7 +62,8 @@ public class DisplayProcessedForm extends Activity {
 		}
 
 		setTitle(getResources().getString(R.string.Health_Center) + ": " +
-                 getSharedPreferences(getResources().getString(R.string.prefs_name), 0)
+                 //getSharedPreferences(getResources().getString(R.string.prefs_name), 0)
+                 PreferenceManager.getDefaultSharedPreferences(getApplicationContext())
                  .getString("healthCenter", "unspecifiedHC"));
 		
 		MScanUtils.displayImageInWebView((WebView)findViewById(R.id.webview2),
@@ -196,8 +198,8 @@ public class DisplayProcessedForm extends Activity {
 	//Append the output to a CSV output file with the health center name included
 	//The original output is not modified, and does not have any app specified data included in it.
 	private void saveData() {
-		SharedPreferences settings = getSharedPreferences(getResources().getString(R.string.prefs_name), 0);
-
+		//SharedPreferences settings = getSharedPreferences(getResources().getString(R.string.prefs_name), 0);
+		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
 		try {
 			//The health center will be the currently selected HC,
 			//not the HC selected when the photo was taken.

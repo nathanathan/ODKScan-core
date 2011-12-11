@@ -10,6 +10,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
+import android.preference.PreferenceManager;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -32,7 +33,8 @@ public class BubbleBot extends Activity {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.bubble_bot); // Setup the UI
 		
-		settings = getSharedPreferences(getResources().getString(R.string.prefs_name), 0);
+		//settings = getSharedPreferences(getResources().getString(R.string.prefs_name), 0);
+		settings = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
 		
 		if(!checkSDCard()) return;
 		

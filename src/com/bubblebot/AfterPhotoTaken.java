@@ -17,6 +17,7 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
@@ -62,7 +63,8 @@ public class AfterPhotoTaken extends Activity {
 		
 		photoName = extras.getString("photoName");
 		
-	    SharedPreferences settings = getSharedPreferences(getResources().getString(R.string.prefs_name), 0);
+	    //SharedPreferences settings = getSharedPreferences(getResources().getString(R.string.prefs_name), 0);
+		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
 		runProcessor = new RunProcessor(handler, photoName,
 				settings.getBoolean("doFormDetection", false),
 				settings.getBoolean("calibrate", false));
