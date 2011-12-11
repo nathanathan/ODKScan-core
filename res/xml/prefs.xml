@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <CheckBoxPreference android:key="doFormDetection" android:title="@string/doFormDetection"></CheckBoxPreference>
+    <CheckBoxPreference android:key="calibrate" android:title="@string/calibrate"></CheckBoxPreference>
+</PreferenceScreen>
