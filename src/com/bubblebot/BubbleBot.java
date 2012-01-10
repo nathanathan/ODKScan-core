@@ -1,6 +1,8 @@
 package com.bubblebot;
 
 
+import java.io.File;
+
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ProgressDialog;
@@ -11,6 +13,7 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.preference.PreferenceManager;
+import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -35,6 +38,9 @@ public class BubbleBot extends Activity {
 		
 		//settings = getSharedPreferences(getResources().getString(R.string.prefs_name), 0);
 		settings = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+		
+		//Create the app folder if it doesn't exist:
+		new File(MScanUtils.appFolder).mkdirs();
 		
 		if(!checkSDCard()) return;
 		

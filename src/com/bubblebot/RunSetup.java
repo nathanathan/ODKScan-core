@@ -15,8 +15,8 @@ import android.util.Log;
  */
 public class RunSetup implements Runnable {
 	
-	public static final int version = 80;  
-	public static final boolean clearOldData = true;
+	public static final int version = 82;
+	public static final boolean clearOldData = false;
 	
 	private SharedPreferences settings;
 	private AssetManager assets;
@@ -46,11 +46,11 @@ public class RunSetup implements Runnable {
 			//Creates a .nomedia file to prevent the images from showing up in he gallery.
 			new File(MScanUtils.appFolder + ".nomedia").createNewFile();
 			
-			File traininExamplesDir =  new File(MScanUtils.appFolder, MScanUtils.trainingExampleDir);
+			File trainingExamplesDir =  new File(MScanUtils.appFolder, MScanUtils.trainingExampleDir);
 			File formTemplatesDir = new File(MScanUtils.appFolder, MScanUtils.templateDir);
 			
 			//Note: If clearOldData is true these directories will be deleted twice.
-			rmdir(traininExamplesDir);
+			rmdir(trainingExamplesDir);
 			rmdir(formTemplatesDir);
 
 			extractAssets(new File(""), new File(MScanUtils.appFolder));
