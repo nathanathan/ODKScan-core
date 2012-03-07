@@ -33,6 +33,9 @@ public class MScanUtils {
 	public static String getJsonPath(String photoName){
 		return appFolder + jsonDir + photoName + ".json";
 	}
+	public static String getXformPath(String formName){
+		return appFolder + templateDir + formName + ".xml";
+	}
 	public static String getMarkedupPhotoPath(String photoName){
 		return appFolder + markupDir + photoName + ".jpg";
 	}

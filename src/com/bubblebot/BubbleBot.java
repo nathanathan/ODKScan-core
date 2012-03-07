@@ -49,8 +49,12 @@ public class BubbleBot extends Activity {
 		hookupButtonHandlers();
 		
 		setupSpinner();
+		/*
+		Intent intent = new Intent(getApplication(), Template2Xform.class);
+		intent.putExtra("templatePath", MScanUtils.appFolder + "form_templates/checkbox_form");
+		startActivity(intent);
+		*/
 	}
-	
 	//Checks if the app is up-to-date and runs the setup if necessary
 	private void checkVersion() {
 		int currentVersion = settings.getInt("version", 0);
@@ -61,7 +65,6 @@ public class BubbleBot extends Activity {
 			thread.start();
 		}
 	}
-
 	private void hookupButtonHandlers() {
 		// Hook up handler for scan form button
 		Button scanForm = (Button) findViewById(R.id.ScanButton);

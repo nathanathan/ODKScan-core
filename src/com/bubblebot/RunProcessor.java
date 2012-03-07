@@ -15,7 +15,7 @@ public class RunProcessor implements Runnable {
 	    LOAD, LOAD_ALIGN, PROCESS
 	}
 	
-	private boolean doFormDetection;
+	private String[] templatePaths;
 	private boolean undistort;
 	
 	private Mode mode;
@@ -23,10 +23,10 @@ public class RunProcessor implements Runnable {
 	private Handler handler;
 	private String photoName;
 
-	public RunProcessor(Handler handler, String photoName, boolean doFormDetection, boolean undistort) {
+	public RunProcessor(Handler handler, String photoName, String[] templatePaths, boolean undistort) {
 		this.handler = handler;
 		this.photoName = photoName;
-		this.doFormDetection = doFormDetection;
+		this.templatePaths = templatePaths;
 		this.undistort = undistort;
 		mProcessor = new Processor(MScanUtils.appFolder);
 	}
@@ -54,6 +54,8 @@ public class RunProcessor implements Runnable {
 			}
 		}
 		else if(mode == Mode.LOAD) {
+			//TODO: Need to figure out a way to keep track of the template that was used to align them image...
+			//		Could redetect.
 			if( mProcessor.loadFormImage(MScanUtils.getAlignedPhotoPath(photoName), false) ) {
 				if(mProcessor.setTemplate( MScanUtils.appFolder + "form_templates/SIS-A01.json" )) {
 					msg.arg1 = 1;
@@ -65,21 +67,15 @@ public class RunProcessor implements Runnable {
 			if(mProcessor.loadFormImage(MScanUtils.getPhotoPath(photoName), undistort)) {
 				Log.i("mScan","Loading: " + photoName);
 				
-				String[] templatePaths = { "form_templates/SIS-A01", "form_templates/checkbox_form", "form_templates/checkbox_form_2" };
-				//"form_templates/UW_course_eval_A_front" };
-				//String[] templatePaths = { "form_templates/checkbox_form" };
 				int formIdx = 0;
 				
-				if(doFormDetection) {
-					for(int i = 0; i < templatePaths.length; i++){ 
-						//Log.i("mScan", "loadingFD: " + MScanUtils.appFolder + templatePaths[i]);
-						mProcessor.loadFeatureData(MScanUtils.appFolder + templatePaths[i]);
-					}
-					//Log.i("mScan", templatePaths.length + " Templates Loaded");
-					formIdx = mProcessor.detectForm();
+				for(int i = 0; i < templatePaths.length; i++){ 
+					//Log.i("mScan", "loadingFD: " + MScanUtils.appFolder + templatePaths[i]);
+					mProcessor.loadFeatureData(MScanUtils.appFolder + templatePaths[i]);
 				}
-				else {
-					mProcessor.loadFeatureData(MScanUtils.appFolder + templatePaths[0]);
+				
+				if(templatePaths.length > 1) {
+					formIdx = mProcessor.detectForm();
 				}
 				
 				if(formIdx >= 0) {
@@ -97,6 +93,8 @@ public class RunProcessor implements Runnable {
 				else {
 					Log.i("mScan","Faled to detect form.");
 				}
+				//Indicate which template was used.
+				msg.arg2 = formIdx;
 			}
 			else {
 				Log.i("mScan","Faled to load image: " + photoName);

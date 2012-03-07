@@ -2,28 +2,47 @@ package com.bubblebot;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import org.kxml2.io.KXmlParser;
+import org.kxml2.io.KXmlSerializer;
+import org.kxml2.kdom.Document;
+import org.kxml2.kdom.Element;
+import org.kxml2.kdom.Node;
+import org.xmlpull.v1.XmlPullParserException;
+
 import android.accounts.Account;
 import android.accounts.AccountManager;
+
+import com.bubblebot.jni.bubblebot;
 import com.google.api.client.googleapis.extensions.android2.auth.GoogleAccountManager;
 
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.ProgressDialog;
+import android.content.ComponentName;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.database.Cursor;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.preference.PreferenceManager;
@@ -42,14 +61,14 @@ public class DisplayProcessedForm extends Activity {
 	//TODO: Look into using AccountAuthenticatorActivity for uploading data.
 	
 	private String photoName;
-
+	private String templatePath;
+	
 	private ProgressDialog pd;
 	private static final int DIALOG_ACCOUNTS = 1110011;
 	private static final int DIALOG_FAILURE = 11011011;
 	private static final int DIALOG_SUCCESS = 11001111;
 	private static final String AUTH_TOKEN_TYPE = "fusiontables";
-	
-
+    
 	// Set up the UI and load the processed image
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -59,6 +78,7 @@ public class DisplayProcessedForm extends Activity {
 		Bundle extras = getIntent().getExtras(); 
 		if (extras != null) {
 			photoName = extras.getString("photoName");
+			templatePath = extras.getString("templatePath");
 		}
 
 		setTitle(getResources().getString(R.string.Health_Center) + ": " +
@@ -179,6 +199,23 @@ public class DisplayProcessedForm extends Activity {
 				showDialog(DIALOG_FAILURE, args);
 			}
 			return true;
+		case R.id.exportToODK:
+			Log.i("mScan", "Using template: " + templatePath);
+			intent = new Intent(getApplication(), MScan2CollectActivity.class);
+			intent.putExtra("templatePath", templatePath);
+			intent.putExtra("jsonOutPath", MScanUtils.getJsonPath(photoName));
+			startActivity(intent);
+			/*
+			try {
+				openInCollect(templatePath);
+			} catch (JSONException e) {
+				// TODO Auto-generated catch block
+				Log.i("mScan", "Err: " + e.toString());
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				Log.i("mScan", "Err: " +  e.toString());
+			}*/
+			return true;
 		case R.id.saveData:
 			saveData();
 			//TODO: Disable the button if this succeeds
@@ -195,8 +232,10 @@ public class DisplayProcessedForm extends Activity {
 			return super.onOptionsItemSelected(item);
 		}
 	}
-	//Append the output to a CSV output file with the health center name included
-	//The original output is not modified, and does not have any app specified data included in it.
+    /**
+     * Append the output to a CSV output file with the health center name included
+     * The original output is not modified, and does not have any app specified data included in it.
+     */
 	private void saveData() {
 		//SharedPreferences settings = getSharedPreferences(getResources().getString(R.string.prefs_name), 0);
 		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
@@ -239,6 +278,7 @@ public class DisplayProcessedForm extends Activity {
 				bufferWritter = new BufferedWriter(fileWritter);
     		}
 
+    		//Generate the CSV from fields
     		for(int i = 0; i < fieldsLength; i++){
 				JSONObject field = fields.getJSONObject(i);
 				if( field.getJSONArray("segments").getJSONObject(0).getString("type").equals("bubble") ){

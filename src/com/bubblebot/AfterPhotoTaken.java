@@ -42,6 +42,9 @@ public class AfterPhotoTaken extends Activity {
     private LinearLayout content;
     
     private long startTime;//only needed in debugMode
+    
+    private String[] templatePaths;
+    private int templatePathIdx;
 
     @Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -65,8 +68,21 @@ public class AfterPhotoTaken extends Activity {
 		
 	    //SharedPreferences settings = getSharedPreferences(getResources().getString(R.string.prefs_name), 0);
 		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+		
+		//set the templates we will be using.
+		if(settings.getBoolean("doFormDetection", false)){
+			String[] templatePathsInit = { "form_templates/SIS-A01", "form_templates/checkbox_form", "form_templates/checkbox_form_2" };
+			templatePaths = templatePathsInit;
+			//"form_templates/UW_course_eval_A_front" };
+			//String[] templatePaths = { "form_templates/checkbox_form" };
+		}
+		else{
+			String[] templatePathsInit = { "form_templates/SIS-A01" };
+			templatePaths = templatePathsInit;
+		}
+		
 		runProcessor = new RunProcessor(handler, photoName,
-				settings.getBoolean("doFormDetection", false),
+				templatePaths,
 				settings.getBoolean("calibrate", false));
 		
 		if( extras.getBoolean("preAligned") ){
@@ -158,6 +174,7 @@ public class AfterPhotoTaken extends Activity {
 	        		if ( aligned ) {
 	        			MScanUtils.displayImageInWebView((WebView)findViewById(R.id.webview),
 	        														MScanUtils.getAlignedPhotoPath(photoName));
+	        			templatePathIdx = msg.arg2;
 	        		}
 	        		else {
 	        			RelativeLayout failureMessage = (RelativeLayout) findViewById(R.id.failureMessage);
@@ -173,6 +190,7 @@ public class AfterPhotoTaken extends Activity {
             			//writeJSONObjectToFile(formRoot);
 	            		Intent intent = new Intent(getApplication(), DisplayProcessedForm.class);
 	                    intent.putExtra("photoName", photoName);
+	                    intent.putExtra("templatePath", MScanUtils.appFolder + templatePaths[templatePathIdx]);
 	                    startActivity(intent);
 	        			finish(); 
 	        			//Not sure this finish is necessary, but it might fix the inexplicable crashes
