@@ -13,7 +13,6 @@ class Processor{
 		//The constructor takes as an arguement a "root" path that all other paths are relative to.
 		//TODO: Make all other paths relative to appRootDir
 		//The default constructor sets the root path to ""
-		//The path should end with a '/' but I might relax this requirement later on.
 		Processor();
 		Processor(const char* appRootDir);
 		bool loadFormImage(const char* imagePath, bool undistort = false);
@@ -21,12 +20,12 @@ class Processor{
 		int detectForm();
 		bool setTemplate(const char* templatePath);
 		bool alignForm(const char* alignedImageOutputPath, int templateIdx = 0);
-		bool processForm(const char* outPath) const;
+		bool processForm(const char* outPath);
 		bool writeFormImage(const char* outputPath) const;
 
 	private:
 		class ProcessorImpl;
-    	std::tr1::shared_ptr<ProcessorImpl> processorImpl;
+    		std::tr1::shared_ptr<ProcessorImpl> processorImpl;
 };
 
 

@@ -12,19 +12,37 @@
 #include "MarkupForm.h"
 #include "Addons.h"
 #include "AlignmentUtils.h"
+#include "TemplateProcessor.h"
 
 //#define SHOW_MIN_ERROR_CUT
 
 using namespace std;
 using namespace cv;
 
+//TODO: Simplify this using the template processor class
+//	Or maybe it's not worth the effort since we might go to marking up photos with JSON
+/*
+class MarkupForm : public TemplateProcessor
+{
+	private:
+	typedef TemplateProcessor super;
+
+	Json::Value segmentFunction(const Json::Value& segment);
+	Json::Value fieldFunction(const Json::Value& field);
+	Json::Value formFunction(const Json::Value& templateRoot);
+	bool start(const char* templatePath);
+
+};
+*/
+
 bool markupFormHelper(const char* bvPath, Mat& markupImage, bool drawCounts) {
-	Scalar colors[6] = {Scalar(0,   0,   255),
-						Scalar(0,   255, 255),
-						Scalar(255, 0,   255),
-						Scalar(0,   255, 0),
-						Scalar(255, 255, 0),
-						Scalar(255, 0,   0)};
+	Scalar colors[6] = {
+	 Scalar(0,   0,   255),
+	 Scalar(0,   255, 255),
+	 Scalar(255, 0,   255),
+	 Scalar(0,   255, 0),
+	 Scalar(255, 255, 0),
+	 Scalar(255, 0,   0)};
 	
 	Json::Value bvRoot;
 	
@@ -35,16 +53,16 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage, bool drawCounts) {
 		const Json::Value field = fields[i];
 		
 		//TODO: For multi-choice forms were going to want something a little different.
-		//		This function is getting pretty complicated and should probably be split up.
+		//	This function is getting pretty complicated and should probably be split up.
 		size_t filledBubbles = 0;
 		float avgWidth = 0;
 		float avgY = 0;
 		int endOfField = 0;
 		
 		#ifdef SHOW_MIN_ERROR_CUT
-		//Should this be specified in the template??
-		int cutIdx = minErrorCut(computedFilledIntegral(field));
-		int bubbleNum = 0;
+			//Should this be specified in the template??
+			int cutIdx = minErrorCut(computedFilledIntegral(field));
+			int bubbleNum = 0;
 		#endif
 		
 		string fieldName = field.get("label", "Unlabeled").asString();
@@ -68,18 +86,18 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage, bool drawCounts) {
 					polylines(markupImage, &p, &n, 1, true, boxColor, 2, CV_AA);
 				}
 				
-				if(segment.get("type", "") != "text"){
-					avgWidth += norm(quad[0] - quad[1]);
-					if(endOfField < quad[1].x){
-						endOfField = quad[1].x;
-					}
-					avgY += quad[3].y;// + quad[1].y + quad[2].y + quad[3].y) / 4;
+				//Compute some stuff to figure out where to draw output on the form
+				avgWidth += norm(quad[0] - quad[1]);
+				if(endOfField < quad[1].x){
+					endOfField = quad[1].x;
 				}
+				avgY += quad[3].y;// + quad[1].y + quad[2].y + quad[3].y) / 4;
 				
+
 				const Json::Value bubbles = segment["bubbles"];
 				for ( size_t k = 0; k < bubbles.size(); k++ ) {
 					const Json::Value bubble = bubbles[k];
-					const bool bubbleFilled = bubble["value"].asBool();
+					const int bubbleFilled = bubble["value"].asInt();
 					
 					if(bubbleFilled){
 						filledBubbles++;
@@ -93,11 +111,11 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage, bool drawCounts) {
 					bubbleNum++;
 					#endif
 					
-					circle(markupImage, bubbleLocation, 2, 	getColor(bubbleFilled), 1, CV_AA);
+					circle(markupImage, bubbleLocation, 2, 	colors[bubbleFilled], 1, CV_AA);
 				}
 			}
 			else{//If we're dealing with a regular form template
-				//TODO: Watch out for templates with double type points.
+				//TODO: What happens if points are doubles?
 				Point tl(segment["x"].asInt(), segment["y"].asInt());
 				rectangle(markupImage, tl, tl + Point(segment["width"].asInt(), segment["height"].asInt()),
 							boxColor, 2);
@@ -110,7 +128,7 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage, bool drawCounts) {
 			}
 		}
 		
-		//Print the counts:
+		//Print the counts on the form:
 		if(drawCounts && avgWidth > 0){
 			avgWidth /= segments.size();
 			avgY /= segments.size();
@@ -130,7 +148,7 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage, bool drawCounts) {
 	}
 	return true;
 }
-
+//DEPRECATED?
 //Makes a JSON file that contains only the fieldnames and their corresponding bubble counts.
 bool MarkupForm::outputFieldCounts(const char* bubbleVals, const char* outputPath){
 	return false; //I don't think this gets used.
@@ -151,7 +169,7 @@ bool MarkupForm::outputFieldCounts(const char* bubbleVals, const char* outputPat
 			
 			for ( size_t k = 0; k < bubbles.size(); k++ ) {
 				const Json::Value bubble = bubbles[k];
-				if(bubble["value"].asBool()){
+				if(bubble["value"].asInt()){
 					counter++;
 				}
 			}

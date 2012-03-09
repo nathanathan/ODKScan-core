@@ -1,9 +1,12 @@
 #include "Addons.h"
 #include <json/json.h>
 #include <fstream>
+#include <opencv2/highgui/highgui.hpp>
 
 using namespace std;
 using namespace cv;
+
+
 
 //TODO: maybe move to markup form
 Scalar getColor(bool filled) {
@@ -58,19 +61,6 @@ vector<Point> jsonArrayToQuad(const Json::Value& quadJson){
 		out.push_back(jsonToPoint(quadJson[i]));
 	}
 	return out;
-}
-bool parseJsonFromFile(const char* filePath, Json::Value& myRoot){
-	ifstream JSONin;
-	Json::Reader reader;
-	
-	JSONin.open(filePath, ifstream::in);
-	bool parse_successful = reader.parse( JSONin, myRoot );
-	
-	JSONin.close();
-	return parse_successful;
-}
-bool parseJsonFromFile(const string& filePath, Json::Value& myRoot){
-	return parseJsonFromFile(filePath.c_str(), myRoot);
 }
 void inferBubbles(Json::Value& field, inferenceMethod method){
 
@@ -127,4 +117,18 @@ vector<int> computedFilledIntegral(const Json::Value& field){
 string replaceFilename(const string& filepath, const string& newName ){
 	int nameIdx = filepath.find_last_of("/");
 	return filepath.substr(0,nameIdx + 1) + newName;
+}
+void debugShow(const Mat& img){
+	namedWindow("debug window", CV_WINDOW_NORMAL);
+	imshow("debug window", img );
+
+	for(;;)
+	{
+		char c = (char)waitKey(0);
+		if( c == '\x1b' ) // esc
+		{
+			cvDestroyWindow("debug window");
+			break;
+		}
+	}
 }

@@ -3,6 +3,7 @@
 #include "AlignmentUtils.h"
 #include "Addons.h"
 #include "FileUtils.h"
+#include "TemplateProcessor.h"
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -14,7 +15,7 @@
 #include <fstream>
 
 //vaying the reproject threshold can make a big difference in performance.
-#define FH_REPROJECT_THRESH 4.0 //4 might be the best
+#define FH_REPROJECT_THRESH 4.0
 
 //#define ALWAYS_COMPUTE_TEMPLATE_FEATURES
 //#define SHOW_MATCHES_WINDOW
@@ -32,6 +33,40 @@ using namespace cv;
 	Mat featureSource;
 	vector<Mat> templateImages;
 #endif
+
+
+class MaskGenerator : public TemplateProcessor
+{
+	private:
+	typedef TemplateProcessor super;
+	Mat markupImage;
+
+	public:
+	//templImageSize might be different from the size specified in the template if the scale param is used.
+	Mat generate(const string& templatePath, const Size& templImageSize){
+		//templSize = templImageSize;
+		bool rv = start(templatePath.c_str());
+		Mat temp;
+		resize(markupImage, temp, templImageSize, 0, 0, INTER_AREA);
+		erode(temp, markupImage, Mat(), Point(-1,-1), 1);
+		return markupImage;
+	}
+	virtual Json::Value segmentFunction(const Json::Value& segment){
+		Rect segRect( Point( segment.get("x", INT_MIN ).asInt(),
+		                     segment.get("y", INT_MIN).asInt()),
+		              Size( segment.get("segment_width", INT_MIN).asInt(),
+		                    segment.get("segment_height", INT_MIN).asInt()));
+		rectangle( markupImage, segRect.tl(), segRect.br(), Scalar::all(0), -1);
+		return super::segmentFunction(segment);
+	}
+	virtual Json::Value formFunction(const Json::Value& templateRoot){
+		markupImage = Mat(templateRoot.get("height", 0).asInt(), templateRoot.get("width", 0).asInt(),
+		                  CV_8UC1, Scalar::all(255));
+		
+		return super::formFunction(templateRoot);
+	}
+	virtual ~MaskGenerator(){}
+};
 
 //This is from the OpenCV descriptor matcher example.
 void crossCheckMatching( Ptr<DescriptorMatcher>& descriptorMatcher,
@@ -63,34 +98,7 @@ void crossCheckMatching( Ptr<DescriptorMatcher>& descriptorMatcher,
         }
     }
 }
-//I think the proper way to do this would be to make a FormAlignment class
-//then pass in the mask from Processor.cpp
-//Maybe not because I'll want to do this for all the templates... maybe I could crawl the files from Processor though?
-Mat makeFieldMask(const string& jsonTemplate){
-	
-	cout << jsonTemplate;
-	//Should there be a file that has all the JSON functions?
-	Json::Value myRoot;
-	parseJsonFromFile(jsonTemplate, myRoot);
-	
-	Mat mask(myRoot.get("height", 0).asInt(), myRoot.get("width", 0).asInt(),
-			CV_8UC1, Scalar::all(255));
-	const Json::Value fields = myRoot["fields"];
-	for ( size_t i = 0; i < fields.size(); i++ ) {
-		const Json::Value field = fields[i];
-		const Json::Value segments = field["segments"];
-		for ( size_t j = 0; j < segments.size(); j++ ) {
-			const Json::Value segmentTemplate = segments[j];
 
-			Rect segRect( Point( segmentTemplate.get("x", INT_MIN ).asInt(),
-								   segmentTemplate.get("y", INT_MIN).asInt()),
-							Size(segmentTemplate.get("width", INT_MIN).asInt(),
-							segmentTemplate.get("height", INT_MIN).asInt()));
-			rectangle(mask, segRect.tl(), segRect.br(), Scalar::all(0), -1);				
-		}
-	}
-	return mask;
-}
 void loadFeatures( const string& featuresFile, Size& templImageSize,
 					vector<KeyPoint>& templKeypoints, Mat& templDescriptors) throw(cv::Exception) {
 							
@@ -139,44 +147,49 @@ Aligner::Aligner(){
 	//detector = FeatureDetector::create( "GridSURF" );
 	//#define MATCHER_TYPE "BruteForce"
 	
-	#define PARAM_SET 1
+	#define PARAM_SET 3
 	#if PARAM_SET == 0
-		detector = Ptr<FeatureDetector>(new GridAdaptedFeatureDetector(
-											new SurfFeatureDetector( 250., 1, 3),
-											3500, 7, 7));
+		detector = Ptr<FeatureDetector>(
+			new GridAdaptedFeatureDetector(
+				new SurfFeatureDetector( 250., 1, 3),
+				3500, 7, 7));
 	
 		//descriptorExtractor = DescriptorExtractor::create( "SURF" );
 		descriptorExtractor = Ptr<DescriptorExtractor>(new SurfDescriptorExtractor( 1, 3 ));
 		#define MATCHER_TYPE "FlannBased"
 	#elif PARAM_SET == 1
 		//Optimal hessian level seems to vary by phone
-		detector = Ptr<FeatureDetector>(new GridAdaptedFeatureDetector(
-											new SurfFeatureDetector( 395., 1, 3),
-											3500, 7, 7));
+		detector = Ptr<FeatureDetector>(
+			new GridAdaptedFeatureDetector(
+				new SurfFeatureDetector( 395., 1, 3),
+				3500, 7, 7));
 	
 		//descriptorExtractor = DescriptorExtractor::create( "SURF" );
 		descriptorExtractor = Ptr<DescriptorExtractor>(new SurfDescriptorExtractor( 1, 3 ));
 		#define MATCHER_TYPE "FlannBased"
 	#elif PARAM_SET == 2
 		//Reduced number of features:
-		detector = Ptr<FeatureDetector>(new GridAdaptedFeatureDetector(
-											new SurfFeatureDetector( 395., 1, 3),
-											500, 5, 5));
+		detector = Ptr<FeatureDetector>(
+			new GridAdaptedFeatureDetector(
+				new SurfFeatureDetector( 395., 1, 3),
+				500, 5, 5));
 	
 		//descriptorExtractor = DescriptorExtractor::create( "SURF" );
 		descriptorExtractor = Ptr<DescriptorExtractor>(new SurfDescriptorExtractor( 1, 3 ));
 		#define MATCHER_TYPE "BruteForce"
+	#elif PARAM_SET == 3
+		//Fast
+		detector = Ptr<FeatureDetector>(
+			new GridAdaptedFeatureDetector(
+				new SurfFeatureDetector( 395., 1, 3),
+				500, 5, 5));
+		descriptorExtractor = Ptr<DescriptorExtractor>(new SurfDescriptorExtractor( 1, 3 ));
+		#define MATCHER_TYPE "FlannBased"
 	#endif
 
 }
 void Aligner::setImage( const cv::Mat& img ){
 
-	#if 0
-	//TODO: Figure out a way to set the camera params here.
-	Mat dcm = getDefaultNewCameraMatrix((Mat_<float>(3,3) << 612.02,0,319.5,0,612.02,239.5,0,0,1), img.size(), true);
-	//cout << dcm << endl;
-	undistort(img, currentImg, dcm, (Mat_<double>(5,1) << .0660769, -.32678, -.0011122, -.002264932, 1.5752));
-	#endif
 	currentImg = img;
 	
 	Mat currentImgResized;
@@ -201,18 +214,7 @@ void Aligner::setImage( const cv::Mat& img ){
 	#endif
 	
 	#if 0
-		namedWindow("outliers", CV_WINDOW_NORMAL);
-		imshow( "outliers", currentImgResized );
-	
-		for(;;)
-		{
-			char c = (char)waitKey(0);
-			if( c == '\x1b' ) // esc
-			{
-				cvDestroyWindow("outliers");
-			    break;
-			}
-		}
+		debugShow(currentImgResized);
 	#endif
 	
 	Mat mask(currentImgResized.rows, currentImgResized.cols, CV_8UC1, Scalar::all(255));
@@ -253,7 +255,7 @@ void Aligner::loadFeatureData(const string& templPath) throw(cv::Exception) {
 	catch( cv::Exception& e ) {
 	
 		cout << e.what() << endl;
-		cout << "Creating new feature data:" << endl;
+		LOGI("Creating new feature data:");
 		
 		if(detector.empty() || descriptorExtractor.empty())
 			CV_Error(CV_StsError, "Cound not create detector/extractor.");
@@ -264,6 +266,8 @@ void Aligner::loadFeatureData(const string& templPath) throw(cv::Exception) {
 			CV_Error(CV_StsError, "Template image not found.");
 
 		resize(templImage, temp, templImage.size(), 0, 0, INTER_AREA);
+		templImage.release();
+		templImage = temp;
 		
 		/*
 		templImage = temp;
@@ -271,39 +275,23 @@ void Aligner::loadFeatureData(const string& templPath) throw(cv::Exception) {
 		equalizeHist(temp, templImage);
 		*/
 		
-		temp.release();
 		templImageSize = templImage.size();
-
+		
 		#ifdef DEBUG_ALIGN_IMAGE
 			cout << "Extracting keypoints from template image..." << endl;
 		#endif
-		
-		Mat mask = makeFieldMask(templPath + ".json");
-		resize(mask, temp, templImage.size(), 0, 0, INTER_AREA);
-		erode(temp, mask, Mat(), Point(-1,-1), 1);
-		
+		cout << templPath + ".json" << endl;
+		MaskGenerator g;
+		Mat mask = g.generate(templPath + ".json", templImageSize);
+
 		/*
 		#ifdef MASK_CENTER_AMOUNT
 			Rect roi = resizeRect(Rect(Point(0,0), templImage.size()), MASK_CENTER_AMOUNT);
 			rectangle(mask, roi.tl(), roi.br(), Scalar::all(0), -1);
 		#endif
+		//debugShow(templImage & mask);
 		*/
 		
-		#if 0
-		imshow( "outliers", templImage & mask);
-		for(;;)
-		{
-		    char c = (char)waitKey(0);
-		    if( c == '\x1b' ) // esc
-		    {
-		    	cvDestroyWindow("inliers");
-		    	cvDestroyWindow("outliers");
-		        break;
-		    }
-		}
-		#endif
-		
-		temp.release();
 		detector->detect( templImage, templKeypoints, mask );
 
 		#ifdef DEBUG_ALIGN_IMAGE
@@ -330,11 +318,13 @@ void Aligner::loadFeatureData(const string& templPath) throw(cv::Exception) {
 }
 size_t Aligner::detectForm() const{
 	//TODO: Make this code unterrible
+	LOGI("Detect from");
 	Ptr<DescriptorMatcher> descriptorMatcher = DescriptorMatcher::create( MATCHER_TYPE );
 	size_t formIdx = 0;
 	size_t previousBest = 0;
 	
 	for(size_t i = 0; i < templDescriptorsVec.size(); i++){
+		LOGI("Detect from for loop");
 		vector<DMatch> filteredMatches;
 		size_t inliers = 0;
 		crossCheckMatching( descriptorMatcher, currentImgDescriptors, templDescriptorsVec[i], filteredMatches);
@@ -364,22 +354,22 @@ size_t Aligner::detectForm() const{
 		}
 	}
 	return formIdx;
-/*
+	/*
 	Ptr<BOWImgDescriptorExtractor> bowExtractor =
 			new BOWImgDescriptorExtractor( descriptorExtractor, DescriptorMatcher::create( MATCHER_TYPE ));
 	
 	Mat vocabulary = trainVocabulary( "BOWfile", vocData, vocabTrainParams,
-                                      detector, descriptorExtractor );
+	                                  detector, descriptorExtractor );
                                       
 	CvSVM svm;
 	trainSVMClassifier( svm, svmTrainParamsExt, objClasses[classIdx], vocData,
-                            bowExtractor, featureDetector, resPath );
+	                    bowExtractor, featureDetector, resPath );
                                       
 	bowExtractor->setVocabulary( vocabulary );
 	
 	Mat bowDescriptor;
 	bowExtractor->compute( currentImg, currentImgKeypoints, bowDescriptor );
-*/
+	*/
 }
 void Aligner::alignFormImage(Mat& aligned_img, const Size& aligned_img_sz, size_t featureDataIdx ) throw(cv::Exception) {
 	
@@ -428,8 +418,8 @@ void Aligner::alignFormImage(Mat& aligned_img, const Size& aligned_img_sz, size_
 		Mat points1t; perspectiveTransform(Mat(points1), points1t, H);
 		for( size_t i1 = 0; i1 < points1.size(); i1++ )
 		{
-		    if( norm(points2[i1] - points1t.at<Point2f>((int)i1,0)) < FH_REPROJECT_THRESH ) // inlier
-		        matchesMask[i1] = 1;
+			if( norm(points2[i1] - points1t.at<Point2f>((int)i1,0)) < FH_REPROJECT_THRESH ) // inlier
+				matchesMask[i1] = 1;
 		}
 	
 		Mat drawImg;
@@ -437,29 +427,16 @@ void Aligner::alignFormImage(Mat& aligned_img, const Size& aligned_img_sz, size_
 		drawMatches( featureSource, currentImgKeypoints, templateImages[featureDataIdx], templKeypoints, filteredMatches, drawImg,
 					CV_RGB(0, 255, 0), CV_RGB(255, 0, 255), matchesMask, DrawMatchesFlags::DRAW_RICH_KEYPOINTS);
 	
-		namedWindow("inliers", CV_WINDOW_NORMAL);
-		imshow( "inliers", drawImg );
+		debugShow(drawImg);
 		
-        for( size_t i1 = 0; i1 < matchesMask.size(); i1++ )
-            matchesMask[i1] = !matchesMask[i1];
-            
-        drawMatches( featureSource, currentImgKeypoints, templateImages[featureDataIdx], templKeypoints, filteredMatches, drawImg,
-        			CV_RGB(0, 0, 255), CV_RGB(255, 0, 0), matchesMask,
-        			DrawMatchesFlags::DRAW_OVER_OUTIMG | DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
-		
-		namedWindow("outliers", CV_WINDOW_NORMAL);
-		imshow( "outliers", drawImg );
-		
-		for(;;)
-		{
-		    char c = (char)waitKey(0);
-		    if( c == '\x1b' ) // esc
-		    {
-		    	cvDestroyWindow("inliers");
-		    	cvDestroyWindow("outliers");
-		        break;
-		    }
+		for( size_t i1 = 0; i1 < matchesMask.size(); i1++ ){
+			matchesMask[i1] = !matchesMask[i1];
 		}
+		drawMatches( featureSource, currentImgKeypoints, templateImages[featureDataIdx], templKeypoints, filteredMatches, drawImg,
+        	             CV_RGB(0, 0, 255), CV_RGB(255, 0, 0), matchesMask,
+        	             DrawMatchesFlags::DRAW_OVER_OUTIMG | DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
+		
+		debugShow(drawImg);
 	#endif
 
 	#ifdef OUTPUT_DEBUG_IMAGES

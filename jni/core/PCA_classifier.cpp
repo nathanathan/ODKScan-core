@@ -1,6 +1,6 @@
 #include "configuration.h"
 #include "PCA_classifier.h"
-
+//#include "FileUtils.h"
 #include <opencv2/highgui/highgui.hpp>
 
 #include <iostream>
@@ -22,7 +22,7 @@
 //   half pixel error.
 //2. If the rectangle crosses the image boundary (because of a large search window)
 //   it won't give an error.
-//#define USE_GET_RECT_SUB_PIX
+#define USE_GET_RECT_SUB_PIX
 
 //#define USE_MASK
 //Using a mask seems to slightly help bubble alignment in the average case but cause some additional misses.
@@ -131,7 +131,7 @@ bool PCA_classifier::save(const string& outputPath) const {
 		fs << "PCAeigenvectors" << my_PCA.eigenvectors;
 		fs << "PCAeigenvalues" << my_PCA.eigenvalues;
 		writeVector(fs, "classifications", classifications);
-		statClassifier.write(*fs, "classifierData" );
+		statClassifier->write(*fs, "classifierData" );
 	}
 	catch( cv::Exception& e ) {
 		const char* err_msg = e.what();
@@ -155,20 +155,22 @@ bool PCA_classifier::load(const string& inputPath, const Size& requiredExampleSi
 		classifications = readVector(fs, "classifications");
 		search_window = exampleSize;
 		update_gaussian_weights();
-		statClassifier.clear();
-		statClassifier.read(*fs, cvGetFileNodeByName(*fs, cvGetRootFileNode(*fs), "classifierData") );
+		statClassifier->clear();
+		statClassifier->read(*fs, cvGetFileNodeByName(*fs, cvGetRootFileNode(*fs), "classifierData") );
 	}
 	catch( cv::Exception& e ) {
 		const char* err_msg = e.what();
 		cout << err_msg << endl;
 		return false;
 	}
+	emptyClassificationIndex = vectorFind(classifications, string("empty"));
 	return true;
 }
 //Loads a image with the specified filename and adds it to the PCA set.
 //Classifications are inferred from the filename and added to training_bubble_values.
 void PCA_classifier::PCA_set_add(Mat& PCA_set, vector<int>& trainingBubbleValues, const string& filename, bool flipExamples) {
 
+	//if( !isImage(filename) ) return;
 	Mat example = imread(filename, 0);
 	if (example.data == NULL) {
 		cout << "could not read " << filename << endl;
@@ -203,7 +205,7 @@ void PCA_classifier::PCA_set_add(Mat& PCA_set, vector<int>& trainingBubbleValues
 //TODO: Add some code to print out the training set error.
 bool PCA_classifier::train_PCA_classifier(const vector<string>& examplePaths, Size myExampleSize,
                                           int eigenvalues, bool flipExamples) {
-	statClassifier.clear();
+	statClassifier->clear();
 	weights = (Mat_<float>(3,1) << 1, 1, 1);//TODO: fix the weighting stuff 
 	exampleSize = myExampleSize;
 	search_window = myExampleSize;
@@ -246,9 +248,9 @@ bool PCA_classifier::train_PCA_classifier(const vector<string>& examplePaths, Si
 	}
 
 	#ifdef DISABLE_PCA
-		statClassifier.train_auto(PCA_set, trainingBubbleValuesMat, Mat(), Mat(), CvSVMParams());
+		statClassifier->train_auto(PCA_set, trainingBubbleValuesMat, Mat(), Mat(), CvSVMParams());
 	#else
-		statClassifier.train_auto(comparisonVectors, trainingBubbleValuesMat, Mat(), Mat(), CvSVMParams());
+		statClassifier->train_auto(comparisonVectors, trainingBubbleValuesMat, Mat(), Mat(), CvSVMParams());
 	#endif
 	
 	emptyClassificationIndex = vectorFind(classifications, string("empty"));
@@ -385,11 +387,11 @@ Point PCA_classifier::bubble_align(const Mat& det_img_gray, const Point& bubble_
 #endif
 
 //Compare the specified bubble with all the training bubbles via PCA.
-bool PCA_classifier::classifyBubble(const Mat& det_img_gray, const Point& bubble_location) const {
+int PCA_classifier::classifyBubble(const Mat& det_img_gray, const Point& bubble_location) const {
 
 	int classificationIndex;	
 	Mat query_pixels;
-	
+	//cout << bubble_location << endl;
 	#ifdef USE_GET_RECT_SUB_PIX
 		getRectSubPix(det_img_gray, Size(exampleSize.width, exampleSize.height),
 		              bubble_location, query_pixels);
@@ -418,12 +420,19 @@ bool PCA_classifier::classifyBubble(const Mat& det_img_gray, const Point& bubble
 	#ifdef NORMALIZE
 		normalize(query_pixels, query_pixels);
 	#endif
-	
+	//cout << "svc: " << *statClassifier->get_support_vector(25) << endl;
+	//return 0;
+	//I'm segfaulting when statClassifier is called. The reason might have little to do with statClassifier->..
 	#ifdef DISABLE_PCA
-		classificationIndex = statClassifier.predict( query_pixels );
+		classificationIndex = statClassifier->predict( query_pixels );
 	#else
-		classificationIndex = statClassifier.predict( my_PCA.project(query_pixels) );
+		classificationIndex = statClassifier->predict( my_PCA.project(query_pixels) );
 	#endif
-
-	return  classificationIndex != emptyClassificationIndex;
+	
+	if(classificationIndex == emptyClassificationIndex){
+		return  0;
+	}
+	else{
+		return  classificationIndex + 1;
+	}
 }
