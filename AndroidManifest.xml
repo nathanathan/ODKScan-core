@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-	package="com.bubblebot" android:versionCode="7" android:versionName="7.0">
+	package="com.bubblebot" android:versionCode="8" android:versionName="8.0">
 	<application android:debuggable="false" android:icon="@drawable/icon"
 		android:label="mScan">
 		<activity
@@ -28,6 +28,9 @@
 				<category android:name="android.intent.category.LAUNCHER" />
 			</intent-filter>
 		</activity>
+		<activity
+		    android:name="MScan2CollectActivity"
+			android:screenOrientation="portrait"></activity>
 		<activity
 		    android:name="BubbleCollect2"
 			android:screenOrientation="portrait"></activity>
