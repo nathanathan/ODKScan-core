@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
 	string outputDir("aligned_forms/" + imageDir);
 	string expectedJsonFile( "form_images/dne.json" );
 
-	string templatePath("form_images/form_templates/checkbox_form");
+	string templatePath("form_images/form_templates/" + string(argv[2]));
 
 	vector<string> filenames;
 	CrawlFileTree(inputDir, filenames);

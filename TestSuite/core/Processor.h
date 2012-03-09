@@ -20,7 +20,7 @@ class Processor{
 		int detectForm();
 		bool setTemplate(const char* templatePath);
 		bool alignForm(const char* alignedImageOutputPath, int templateIdx = 0);
-		bool processForm(const char* outPath) const;
+		bool processForm(const char* outPath);
 		bool writeFormImage(const char* outputPath) const;
 
 	private:

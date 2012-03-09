@@ -42,6 +42,9 @@ Experiment: tests/Experiment.test
 #Remove the features file so I dont accidentally put in in the apk (it's too big)
 	@rm form_templates/SIS-A01.yml
 
+ifndef $(TEMPLATE)
+	TEMPLATE := checkbox_form
+endif
 Checkbox: tests/Checkbox.test
 	@rm -rf aligned_forms/$(INPUT_FOLDER)
 	@mkdir aligned_forms/$(INPUT_FOLDER)
@@ -49,7 +52,7 @@ Checkbox: tests/Checkbox.test
 	@mkdir debug_segment_images
 	@rm -rf bubble_images
 	@mkdir bubble_images
-	./$< $(INPUT_FOLDER)
+	./$< $(INPUT_FOLDER) $(TEMPLATE)
 
 TemplateGenerator: TemplateGenerator.test
 	@rm -rf debug_segment_images

@@ -147,7 +147,7 @@ Aligner::Aligner(){
 	//detector = FeatureDetector::create( "GridSURF" );
 	//#define MATCHER_TYPE "BruteForce"
 	
-	#define PARAM_SET 1
+	#define PARAM_SET 3
 	#if PARAM_SET == 0
 		detector = Ptr<FeatureDetector>(
 			new GridAdaptedFeatureDetector(
@@ -177,6 +177,14 @@ Aligner::Aligner(){
 		//descriptorExtractor = DescriptorExtractor::create( "SURF" );
 		descriptorExtractor = Ptr<DescriptorExtractor>(new SurfDescriptorExtractor( 1, 3 ));
 		#define MATCHER_TYPE "BruteForce"
+	#elif PARAM_SET == 3
+		//Fast
+		detector = Ptr<FeatureDetector>(
+			new GridAdaptedFeatureDetector(
+				new SurfFeatureDetector( 395., 1, 3),
+				500, 5, 5));
+		descriptorExtractor = Ptr<DescriptorExtractor>(new SurfDescriptorExtractor( 1, 3 ));
+		#define MATCHER_TYPE "FlannBased"
 	#endif
 
 }
@@ -258,6 +266,8 @@ void Aligner::loadFeatureData(const string& templPath) throw(cv::Exception) {
 			CV_Error(CV_StsError, "Template image not found.");
 
 		resize(templImage, temp, templImage.size(), 0, 0, INTER_AREA);
+		templImage.release();
+		templImage = temp;
 		
 		/*
 		templImage = temp;
@@ -265,16 +275,15 @@ void Aligner::loadFeatureData(const string& templPath) throw(cv::Exception) {
 		equalizeHist(temp, templImage);
 		*/
 		
-		temp.release();
 		templImageSize = templImage.size();
-
+		
 		#ifdef DEBUG_ALIGN_IMAGE
 			cout << "Extracting keypoints from template image..." << endl;
 		#endif
-
+		cout << templPath + ".json" << endl;
 		MaskGenerator g;
 		Mat mask = g.generate(templPath + ".json", templImageSize);
-		
+
 		/*
 		#ifdef MASK_CENTER_AMOUNT
 			Rect roi = resizeRect(Rect(Point(0,0), templImage.size()), MASK_CENTER_AMOUNT);
@@ -283,7 +292,6 @@ void Aligner::loadFeatureData(const string& templPath) throw(cv::Exception) {
 		//debugShow(templImage & mask);
 		*/
 		
-		temp.release();
 		detector->detect( templImage, templKeypoints, mask );
 
 		#ifdef DEBUG_ALIGN_IMAGE

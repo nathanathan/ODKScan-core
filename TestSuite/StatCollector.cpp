@@ -27,6 +27,9 @@ void StatCollector::compareSegmentBubbleVals(const Json::Value& foundSeg, const 
 	
 	const Json::Value fBubbles = foundSeg["bubbles"];
 	const Json::Value aBubbles = actualSeg["bubbles"];
+
+	assert( fBubbles.size() == aBubbles.size());
+
 	for( size_t i = 0; i < fBubbles.size(); i++){
 		bool found = fBubbles[i]["value"].asBool();
 		bool actual = aBubbles[i]["value"].asBool();
@@ -67,6 +70,9 @@ vector<Point> StatCollector::compareSegmentBubbleOffsets(const Json::Value& foun
 	
 	const Json::Value fBubbles = foundSeg["bubbles"];
 	const Json::Value expectedLocations = actualSeg["bubble_locations"];
+
+	assert( fBubbles.size() == expectedLocations.size());
+
 	for( size_t i = 0; i < fBubbles.size(); i++){
 		Point expectedLocation = segmentOffset + jsonToPoint(expectedLocations[i]);
 		Point actualLocation = jsonToPoint(fBubbles[i]["location"]);
@@ -80,20 +86,19 @@ void StatCollector::compareFields(const Json::Value& foundField, const Json::Val
 	#endif
 	const Json::Value fSegments = foundField["segments"];
 	const Json::Value aSegments = actualField["segments"];
+
+	assert( fSegments.size() == aSegments.size());
+
 	for( size_t i = 0; i < fSegments.size(); i++){
-		const int fKey = fSegments[i].get("key", -47).asInt();
-		for( size_t j = i; j < aSegments.size(); j++){
-			const int aKey = aSegments[j].get("key", -62).asInt();
-			if(fKey == aKey) {
-				if(mode == COMP_BUBBLE_VALS){
-					compareSegmentBubbleVals(fSegments[i], aSegments[j]);
-				}
-				else{
-					vector<Point> segmentOffsets = compareSegmentBubbleOffsets(fSegments[i], aSegments[j]);
-					offsets.insert(offsets.end(), segmentOffsets.begin(), segmentOffsets.end());
-				}
-			}
+
+		if(mode == COMP_BUBBLE_VALS){
+			compareSegmentBubbleVals(fSegments[i], aSegments[i]);
 		}
+		else{
+			vector<Point> segmentOffsets = compareSegmentBubbleOffsets(fSegments[i], aSegments[i]);
+			offsets.insert(offsets.end(), segmentOffsets.begin(), segmentOffsets.end());
+		}
+
 	}
 }
 void StatCollector::compareFiles(const string& foundPath, const string& actualPath, ComparisonMode mode){
@@ -107,11 +112,15 @@ void StatCollector::compareFiles(const string& foundPath, const string& actualPa
 	
 	const Json::Value fFields = foundRoot["fields"];
 	const Json::Value aFields = actualRoot["fields"];
+	/*
+	Note that we expect unique labels for this to work, and that unlabeled0 and unlabeled1 are reserved labels.
+	*/
 	for( size_t i = 0; i < fFields.size(); i++){
-		const int fFieldKey = fFields[i].get("key", -1).asInt();
-		for( size_t j = i; j < aFields.size(); j++){
-			const int aFieldKey = aFields[j].get("key", -2).asInt();
-			if(fFieldKey == aFieldKey) {
+		const Json::Value fFieldLabel = fFields[i].get("label", "unlabeled0");
+		for( size_t j = 0; j < aFields.size(); j++){
+			const Json::Value aFieldLabel = aFields[j].get("label", "unlabeled1");
+			//unlabeled0 does not match unlabeled1, thus those fields are ignored.
+			if(fFieldLabel == aFieldLabel) {
 				compareFields(fFields[i], aFields[j], mode);
 			}
 		}

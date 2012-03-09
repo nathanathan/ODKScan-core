@@ -20,7 +20,7 @@ It defines platform specific constants
 
 //Processor.cpp
 #define DEBUG_PROCESSOR
-#define OUTPUT_SEGMENT_IMAGES
+#define SEGMENT_OUTPUT_DIRECTORY "debug_segment_images/"
 #define TRAINING_IMAGE_ROOT "training_examples"
 #define DEFAULT_TRAINING_IMAGE_DIR "training_examples/android_training_examples"
 //FormAlignmnet.cpp

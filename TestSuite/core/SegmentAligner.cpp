@@ -251,6 +251,7 @@ template <class T>
 void refineCorners(const Mat& img, vector< Point_<T> >& quad){
 	return;
 }
+//TODO: could possibly improve this using harris detector w/ hillclimbing instead.
 void refineCorners(const Mat& img, vector< Point2f >& quad){
 	TermCriteria termcrit(CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 20, 0.03);
 	cornerSubPix(img, quad, Size(1,1), Size(-1, -1), termcrit);
@@ -271,7 +272,7 @@ Point_<T> getCorner(const Mat& img, const Rect&roi, const Mat& templ, const Poin
 	Mat result(img.size(), CV_8U);
 	int method = 3962;//CV_TM_SQDIFF;
 	if(method == 3962){
-		 createLinearFilter(templ.type(), templ.type(), 255 - templ)->apply(img, result);
+		createLinearFilter(templ.type(), templ.type(), 255 - templ)->apply(img, result);
 	}
 	else{
 		matchTemplate(img, templ, result, method);
@@ -352,8 +353,9 @@ void findSegmentImpl(const Mat& img, const Rect& roi, vector< Point_<T> >& outQu
 		quad.push_back(findIntersection(A4, B4, A1, B1));
 		outQuad = quad;
 		//TODO: add some code that does this:
-		//		lines can be used to mask off sections of the image
-		//		if there is a height/width discrepancy move the weighting line to the averate of the expected lines.
+		//      lines can be used to mask off sections of the image
+		//      if there is a height/width discrepancy move the weighting
+		//      line to the averate of the expected lines.
 	#elif QUAD_FIND_MODE == QUAD_FIND_CONTOURS
 		#define EXPANSION_PERCENTAGE .05
 		line( imgThresh, A1, B1, Scalar::all(0), 1, 4);
@@ -368,6 +370,7 @@ void findSegmentImpl(const Mat& img, const Rect& roi, vector< Point_<T> >& outQu
 		convertQuad(quad, outQuad);
 	#elif QUAD_FIND_MODE == QUAD_FIND_CORNERS
 		vector< Point_<T> > quad;
+
 		Size quadrantSize = .5 * img.size();
 		Rect quadrant;
 		
@@ -381,11 +384,13 @@ void findSegmentImpl(const Mat& img, const Rect& roi, vector< Point_<T> >& outQu
 		flip(templ, temp,0);
 		transpose(temp, templ);
 		quadrant = Rect(Point(img.cols/2,0), quadrantSize);
-		quad.push_back(getCorner<T>(img(quadrant), roi, templ, quadrant.tl() + Point(templSize.width,0)));
+		quad.push_back(getCorner<T>(img(quadrant), roi, templ,
+		                            quadrant.tl() + Point(templSize.width,0)));
 		flip(templ, temp,0);
 		transpose(temp, templ);
 		quadrant = Rect(Point(img.cols/2,img.rows/2), quadrantSize);
-		quad.push_back(getCorner<T>(img(quadrant), roi, templ, quadrant.tl() + Point(templSize.width,templSize.height)));
+		quad.push_back(getCorner<T>(img(quadrant), roi, templ,
+		                            quadrant.tl() + Point(templSize.width,templSize.height)));
 		flip(templ, temp,0);
 		transpose(temp, templ);
 		quadrant = Rect(Point(0,img.rows/2), quadrantSize);
