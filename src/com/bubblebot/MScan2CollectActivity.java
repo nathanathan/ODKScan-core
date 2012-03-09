@@ -58,34 +58,27 @@ public class MScan2CollectActivity extends Activity {
 			
 			String jsonOutPath = extras.getString("jsonOutPath");
 			String templatePath = extras.getString("templatePath");
-			Log.i(LOG_TAG,"jsonOutPath : " + jsonOutPath);
-			Log.i(LOG_TAG,"templatePath : " + templatePath);
 
 			if(jsonOutPath == null){ throw new Exception("jsonOutPath is null"); }
-			if(templatePath == null){ throw new Exception("templatePath is null"); }
+			if(templatePath == null){
+				//////////////
+				Log.i(LOG_TAG, "templatePath is null. Getting template from jsonOut:");
+				//////////////
+				JSONObject formRoot = JSONUtils.parseFileToJSONObject(jsonOutPath);
+				if ( formRoot.has("name") ){
+					templatePath = formRoot.getString("name");
+				}
+				else{
+					throw new Exception("Could not identify template.");
+				}
+			}
+			
+			Log.i(LOG_TAG,"jsonOutPath : " + jsonOutPath);
+			Log.i(LOG_TAG,"templatePath : " + templatePath);
 			
 			String templateName = new File(templatePath).getName();
 			String xformPath = templatePath + ".xml";
 			String jsonPath = templatePath + ".json";
-			
-			/*
-			//Could verify xform through managed query, but I don't think this will be needed
-			String[] projection = { "date" };
-	        String selection = "formFilePath = ?";
-	        String[] selectionArgs = { xformPath };
-	        Cursor c = managedQuery(COLLECT_FORMS_CONTENT_URI, projection,
-	                selection, selectionArgs, null);
-	        
-	        if (c.getCount() != 0) {
-	            c.moveToFirst();
-	            String value = c.getString(c.getColumnIndexOrThrow("date"));
-	            Log.i(LOG_TAG, "DATE: " + value);
-	            Log.i(LOG_TAG, "DATE: " + new File(jsonPath).lastModified());
-	            c.close();
-	        }
-
-			long registeredFormModified = 0;//Long.MAX_VALUE;
-			*/
 			
 			//If there is no xform or the xform is out of date create it.
 			File xformFile = new File(xformPath);
@@ -100,8 +93,7 @@ public class MScan2CollectActivity extends Activity {
 				//////////////
 				Log.i(LOG_TAG, "Creating the xform");
 				//////////////
-				String[] fieldLabels = getFieldLabels(jsonPath);
-			    buildForm(xformPath, fieldLabels, templateName, templateName);
+			    buildForm(jsonPath, xformPath, templateName, templateName);
 			    /*
 				//////////////
 				Log.i(LOG_TAG, "Registering the new xform with collect.");
@@ -155,32 +147,22 @@ public class MScan2CollectActivity extends Activity {
 		}
 		
 	}
-	/**
-	 * Get a String array with all of the field labels used in the template at the given path.
-	 * @param templatePath
-	 * @return
-	 * @throws JSONException
-	 * @throws IOException
-	 */
-	private String[] getFieldLabels(String templatePath) throws JSONException, IOException {
-		Log.i(LOG_TAG, templatePath);
-		JSONObject formRoot = JSONUtils.parseFileToJSONObject(templatePath);
-		Log.i(LOG_TAG, "Parsed");
-		JSONArray fields = formRoot.getJSONArray("fields");
-		int fieldsLength = fields.length();
-		
-		if(fieldsLength == 0) {
-			//TODO: make this function throw exceptions
-			Log.i(LOG_TAG, "fieldsLength is zero");
-			return null;
-		}
-		String [] fieldLabels = new String[fieldsLength];
-		for(int i = 0; i < fieldsLength; i++){
-			fieldLabels[i] = fields.getJSONObject(i).getString("label").replaceAll(" ", "_");
-		}
-		return fieldLabels;
+    private static String xmlTagSanitize(String string) {
+    	return string.replaceAll(" ", "_")
+		             .replaceAll("[-.:']", "")
+		             .replace("0", "zero")
+		             .replace("1", "one")
+		             .replace("2", "two")
+		             .replace("3", "three")
+		             .replace("4", "four")
+		             .replace("5", "five")
+		             .replace("6", "six")
+		             .replace("7", "seven")
+		             .replace("8", "eight")
+		             .replace("9", "nine")
+		             .toLowerCase();
 	}
-    /**
+	/**
      * Verify that the form is in collect and put it in collect if it is not.
      * @param filepath
      * @return
@@ -269,6 +251,25 @@ public class MScan2CollectActivity extends Activity {
 		if(fieldsLength == 0) {
 			throw new JSONException("There are no files in the json output file.");
 		}
+		//Add missing name properties to the fields:
+		for (int i = 0; i < fieldsLength; i++) {
+			
+			JSONObject field = fields.optJSONObject(i);
+			if (field == null) { 
+				fields.put(i, new JSONObject());
+				continue;
+			}
+			
+			if (field.has("name")) { continue; }
+			
+			else if (field.has("label")) {
+				field.put("name", xmlTagSanitize(field.getString("label")));
+				fields.put(i, field);
+			}
+			else{
+				throw new JSONException("Field " + i + " has no name or label.");
+			}
+		}
 		//////////////
 		Log.i(LOG_TAG, "Transfering the values from the JSON output into the xform instance:");
 		//////////////
@@ -278,7 +279,7 @@ public class MScan2CollectActivity extends Activity {
             if (blankChild == null) { continue; }
             String key = blankChild.getName();
             Element child = instance.createElement("", key);
-            JSONObject field = JSONUtils.getObjectWithPropertyValue(fields, "label", key);
+            JSONObject field = JSONUtils.getObjectWithPropertyValue(fields, "name", key);
             if (field != null) {
             	//TODO: Figure out the best way to do types.
     			if( field.optString("out_type").equals("number") ){
@@ -352,18 +353,55 @@ public class MScan2CollectActivity extends Activity {
         return Integer.valueOf(insertResult.getLastPathSegment());
     }
     /**
-     * Build an xform with the specified field names and write it to the specified file.
+     * Builds an xfrom from a json template and writes it out to the specified file.
      * Note:
      * It is important to distinguish between an xform and an xform instance.
      * This builds an xform.
+     * @param templatePath
      * @param outputPath
-     * @param keys
      * @param title
      * @param id
-     * @throws IOException 
+     * @throws IOException
+     * @throws JSONException 
      */
-    public static void buildForm(String outputPath, String[] keys, String title, String id) throws IOException {
-
+    public static void buildForm(String templatePath, String outputPath, String title, String id) throws IOException, JSONException {
+		Log.i(LOG_TAG, templatePath);
+		JSONObject formRoot = JSONUtils.parseFileToJSONObject(templatePath);
+		Log.i(LOG_TAG, "Parsed");
+		JSONArray initFields = formRoot.getJSONArray("fields");
+		int initFieldsLength = initFields.length();
+		
+		//Make fields array with no null values
+		JSONArray fields = new JSONArray();
+		for(int i = 0; i < initFieldsLength; i++){
+			JSONObject field = initFields.optJSONObject(i);
+			if(field != null){
+				fields.put(initFields.getJSONObject(i));
+			}
+			else{
+				Log.i(LOG_TAG, "Null");
+			}
+		}
+		int fieldsLength = fields.length();
+		
+		String [] fieldNames = new String[fieldsLength];
+		String [] fieldLabels = new String[fieldsLength];
+		for(int i = 0; i < fieldsLength; i++){
+			JSONObject field = fields.getJSONObject(i);
+			if(field.has("name")){
+				fieldNames[i] = field.getString("name");
+				fieldLabels[i] = field.optString("label", field.getString("name"));
+			}
+			else if(field.has("label")){
+				fieldNames[i] = xmlTagSanitize(field.getString("label"));
+				fieldLabels[i] = field.getString("label");
+			}
+			else{
+				Log.i(LOG_TAG, "Field " + i + " has no name or label.");
+				//throw new JSONException("Field " + i + " has no name or label.");
+			}
+		}
+    	
         FileWriter writer = new FileWriter(outputPath);
         writer.write("<h:html xmlns=\"http://www.w3.org/2002/xforms\" " +
                 "xmlns:h=\"http://www.w3.org/1999/xhtml\" " +
@@ -375,16 +413,16 @@ public class MScan2CollectActivity extends Activity {
         writer.write("<model>");
         writer.write("<instance>");
         writer.write("<data id=\"" + id + "\">");
-        for (String key : keys) {
-            writer.write("<" + key + "/>");
+        for(int i = 0; i < fieldsLength; i++){
+            writer.write("<" + fieldNames[i] + "/>");
         }
         writer.write("</data>");
         writer.write("</instance>");
         writer.write("<itext>");
         writer.write("<translation lang=\"eng\">");
-        for (String key : keys) {
-            writer.write("<text id=\"/data/" + key + ":label\">");
-            writer.write("<value>" + key + "</value>");
+        for(int i = 0; i < fieldsLength; i++){
+            writer.write("<text id=\"/data/" + fieldNames[i] + ":label\">");
+            writer.write("<value>" + fieldLabels[i] + "</value>");
             writer.write("</text>");
         }
         writer.write("</translation>");
@@ -392,9 +430,9 @@ public class MScan2CollectActivity extends Activity {
         writer.write("</model>");
         writer.write("</h:head>");
         writer.write("<h:body>");
-        for (String key : keys) {
-            writer.write("<input ref=\"/data/" + key + "\">");
-            writer.write("<label ref=\"jr:itext('/data/" + key +
+        for(int i = 0; i < fieldsLength; i++){
+            writer.write("<input ref=\"/data/" + fieldNames[i] + "\">");
+            writer.write("<label ref=\"jr:itext('/data/" + fieldNames[i] +
                     ":label')\"/>");
             writer.write("</input>");
         }

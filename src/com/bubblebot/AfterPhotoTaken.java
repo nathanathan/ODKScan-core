@@ -71,9 +71,9 @@ public class AfterPhotoTaken extends Activity {
 		
 		//set the templates we will be using.
 		if(settings.getBoolean("doFormDetection", false)){
-			String[] templatePathsInit = { "form_templates/SIS-A01", "form_templates/checkbox_form", "form_templates/checkbox_form_2" };
+			//TODO: Scan directory for templates.
+			String[] templatePathsInit = { "form_templates/SIS-A01", "form_templates/checkbox_form", "form_templates/checkbox_form_2", "form_templates/UW_course_eval_A_front" };
 			templatePaths = templatePathsInit;
-			//"form_templates/UW_course_eval_A_front" };
 			//String[] templatePaths = { "form_templates/checkbox_form" };
 		}
 		else{
@@ -99,6 +99,7 @@ public class AfterPhotoTaken extends Activity {
 			public void onClick(View v) {
 				Intent intent = new Intent(getApplication(), BubbleCollect2.class);
 				startActivity(intent);
+				finish();
 			}
 		});
 		processButton = (Button) findViewById(R.id.process_button);
