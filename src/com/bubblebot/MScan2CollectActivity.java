@@ -43,7 +43,7 @@ public class MScan2CollectActivity extends Activity {
     private static final DateFormat COLLECT_INSTANCE_NAME_DATE_FORMAT =
             new SimpleDateFormat("yyyy-MM-dd_kk-mm-ss");
 
-	 private static final String LOG_TAG = "mScan";
+	private static final String LOG_TAG = "mScan";
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -282,17 +282,49 @@ public class MScan2CollectActivity extends Activity {
             JSONObject field = JSONUtils.getObjectWithPropertyValue(fields, "name", key);
             if (field != null) {
             	//TODO: Figure out the best way to do types.
-    			if( field.optString("out_type").equals("number") ){
+    			
+            	String out_type = field.optString("out_type");
+            	
+            	if( out_type.equals("number") ){
     				Number[] segmentCounts = JSONUtils.getSegmentValues(field);
     				child.addChild(0, Node.TEXT, "" + MScanUtils.sum(segmentCounts).intValue());
     			}
+    			else if( out_type.equals("select") ){
+    				String selected = "";
+    				JSONArray segments = fields.getJSONObject(i).getJSONArray("segments");
+    				for(int j = 0; j < segments.length(); j++) {
+    					JSONArray bubbles = segments.getJSONObject(j).getJSONArray("bubbles");
+        				for(int k = 0; k < bubbles.length(); k++) {
+        					if(bubbles.getJSONObject(k).getInt("value") != 0){
+        						selected += k + " ";
+        					}
+        				}
+    				}
+    				child.addChild(0, Node.TEXT, "" + selected);
+    			}
+    			else if( out_type.equals("select1") ){
+    				//TODO: Clean up this redundant code.
+    				String selected = "";
+    				JSONArray segments = fields.getJSONObject(i).getJSONArray("segments");
+    				for(int j = 0; j < segments.length(); j++) {
+    					JSONArray bubbles = segments.getJSONObject(j).getJSONArray("bubbles");
+        				for(int k = 0; k < bubbles.length(); k++) {
+        					if(bubbles.getJSONObject(k).getInt("value") != 0){
+        						selected = "" + k;
+        					}
+        				}
+    				}
+    				child.addChild(0, Node.TEXT, "" + selected);
+    			}
     			else{
+    				throw new JSONException("Unknown out_type: " + out_type);
+    				/*
     				JSONArray textSegments = field.getJSONArray("segments");
     				int textSegmentsLength = textSegments.length();
     				for(int j = 0; j < textSegmentsLength; j++){
     					//TODO: Handle text segments by formating template
     					child.addChild(0, Node.TEXT, textSegments.getJSONObject(j).optString("value", ""));
-    				}
+    				}*/
     			}
             }
             else{
@@ -384,6 +416,7 @@ public class MScan2CollectActivity extends Activity {
 		}
 		int fieldsLength = fields.length();
 		
+		//Get the field names and labels:
 		String [] fieldNames = new String[fieldsLength];
 		String [] fieldLabels = new String[fieldsLength];
 		for(int i = 0; i < fieldsLength; i++){
@@ -431,10 +464,30 @@ public class MScan2CollectActivity extends Activity {
         writer.write("</h:head>");
         writer.write("<h:body>");
         for(int i = 0; i < fieldsLength; i++){
-            writer.write("<input ref=\"/data/" + fieldNames[i] + "\">");
-            writer.write("<label ref=\"jr:itext('/data/" + fieldNames[i] +
-                    ":label')\"/>");
-            writer.write("</input>");
+        	
+        	JSONObject field = fields.getJSONObject(i);
+        	String out_type = field.optString("out_type", "");
+        	
+        	if( out_type.equals("select") || out_type.equals("select1") ){
+        		
+        		writer.write("<" + out_type +" ref=\"/data/" + fieldNames[i] + "\">");
+                writer.write("<label ref=\"jr:itext('/data/" + fieldNames[i] + ":label')\"/>");
+                
+                JSONArray items = field.getJSONArray("bubble_labels");
+                for(int j = 0; j < items.length(); j++){
+	                writer.write("<item>");
+	                writer.write("<label>" + items.getString(j) + "</label>");
+	                writer.write("<value>" + j + "</value>");
+	                writer.write("</item>");
+                }
+                
+                writer.write("</" + out_type + ">");
+        	}
+        	else{
+                writer.write("<input ref=\"/data/" + fieldNames[i] + "\">");
+                writer.write("<label ref=\"jr:itext('/data/" + fieldNames[i] + ":label')\"/>");
+                writer.write("</input>");
+        	}
         }
         writer.write("</h:body>");
         writer.write("</h:html>");

@@ -147,7 +147,7 @@ Aligner::Aligner(){
 	//detector = FeatureDetector::create( "GridSURF" );
 	//#define MATCHER_TYPE "BruteForce"
 	
-	#define PARAM_SET 3
+	#define PARAM_SET 1
 	#if PARAM_SET == 0
 		detector = Ptr<FeatureDetector>(
 			new GridAdaptedFeatureDetector(

@@ -44,9 +44,9 @@ using namespace std;
 using namespace cv;
 
 Json::Value genBubblesJson( const vector<int>& bubbleVals, const vector<Point>& bubbleLocations, 
-                            const Point& offset, const Mat& transformation =
-                                                 (Mat_<double>(3,3) << 1, 0, 0, 0, 1, 0, 0, 0, 1)) {
-					
+                            const Point& offset, const Json::Value& bubbleLabels,
+                            const Mat& transformation = (Mat_<double>(3,3) << 1, 0, 0, 0, 1, 0, 0, 0, 1) ) {
+
 	assert(bubbleLocations.size() == bubbleVals.size());
 	Json::Value out;
 	for(size_t i = 0; i < bubbleVals.size(); i++){
@@ -58,6 +58,9 @@ Json::Value genBubblesJson( const vector<int>& bubbleVals, const vector<Point>& 
 			Point( actualLocation.at<double>(0,0) / actualLocation.at<double>(2, 0),
 			       actualLocation.at<double>(1,0) / actualLocation.at<double>(2, 0)) +
 			offset);
+		if( !bubbleLabels.isNull() ){
+			bubble["label"] = bubbleLabels[i];
+		}
 		out.append(bubble);
 	}
 	return out;
@@ -222,16 +225,23 @@ Json::Value segmentFunction(const Json::Value& segmentTemplate) {
 	                                                       segmentTemplate.get("segment_height", INT_MIN).asInt()));
 
 	string inputType = segmentTemplate.get("in_type", "classifier").asString();
-	
+
 	if(!segmentTemplate.get("bounded", true).asBool()) { //If segments don't have a bounding box
 		segmentImg = formImage(segmentRect);
 		segmentJsonOut["quad"] = quadToJsonArray(rectToQuad( segmentRect ));
-		if(inputType == "classifier"){
+
+		//TODO: Make outputing segment images to collect work.
+		if(false && segmentTemplate.get("type", "").asString() == "text"){
+			imwrite(appRootDir + segmentTemplate.get("label", "unlabeled").asString() + ".jpg", segmentImg);
+			//cout << appRootDir + segmentTemplate.get("label", "unlabeled").asString() + ".jpg" << endl;
+		}
+		else if(inputType == "classifier"){
 			segBubbleLocs = getBubbleLocations(*classifier, segmentImg,
 			                                   segmentTemplate["bubble_locations"], false);
 			bubbleVals = classifyBubbles( segmentImg, segBubbleLocs, *classifier );
-			segmentJsonOut["bubbles"] = genBubblesJson( bubbleVals, segBubbleLocs, segmentRect.tl() );
+			segmentJsonOut["bubbles"] = genBubblesJson( bubbleVals, segBubbleLocs, segmentRect.tl(), segmentTemplate["bubble_labels"]);
 		}
+
 	}
 	else {
 		Rect expandedRect = resizeRect(segmentRect, 1 + SEGMENT_BUFFER);
@@ -273,7 +283,9 @@ Json::Value segmentFunction(const Json::Value& segmentTemplate) {
 				segBubbleLocs = getBubbleLocations(*classifier, segmentImg, segmentTemplate["bubble_locations"], DO_BUBBLE_ALIGNMENT);
 				bubbleVals = classifyBubbles( segmentImg, segBubbleLocs, *classifier );
 				segmentJsonOut["bubbles"] = genBubblesJson( bubbleVals, segBubbleLocs, 
-					                                    expandedRect.tl(), transformation.inv() );
+					                                    expandedRect.tl(), 
+				                                            segmentTemplate["bubble_labels"],
+				                                            transformation.inv() );
 			}
 		}
 		else{
