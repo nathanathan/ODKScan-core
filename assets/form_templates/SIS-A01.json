@@ -1,5 +1,6 @@
 
 {
+	"training_data_uri" : "bubbles",
 	"in_type" : "classifier",
 	"out_type" : "number",
 	"classifier_size" : [ 10, 14 ],
@@ -2904,7 +2905,7 @@
 		
 		{
 			"key" : 26,
-			"label" : "Criancas completamente vacinadas < 1 ano femeninos",
+			"label" : "Criancas completamente vacinadas menor que 1 ano femeninos",
 			"segment_width" : 56,
 			"segment_height" : 58,
 			"segments" : 
@@ -3059,7 +3060,7 @@
 		
 		{
 			"key" : 27,
-			"label" : "Criancas completamente vacinadas < 1 ano masculinos total",
+			"label" : "Criancas completamente vacinadas menor que 1 ano masculinos total",
 			"segment_width" : 56,
 			"segment_height" : 58,
 			"segments" : 
@@ -3083,7 +3084,7 @@
 		
 		{
 			"key" : 28,
-			"label" : "Criancas completamente vacinadas < 1 ano masculinos",
+			"label" : "Criancas completamente vacinadas menor que 1 ano masculinos",
 			"segment_width" : 56,
 			"segment_height" : 58,
 			"segments" : 
@@ -3239,6 +3240,8 @@
 		{
 			"key" : 29,
 			"mask" : true,
+			"segment_height" : 654,
+			"segment_width" : 58,
 			"segments" : 
 			[
 				{
@@ -3247,24 +3250,25 @@
 					"y" : 320
 				},
 				{
-					
+					"segment_height" : 77,
+					"segment_width" : 110,
 					"x" : 487,
 					"y" : 390
 				},
 				{
-					
 					"x" : 595,
 					"y" : 320
 				},
 				{
-					
+					"segment_width" : 50,
 					"x" : 710,
 					"y" : 320
 				},
 				{
-					
+					"segment_height" : 55,
+					"segment_width" : 50,
 					"x" : 710,
-					"y" : 1028
+					"y" : 1025
 				}
 			]
 		},
@@ -3277,8 +3281,8 @@
 					"type" :  "text",
 					"bounded" : false,
 					"segment_height" : 25,
-					"segment_width" : 250,
-					"x" : 324,
+					"segment_width" : 240,
+					"x" : 332,
 					"y" : 60
 				}
 			]
@@ -3293,8 +3297,8 @@
 					"bounded" : false,
 					"segment_height" : 25,
 					"segment_width" : 250,
-					"x" : 310,
-					"y" : 90
+					"x" : 318,
+					"y" : 85
 				}
 			]
 		},
@@ -3306,10 +3310,10 @@
 				{
 					"type" :  "text",
 					"bounded" : false,
-					"segment_height" : 20,
+					"segment_height" : 25,
 					"segment_width" : 120,
-					"x" : 295,
-					"y" : 115
+					"x" : 285,
+					"y" : 110
 				}
 			]
 		},
@@ -3321,10 +3325,10 @@
 				{
 					"type" :  "text",
 					"bounded" : false,
-					"segment_height" : 20,
+					"segment_height" : 25,
 					"segment_width" : 100,
-					"x" : 468,
-					"y" : 115
+					"x" : 472,
+					"y" : 110
 				}
 			]
 		},
@@ -3336,9 +3340,9 @@
 				{
 					"type" :  "text",
 					"bounded" : false,
-					"segment_height" : 20,
-					"segment_width" : 120,
-					"x" : 300,
+					"segment_height" : 25,
+					"segment_width" : 124,
+					"x" : 298,
 					"y" : 135
 				}
 			]
@@ -3351,10 +3355,35 @@
 				{
 					"type" :  "text",
 					"bounded" : false,
-					"segment_height" : 20,
+					"segment_height" : 25,
 					"segment_width" : 100,
-					"x" : 468,
+					"x" : 470,
 					"y" : 135
+				}
+			]
+		},
+		{
+			"label" : "Posto fixo o Brigada movel",
+			"out_type" : "select",
+			"training_data_uri" : "checkboxes",
+			"classifier_size" : [ 34, 22 ],
+			"segment_height" : 30,
+			"segment_width" : 320,
+			"bubble_labels" : 
+			[
+				"Posto fixo", "Brigada movel"
+			],
+			"segments" : 
+			[
+				{
+					"bounded" : false,
+					"x" : 195,
+					"y" : 195,
+					"bubble_locations" : 
+					[
+						[ 97, 16 ],
+						[ 286, 15 ]
+					]
 				}
 			]
 		}
