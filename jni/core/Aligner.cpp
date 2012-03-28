@@ -14,11 +14,11 @@
 #include <iostream>
 #include <fstream>
 
-//vaying the reproject threshold can make a big difference in performance.
-#define FH_REPROJECT_THRESH 4.0
+/*
+#define ALWAYS_COMPUTE_TEMPLATE_FEATURES
+#define SHOW_MATCHES_WINDOW
+*/
 
-//#define ALWAYS_COMPUTE_TEMPLATE_FEATURES
-//#define SHOW_MATCHES_WINDOW
 #define MASK_CENTER_AMOUNT .41
 
 #ifdef OUTPUT_DEBUG_IMAGES
@@ -33,7 +33,6 @@ using namespace cv;
 	Mat featureSource;
 	vector<Mat> templateImages;
 #endif
-
 
 class MaskGenerator : public TemplateProcessor
 {
@@ -147,7 +146,7 @@ Aligner::Aligner(){
 	//detector = FeatureDetector::create( "GridSURF" );
 	//#define MATCHER_TYPE "BruteForce"
 	
-	#define PARAM_SET 1
+	#define PARAM_SET 6
 	#if PARAM_SET == 0
 		detector = Ptr<FeatureDetector>(
 			new GridAdaptedFeatureDetector(
@@ -157,8 +156,13 @@ Aligner::Aligner(){
 		//descriptorExtractor = DescriptorExtractor::create( "SURF" );
 		descriptorExtractor = Ptr<DescriptorExtractor>(new SurfDescriptorExtractor( 1, 3 ));
 		#define MATCHER_TYPE "FlannBased"
-	#elif PARAM_SET == 1
+		#define FH_REPROJECT_THRESH 4.0
+	#elif PARAM_SET == 1 
+		//This is the parameter set we used in the paper.
 		//Optimal hessian level seems to vary by phone
+		//Total success rate: 99.3063%
+		//Average image processing time: 4.9735 seconds
+
 		detector = Ptr<FeatureDetector>(
 			new GridAdaptedFeatureDetector(
 				new SurfFeatureDetector( 395., 1, 3),
@@ -167,6 +171,10 @@ Aligner::Aligner(){
 		//descriptorExtractor = DescriptorExtractor::create( "SURF" );
 		descriptorExtractor = Ptr<DescriptorExtractor>(new SurfDescriptorExtractor( 1, 3 ));
 		#define MATCHER_TYPE "FlannBased"
+		#define FH_REPROJECT_THRESH 4.0
+		//1259712 is the area of a 5 megapixel image scaled by .5.
+		//The goal is to keep resizing consistent.
+		#define STANDARD_AREA 1259712.f
 	#elif PARAM_SET == 2
 		//Reduced number of features:
 		detector = Ptr<FeatureDetector>(
@@ -177,14 +185,40 @@ Aligner::Aligner(){
 		//descriptorExtractor = DescriptorExtractor::create( "SURF" );
 		descriptorExtractor = Ptr<DescriptorExtractor>(new SurfDescriptorExtractor( 1, 3 ));
 		#define MATCHER_TYPE "BruteForce"
+		#define FH_REPROJECT_THRESH 4.0
 	#elif PARAM_SET == 3
-		//Fast
+		//Trying to balance speed with reliablity.
 		detector = Ptr<FeatureDetector>(
 			new GridAdaptedFeatureDetector(
 				new SurfFeatureDetector( 395., 1, 3),
 				500, 5, 5));
 		descriptorExtractor = Ptr<DescriptorExtractor>(new SurfDescriptorExtractor( 1, 3 ));
 		#define MATCHER_TYPE "FlannBased"
+		#define FH_REPROJECT_THRESH 4.0
+	#elif PARAM_SET == 4
+		//ORB 98.1873%
+		detector = FeatureDetector::create("GridORB");
+		descriptorExtractor = DescriptorExtractor::create("ORB");
+		#define MATCHER_TYPE "BruteForce-Hamming"
+		#define FH_REPROJECT_THRESH 3.0
+		#define STANDARD_AREA 1259712.f
+	#elif PARAM_SET == 5
+		//ORB nexus_bg/nice -- 98.3468%
+		detector = FeatureDetector::create("GridORB");
+		descriptorExtractor = DescriptorExtractor::create("ORB");
+		#define MATCHER_TYPE "BruteForce-Hamming"
+		#define FH_REPROJECT_THRESH 4.0
+		//Standard area eyeballed so that the actual image is about the same size as the template.
+		//I think this will cause some issues in terms of robustness. It could be tricky for people to make templates/take pictures of the right scale.
+		#define STANDARD_AREA 1200000.f
+	#elif PARAM_SET == 6
+		//FAST nexus_bg/nice -- 99.8278%
+		//Average image processing time: 3.5605 seconds
+		detector = FeatureDetector::create("GridFAST");
+		descriptorExtractor = DescriptorExtractor::create("BRIEF");
+		#define MATCHER_TYPE "BruteForce-HammingLUT"
+		#define FH_REPROJECT_THRESH 4.0
+		#define STANDARD_AREA 1259712.f
 	#endif
 
 }
@@ -193,9 +227,8 @@ void Aligner::setImage( const cv::Mat& img ){
 	currentImg = img;
 	
 	Mat currentImgResized;
-	//1259712 is the area of a 5 megapixel image scaled by .5.
-	//The goal is to keep resizing consistent.
-	resize(currentImg, currentImgResized, sqrt(1259712.f / currentImg.size().area()) * currentImg.size(), 0, 0, INTER_AREA);
+
+	resize(currentImg, currentImgResized, sqrt(STANDARD_AREA / currentImg.size().area()) * currentImg.size(), 0, 0, INTER_AREA);
 	
 	trueEfficiencyScale = Point3d(  double(currentImgResized.cols) / img.cols,
 									double(currentImgResized.rows) / img.rows,
