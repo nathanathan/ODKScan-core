@@ -2,16 +2,13 @@ package com.bubblebot;
 
 
 import java.util.Date;
-import java.util.Random;
 
-import org.json.JSONObject;
 
 import com.bubblebot.RunProcessor.Mode;
 
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
@@ -19,14 +16,11 @@ import android.os.Handler;
 import android.os.Message;
 import android.preference.PreferenceManager;
 import android.util.Log;
-import android.view.KeyEvent;
 import android.view.View;
 import android.webkit.WebView;
 import android.widget.Button;
-import android.widget.CompoundButton;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
-import android.widget.CompoundButton.OnCheckedChangeListener;
 
 /**
  * This activity runs the form processor and provides user feedback
@@ -56,6 +50,15 @@ public class AfterPhotoTaken extends Activity {
     	
     	content = (LinearLayout) findViewById(R.id.myLinearLayout);
     	
+		Button retake = (Button) findViewById(R.id.retake_button);
+		retake.setOnClickListener(new View.OnClickListener() {
+			public void onClick(View v) {
+				Intent intent = new Intent(getApplication(), BubbleCollect2.class);
+				startActivity(intent);
+				finish();
+			}
+		});
+		
 		Bundle extras = getIntent().getExtras();
 		if (extras == null) {
 			Log.i("mScan","extras == null");
@@ -69,6 +72,14 @@ public class AfterPhotoTaken extends Activity {
 		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
 		templatePaths = ListPreferenceMultiSelect.parseStoredValue(settings.getString("select_templates", ""));
 		
+		if(templatePaths == null){
+			RelativeLayout failureMessage = (RelativeLayout) findViewById(R.id.failureMessage);
+			failureMessage.setVisibility(View.VISIBLE);
+			content.setVisibility(View.VISIBLE);
+			return;
+		}
+		
+		//Start another thread to handle all the image processing:
 		runProcessor = new RunProcessor(handler, photoName,
 				templatePaths,
 				settings.getBoolean("calibrate", false));
@@ -79,17 +90,7 @@ public class AfterPhotoTaken extends Activity {
 		else{
 			startThread(RunProcessor.Mode.LOAD_ALIGN);
 		}
-		
 
-		//Button handlers:
-		Button retake = (Button) findViewById(R.id.retake_button);
-		retake.setOnClickListener(new View.OnClickListener() {
-			public void onClick(View v) {
-				Intent intent = new Intent(getApplication(), BubbleCollect2.class);
-				startActivity(intent);
-				finish();
-			}
-		});
 		processButton = (Button) findViewById(R.id.process_button);
 		processButton.setOnClickListener(new View.OnClickListener() {
 			public void onClick(View v) {
