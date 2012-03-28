@@ -1,12 +1,10 @@
 package com.bubblebot;
 
-import android.app.Activity;
-import android.content.SharedPreferences;
+import java.io.File;
+import java.io.FilenameFilter;
+
 import android.os.Bundle;
 import android.preference.PreferenceActivity;
-import android.widget.CheckBox;
-import android.widget.CompoundButton;
-import android.widget.CompoundButton.OnCheckedChangeListener;
 
 //TODO: Replace with PreferenceActivity
 public class AppSettings extends PreferenceActivity {
@@ -15,46 +13,30 @@ public class AppSettings extends PreferenceActivity {
     protected void onCreate(Bundle savedInstanceState) {
             super.onCreate(savedInstanceState);
             addPreferencesFromResource(R.xml.prefs);
+            
+            ListPreferenceMultiSelect multiSelectPreference = (ListPreferenceMultiSelect)findPreference("select_templates");
+            
+            //TODO: This probably has some bugs when forms are added. Would need to test.
+            
+            //Get the available templates:
+    		File dir = new File(MScanUtils.appFolder + MScanUtils.templateDir);	
+
+    		String[] templateNames = dir.list(new FilenameFilter() {
+    			public boolean accept (File dir, String name) {
+    				if (new File(dir,name).isDirectory())
+    					return false;
+    				return name.toLowerCase().endsWith(".json");
+    			}
+    		});
+            
+    		//Remove suffixes and set paths
+    		String[] templatePaths = new String[templateNames.length];
+    		for(int i = 0; i < templateNames.length; i++){
+    			templateNames[i] = templateNames[i].replace(".json", "");
+    			templatePaths[i] = MScanUtils.appFolder + MScanUtils.templateDir + templateNames[i];
+    		}
+    		
+            multiSelectPreference.setEntries(templateNames);
+            multiSelectPreference.setEntryValues(templatePaths);
     }
-	
-	/*
-	private CheckBox formDetectionCheckBox;
-	private CheckBox calibrationCheckBox;
-	private SharedPreferences settings;
-	
-	@Override
-	protected void onCreate(Bundle savedInstanceState) {
-		super.onCreate(savedInstanceState);
-		setContentView(R.layout.app_settings); // Setup the UI
-		
-		settings = getSharedPreferences(getResources().getString(R.string.prefs_name), 0);
-		
-		formDetectionCheckBox = (CheckBox) findViewById(R.id.formDetectionCheckbox);
-		formDetectionCheckBox.setOnCheckedChangeListener(new OnCheckedChangeListener()
-		{
-			//@Override
-			public void onCheckedChanged(CompoundButton arg0, boolean isChecked) {
-				SharedPreferences.Editor editor = settings.edit();
-				editor.putBoolean("doFormDetection", isChecked);
-				editor.commit();
-			}
-		});
-		
-		calibrationCheckBox = (CheckBox) findViewById(R.id.calibrationCheckbox);
-		calibrationCheckBox.setOnCheckedChangeListener(new OnCheckedChangeListener()
-		{
-			//@Override
-			public void onCheckedChanged(CompoundButton arg0, boolean isChecked) {
-				SharedPreferences.Editor editor = settings.edit();
-				editor.putBoolean("calibrate", isChecked);
-				editor.commit();
-			}
-		});
-	}
-	@Override
-	protected void onResume() {
-		formDetectionCheckBox.setChecked(settings.getBoolean("doFormDetection", false));
-		calibrationCheckBox.setChecked(settings.getBoolean("calibrate", false));
-		super.onResume();
-	}*/
 }

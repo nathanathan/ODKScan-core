@@ -66,20 +66,8 @@ public class AfterPhotoTaken extends Activity {
 		
 		photoName = extras.getString("photoName");
 		
-	    //SharedPreferences settings = getSharedPreferences(getResources().getString(R.string.prefs_name), 0);
 		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-		
-		//set the templates we will be using.
-		if(settings.getBoolean("doFormDetection", false)){
-			//TODO: Scan directory for templates.
-			String[] templatePathsInit = { "form_templates/SIS-A01", "form_templates/checkbox_form", "form_templates/checkbox_form_2", "form_templates/UW_course_eval_A_front" };
-			templatePaths = templatePathsInit;
-			//String[] templatePaths = { "form_templates/checkbox_form" };
-		}
-		else{
-			String[] templatePathsInit = { "form_templates/SIS-A01" };
-			templatePaths = templatePathsInit;
-		}
+		templatePaths = ListPreferenceMultiSelect.parseStoredValue(settings.getString("select_templates", ""));
 		
 		runProcessor = new RunProcessor(handler, photoName,
 				templatePaths,
@@ -191,7 +179,7 @@ public class AfterPhotoTaken extends Activity {
             			//writeJSONObjectToFile(formRoot);
 	            		Intent intent = new Intent(getApplication(), DisplayProcessedForm.class);
 	                    intent.putExtra("photoName", photoName);
-	                    intent.putExtra("templatePath", MScanUtils.appFolder + templatePaths[templatePathIdx]);
+	                    intent.putExtra("templatePath", templatePaths[templatePathIdx]);
 	                    startActivity(intent);
 	        			finish(); 
 	        			//Not sure this finish is necessary, but it might fix the inexplicable crashes

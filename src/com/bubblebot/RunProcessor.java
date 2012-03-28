@@ -71,7 +71,7 @@ public class RunProcessor implements Runnable {
 				
 				for(int i = 0; i < templatePaths.length; i++){ 
 					//Log.i("mScan", "loadingFD: " + MScanUtils.appFolder + templatePaths[i]);
-					mProcessor.loadFeatureData(MScanUtils.appFolder + templatePaths[i]);
+					mProcessor.loadFeatureData(templatePaths[i]);
 				}
 				
 				if(templatePaths.length > 1) {
@@ -79,7 +79,7 @@ public class RunProcessor implements Runnable {
 				}
 				
 				if(formIdx >= 0) {
-					if(mProcessor.setTemplate(MScanUtils.appFolder + templatePaths[formIdx])) {
+					if(mProcessor.setTemplate(templatePaths[formIdx])) {
 						Log.i("mScan","template loaded");
 						if( mProcessor.alignForm(MScanUtils.getAlignedPhotoPath(photoName), formIdx) ) {
 							msg.arg1 = 1;//indicates success
