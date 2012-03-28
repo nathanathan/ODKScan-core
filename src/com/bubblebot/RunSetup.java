@@ -15,17 +15,18 @@ import android.util.Log;
  */
 public class RunSetup implements Runnable {
 	
-	public static final int version = 91;
 	public static final boolean clearOldData = true;
 	
 	private SharedPreferences settings;
 	private AssetManager assets;
 	private Handler handler;
+	private int appVersionCode;
 	
-	public RunSetup(Handler handler, SharedPreferences settings, AssetManager assets){
+	public RunSetup(Handler handler, SharedPreferences settings, AssetManager assets, int appVersionCode){
 		this.handler = handler;
 		this.settings = settings;
 		this.assets = assets;
+		this.appVersionCode = appVersionCode;
 	}
 	public void run() {
 
@@ -55,7 +56,7 @@ public class RunSetup implements Runnable {
 
 			extractAssets(new File(""), new File(MScanUtils.appFolder));
 			
-			editor.putInt("version", version);
+			editor.putInt("version", appVersionCode);
 			
 		} catch (IOException e) {
 			// TODO: Terminate the app if this fails.
