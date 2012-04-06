@@ -14,10 +14,10 @@
 #include <iostream>
 #include <fstream>
 
-/*
+
 #define ALWAYS_COMPUTE_TEMPLATE_FEATURES
-#define SHOW_MATCHES_WINDOW
-*/
+//#define SHOW_MATCHES_WINDOW
+
 
 #define MASK_CENTER_AMOUNT .41
 
@@ -137,15 +137,6 @@ Aligner::Aligner(){
 
 	//Sorry the constructor is such a mess, just ignore everything commented out.
 
-	//detector = Ptr<FeatureDetector>(new SurfFeatureDetector(800, 4, 1));
-	//detector = Ptr<FeatureDetector>(new GoodFeaturesToTrackDetector( 800, .2, 10));
-	//MSER is pretty fast. Grid seems to help limit number but messes up more.
-	//descriptorExtractor = Ptr<DescriptorExtractor>(new SurfDescriptorExtractor( 4, 1, true ));
-	//descriptorExtractor = Ptr<DescriptorExtractor>(new SurfDescriptorExtractor( 4, 3, true ));
-	//detector = FeatureDetector::create( "SURF" ); 
-	//detector = FeatureDetector::create( "GridSURF" );
-	//#define MATCHER_TYPE "BruteForce"
-	
 	#define PARAM_SET 6
 	#if PARAM_SET == 0
 		detector = Ptr<FeatureDetector>(
@@ -214,8 +205,15 @@ Aligner::Aligner(){
 	#elif PARAM_SET == 6
 		//FAST nexus_bg/nice -- 99.8278%
 		//Average image processing time: 3.5605 seconds
+		//Downside is that it is very sensitive to scale and upsidedown pictures are no longer possible.
 		detector = FeatureDetector::create("GridFAST");
 		descriptorExtractor = DescriptorExtractor::create("BRIEF");
+		#define MATCHER_TYPE "BruteForce-HammingLUT"
+		#define FH_REPROJECT_THRESH 4.0
+		#define STANDARD_AREA 1259712.f
+	#elif PARAM_SET == 7
+		detector = FeatureDetector::create("GridORB");
+		descriptorExtractor = DescriptorExtractor::create("ORB");
 		#define MATCHER_TYPE "BruteForce-HammingLUT"
 		#define FH_REPROJECT_THRESH 4.0
 		#define STANDARD_AREA 1259712.f

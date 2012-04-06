@@ -26,7 +26,7 @@
 // I think .5 is the largest value that won't cause ambiguous cases.
 #define SEGMENT_BUFFER .25
 
-
+//TODO: Can probably get rid of this...
 #ifdef SEGMENT_OUTPUT_DIRECTORY
 	#include "NameGenerator.h"
 	NameGenerator namer;
@@ -39,6 +39,22 @@
 #define REFINE_ALL_BUBBLE_LOCATIONS true
 
 //#define DO_BUBBLE_INFERENCE
+
+//TODO: Move these functions to utils.
+#include <stdexcept>
+int strToInt( const std::string& s ) {
+	int result;
+	std::istringstream ss( s );
+	ss >> result;
+	if (!ss) throw std::invalid_argument( "StrToInt" );
+	return result;
+}
+std::string intToStr( int n )
+{
+	std::ostringstream result;
+	result << n;
+	return result.str();
+}
 
 using namespace std;
 using namespace cv;
@@ -83,6 +99,7 @@ private:
 
 	string templPath;
 	string appRootDir;
+	string imageDir;
 
 	#ifdef TIME_IT
 		clock_t init;
@@ -298,36 +315,41 @@ Json::Value segmentFunction(const Json::Value& segmentTemplate) {
 			return segmentJsonOut;
 		}
 	}
-	#ifdef SEGMENT_OUTPUT_DIRECTORY
-		//TODO: Maybe add Java code that displays segment images as the form is being processed.
-		Mat dbg_out;
-		cvtColor(segmentImg, dbg_out, CV_GRAY2RGB);
-		
-		vector <Point> expectedBubbleLocs = getBubbleLocations(*classifier, segmentImg, segmentTemplate["bubble_locations"], false);
-		
-		Point classifier_size = jsonToPoint( segmentTemplate["classifier_size"] );
-		
-		//TODO: colors should be shared between this and markup form.
-		Scalar colors[6] = {
-		 Scalar(0,   0,   255),
-		 Scalar(0,   255, 255),
-		 Scalar(255, 0,   255),
-		 Scalar(0,   255, 0),
-		 Scalar(255, 255, 0),
-		 Scalar(255, 0,   0)};
+	
+	Mat segment_out;
+	cvtColor(segmentImg, segment_out, CV_GRAY2RGB);
+	
+	vector <Point> expectedBubbleLocs = getBubbleLocations(*classifier, segmentImg, segmentTemplate["bubble_locations"], false);
+	
+	Point classifier_size = jsonToPoint( segmentTemplate["classifier_size"] );
+	
+	//TODO: colors should be shared between this and markup form.
+	Scalar colors[6] = {
+	 Scalar(0,   0,   255),
+	 Scalar(0,   255, 255),
+	 Scalar(255, 0,   255),
+	 Scalar(0,   255, 0),
+	 Scalar(255, 255, 0),
+	 Scalar(255, 0,   0)};
 
-		for(size_t i = 0; i < expectedBubbleLocs.size(); i++){
-			rectangle(dbg_out, expectedBubbleLocs[i] - .5 * classifier_size,
-			          expectedBubbleLocs[i] + .5 * classifier_size,
-			          colors[bubbleVals[i]]);
-							   
-			circle(dbg_out, segBubbleLocs[i], 1, Scalar(255, 2555, 255), -1);
-		}
-		//TODO: name by field and segment# instead.
-		string segfilename = namer.get_unique_name("_");
-		imwrite(SEGMENT_OUTPUT_DIRECTORY + segfilename + ".jpg", dbg_out);
-	#endif
-
+	for(size_t i = 0; i < expectedBubbleLocs.size(); i++){
+		rectangle(segment_out, expectedBubbleLocs[i] - .5 * classifier_size,
+		          expectedBubbleLocs[i] + .5 * classifier_size,
+		          colors[bubbleVals[i]]);
+						   
+		circle(segment_out, segBubbleLocs[i], 1, Scalar(255, 2555, 255), -1);
+	}
+	//TODO: Use xml name/id instead of label
+	string segmentOutPath;
+	string segmentName;
+	try{
+		segmentOutPath = segmentTemplate.get("outputPath", 0).asString() + "segments/";
+		segmentName = segmentTemplate.get("label", "unlabeled").asString() + "_" + intToStr(segmentTemplate.get("index", 0).asInt()) + ".jpg";
+		imwrite(segmentOutPath+segmentName, segment_out);
+	}
+	catch(...){
+		LOGI(("Could not output segment to: " + segmentOutPath+segmentName).c_str());
+	}
 	return segmentJsonOut;
 }
 Json::Value fieldFunction(const Json::Value& field){
@@ -341,7 +363,19 @@ Json::Value fieldFunction(const Json::Value& field){
 		namer.setPrefix(field.get("label", "unlabeled").asString());
 	#endif
 
-	fieldJsonOut = super::fieldFunction(field);
+	//Add segment index numbers:
+	Json::Value outfield;
+	const Json::Value segments = field["segments"];
+	Json::Value outSegments;
+	for ( size_t j = 0; j < segments.size(); j++ ) {
+		Json::Value segment = segments[j];
+		segment["index"] = (int)j;
+		outSegments.append(segment);
+	}
+	outfield = field;
+	outfield["segments"] = outSegments;
+
+	fieldJsonOut = super::fieldFunction(outfield);
 	fieldJsonOut["label"] = field.get("label", "unlabeled");
 	fieldJsonOut["out_type"] = field.get("out_type", "number");
 	//fieldJsonOut["key"] = field.get("key", -1);
@@ -421,6 +455,8 @@ bool loadFormImage(const char* imagePath, bool undistort) {
 		formImage = temp;
 	}
 
+	string path = string(imagePath);
+	imageDir = path.substr(0, path.find_last_of("/") + 1);
 	//JsonOutput["image_path"] = imagePath;
 	
 	#ifdef TIME_IT
@@ -490,7 +526,7 @@ bool processForm(const char* outputPath) {
 		        (int)!root << (int)formImage.empty() << endl;
 		return false;
 	}
-	
+	root["outputPath"] = outputPath;
 	const Json::Value JsonOutput = formFunction(root);
 
 	#ifdef  DEBUG_PROCESSOR
@@ -501,7 +537,7 @@ bool processForm(const char* outputPath) {
 		cout << "outputting bubble vals... " << endl;
 	#endif
 
-	ofstream outfile(outputPath, ios::out | ios::binary);
+	ofstream outfile((string(outputPath) + "output.json").c_str(), ios::out | ios::binary);
 	outfile << JsonOutput;
 	outfile.close();
 

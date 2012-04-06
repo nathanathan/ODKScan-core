@@ -14,6 +14,7 @@ then prints out stats breaking down the results by image label and pipeline stag
 
 #define OUT_CSV_PATH "results.csv"
 #include <fstream>
+#include <sys/stat.h>
 
 using namespace std;
 
@@ -53,10 +54,16 @@ int main(int argc, char *argv[]) {
 
 		collectors[label].incrImages();
 		string relativePathMinusExt((*it).substr((*it).find_first_of(inputDir) + inputDir.length(),
-		                            (*it).length()-inputDir.length()-4));
-		string imgOutputPath(outputDir + relativePathMinusExt + ".jpg");
-		string markedupFormOutfile(outputDir + relativePathMinusExt + "_marked.jpg");
-		string jsonOutfile(outputDir + relativePathMinusExt + ".json");
+		                            (*it).length()-inputDir.length()-4) + "/");
+		string outputPath(outputDir + relativePathMinusExt);
+
+		//Make a directory with the name of the form
+		mkdir(outputPath.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+		mkdir((outputPath + "segments").c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
+		string alignedFormOutfile(outputPath  + "aligned.jpg");
+		string markedupFormOutfile(outputPath + "marked.jpg");
+		string jsonOutfile(outputPath + "output.json");
 		
 		cout << "Processing image: " << (*it) << endl;
 		
@@ -81,20 +88,20 @@ int main(int argc, char *argv[]) {
 			continue;
 		}
 		
-		cout << "Outputting aligned image to: " << imgOutputPath << endl;
+		cout << "Outputting aligned image to: " << outputPath << endl;
 		
-		if( !myProcessor.alignForm(imgOutputPath.c_str()) ) {
-			cout << "\E[31m" <<  "Could not align. Arg: " << "\e[0m" << imgOutputPath  << endl;
+		if( !myProcessor.alignForm(alignedFormOutfile.c_str()) ) {
+			cout << "\E[31m" <<  "Could not align. Arg: " << "\e[0m" << alignedFormOutfile  << endl;
 			collectors[label].incrErrors();
 			continue;
 		}
 		
-		if( !myProcessor.processForm(jsonOutfile.c_str()) ) {
+		if( !myProcessor.processForm(outputPath.c_str()) ) {
 			cout << "\E[31m" << "Could not process. Arg: " << "\e[0m" << jsonOutfile << endl;
 			collectors[label].incrErrors();
 			continue;
 		}
-		if( !MarkupForm::markupForm(jsonOutfile.c_str(), imgOutputPath.c_str(), markedupFormOutfile.c_str()) ) {
+		if( !MarkupForm::markupForm(jsonOutfile.c_str(), alignedFormOutfile.c_str(), markedupFormOutfile.c_str()) ) {
 			cout << "\E[31m" <<  "Could not markup. Arg: " << "\e[0m" << markedupFormOutfile  << endl;
 			collectors[label].incrErrors();
 			continue;
