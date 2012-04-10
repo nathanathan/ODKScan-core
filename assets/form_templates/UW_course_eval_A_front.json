@@ -10,6 +10,7 @@
 		{
 			"key" : 0,
 			"label" : "1. The course as a whole was:",
+			"name" : "course_as_a_whole",
 			"segments" : 
 			[
 				
@@ -35,6 +36,7 @@
 		{
 			"key" : 1,
 			"label" : "2. The course content was:",
+			"name" : "course_content",
 			"segments" : 
 			[
 				
@@ -61,6 +63,7 @@
 		{
 			"key" : 2,
 			"label" : "3. The instructor's contribution to the course was:",
+			"name" : "instructor_contribution",
 			"segments" : 
 			[
 				
@@ -86,6 +89,7 @@
 		{
 			"key" : 3,
 			"label" : "4.",
+			"name" : "instructor_effectiveness",
 			"segments" : 
 			[
 				
@@ -111,6 +115,7 @@
 				{
 			"key" : 4,
 			"label" : "5.",
+			"name" : "course_organization",
 			"segments" : 
 			[
 				
@@ -136,6 +141,7 @@
 		{
 			"key" : 5,
 			"label" : "6.",
+			"name" : "clairity_or_voice",
 			"segments" : 
 			[
 				
@@ -162,6 +168,7 @@
 		{
 			"key" : 6,
 			"label" : "7.",
+			"name" : "instructor_explainations",
 			"segments" : 
 			[
 				
@@ -187,6 +194,7 @@
 		{
 			"key" : 7,
 			"label" : "8.",
+			"name" : "instructor_alternate_explainations",
 			"segments" : 
 			[
 				
@@ -212,6 +220,7 @@
 		{
 			"key" : 8,
 			"label" : "9.",
+			"name" : "use_of_examples",
 			"segments" : 
 			[
 				
@@ -237,6 +246,7 @@
 				{
 			"key" : 9,
 			"label" : "10.",
+			"name" : "quality_of_questions",
 			"segments" : 
 			[
 				
@@ -262,6 +272,7 @@
 		{
 			"key" : 10,
 			"label" : "11.",
+			"name" : "student_confidence",
 			"segments" : 
 			[
 				
@@ -288,6 +299,7 @@
 		{
 			"key" : 11,
 			"label" : "12.",
+			"name" : "instructor_enthusiasm",
 			"segments" : 
 			[
 				
@@ -313,6 +325,7 @@
 		{
 			"key" : 12,
 			"label" : "13.",
+			"name" : "encouragement_to_students",
 			"segments" : 
 			[
 				
@@ -338,6 +351,7 @@
 				{
 			"key" : 13,
 			"label" : "14.",
+			"name" : "answers_to_student_questions",
 			"segments" : 
 			[
 				
@@ -363,6 +377,7 @@
 		{
 			"key" : 14,
 			"label" : "15.",
+			"name" : "extra_help_availability",
 			"segments" : 
 			[
 				
@@ -389,6 +404,7 @@
 		{
 			"key" : 15,
 			"label" : "16.",
+			"name" : "use_of_class_time",
 			"segments" : 
 			[
 				
@@ -966,6 +982,5 @@
 		}
 	],
 	"height" : 1100,
-	"name" : "UW Course Evaluation Form A",
 	"width" : 850
 }

@@ -268,16 +268,13 @@ public class MScan2CollectActivity extends Activity {
 		for (int i = 0; i < fieldsLength; i++) {
 			
 			JSONObject field = fields.optJSONObject(i);
-			if (field == null) { 
-				fields.put(i, new JSONObject());
+			
+			if (field.has("name")) {
 				continue;
 			}
-			
-			if (field.has("name")) { continue; }
-			
 			else if (field.has("label")) {
 				field.put("name", xmlTagSanitize(field.getString("label")));
-				fields.put(i, field);
+				//fields.put(i, field);
 			}
 			else{
 				throw new JSONException("Field " + i + " has no name or label.");
