@@ -33,22 +33,20 @@ public class RunSetup implements Runnable {
 		SharedPreferences.Editor editor = settings.edit();
 		
 		if(clearOldData){
+			//TODO: Do this more selectively so collected data is backed up.
 			rmdir(new File(MScanUtils.appFolder));
 			editor.clear();
 		}
 		
-		// Create necessary directories if they do not exist
-		(new File(MScanUtils.appFolder + MScanUtils.photoDir)).mkdirs();
-		(new File(MScanUtils.appFolder + MScanUtils.alignedPhotoDir)).mkdirs();
-		(new File(MScanUtils.appFolder + MScanUtils.jsonDir)).mkdirs();
-		(new File(MScanUtils.appFolder + MScanUtils.markupDir)).mkdirs();
+		// Create output dir if it doesn't exist
+		new File(MScanUtils.getOutputDirPath()).mkdirs();
 		
 		try {
 			//Creates a .nomedia file to prevent the images from showing up in he gallery.
 			new File(MScanUtils.appFolder + ".nomedia").createNewFile();
 			
-			File trainingExamplesDir =  new File(MScanUtils.appFolder, MScanUtils.trainingExampleDir);
-			File formTemplatesDir = new File(MScanUtils.appFolder, MScanUtils.templateDir);
+			File trainingExamplesDir =  new File(MScanUtils.getTrainingExampleDirPath());
+			File formTemplatesDir = new File(MScanUtils.getTemplateDirPath());
 			
 			//Note: If clearOldData is true these directories will be deleted twice.
 			rmdir(trainingExamplesDir);

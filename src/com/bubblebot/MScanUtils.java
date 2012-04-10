@@ -14,31 +14,35 @@ public class MScanUtils {
 	//Prevent instantiations
 	private MScanUtils(){}
 
-	public static final boolean DebugMode = false;
+	public static final boolean DebugMode = true;
 	
 	public static final String appFolder = "/sdcard/mScan/";
-	public static final String photoDir = "photos/";
-	public static final String alignedPhotoDir = "alignedPhotos/";
-	public static final String jsonDir = "jsonOut/";
-	public static final String markupDir = "markedupPhotos/";
-	public static final String trainingExampleDir = "training_examples/";
-	public static final String templateDir = "form_templates/";
-
+	
+	public static String getOutputDirPath() {
+		return appFolder + "output/";
+	}
+	public static String getOutputPath(String photoName){
+		return getOutputDirPath() + photoName + "/";
+	}
 	public static String getPhotoPath(String photoName){
-		return appFolder + photoDir + photoName + ".jpg";
+		return getOutputPath(photoName) + "photo.jpg";
 	}
 	public static String getAlignedPhotoPath(String photoName){
-		return appFolder + alignedPhotoDir + photoName + ".jpg";
+		return getOutputPath(photoName) + "aligned.jpg";
 	}
 	public static String getJsonPath(String photoName){
-		return appFolder + jsonDir + photoName + ".json";
-	}
-	public static String getXformPath(String formName){
-		return appFolder + templateDir + formName + ".xml";
+		return getOutputPath(photoName) + "output.json";
 	}
 	public static String getMarkedupPhotoPath(String photoName){
-		return appFolder + markupDir + photoName + ".jpg";
+		return getOutputPath(photoName) + "markedup.jpg";
 	}
+	public static String getTemplateDirPath() {
+		return appFolder + "form_templates/";
+	}
+	public static String getTrainingExampleDirPath() {
+		return appFolder + "training_examples/";
+	}
+
     public static void displayImageInWebView(WebView myWebView, String imagePath){
 		myWebView.getSettings().setCacheMode(WebSettings.LOAD_NO_CACHE);
 		myWebView.getSettings().setBuiltInZoomControls(true);

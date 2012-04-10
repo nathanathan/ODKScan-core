@@ -78,9 +78,14 @@ public class DisplayProcessedForm extends Activity {
 		Bundle extras = getIntent().getExtras(); 
 		if (extras != null) {
 			photoName = extras.getString("photoName");
-			templatePath = extras.getString("templatePath");
+			SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+			templatePath = settings.getString(photoName, "");
+			if(templatePath == ""){
+				Log.i("mScan", "Could not associate templatePath with photo.");
+				return;
+			}
 		}
-
+		
 		setTitle(getResources().getString(R.string.Health_Center) + ": " +
                  //getSharedPreferences(getResources().getString(R.string.prefs_name), 0)
                  PreferenceManager.getDefaultSharedPreferences(getApplicationContext())
@@ -203,7 +208,7 @@ public class DisplayProcessedForm extends Activity {
 			Log.i("mScan", "Using template: " + templatePath);
 			intent = new Intent(getApplication(), MScan2CollectActivity.class);
 			intent.putExtra("templatePath", templatePath);
-			intent.putExtra("jsonOutPath", MScanUtils.getJsonPath(photoName));
+			intent.putExtra("photoName", photoName);
 			startActivity(intent);
 			/*
 			try {

@@ -23,7 +23,15 @@ public class BubbleCollect2 extends Activity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		photoName = getUniqueName("img");
-		Uri imageUri = Uri.fromFile(new File( MScanUtils.getPhotoPath(photoName) ));
+		
+		File outputPath = new File(MScanUtils.getOutputPath(photoName));
+		
+		//Create output folder
+		if(!(new File(outputPath, "segments")).mkdirs()){
+			Log.i("mScan", "Could not create output folder.");
+		}
+
+		Uri imageUri = Uri.fromFile( new File(MScanUtils.getPhotoPath(photoName)) );
 		Intent intent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
 		
 		//Intent intent = new Intent("android.media.action.IMAGE_CAPTURE");
@@ -47,7 +55,7 @@ public class BubbleCollect2 extends Activity {
 				Intent intent = new Intent(getApplication(), AfterPhotoTaken.class);
 				intent.putExtra("photoName", photoName);
 
-				if( (new File(MScanUtils.getPhotoPath(photoName))).exists() ) {
+				if( new File(MScanUtils.getPhotoPath(photoName)).exists() ) {
 					Log.i("mScan", "Starting BubbleProcess activity with "
 							+ MScanUtils.getPhotoPath(photoName) + "...");
 					startActivity(intent);

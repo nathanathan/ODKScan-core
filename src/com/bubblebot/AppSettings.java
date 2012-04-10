@@ -19,7 +19,7 @@ public class AppSettings extends PreferenceActivity {
             //TODO: This probably has some bugs when forms are added. Would need to test.
             
             //Get the available templates:
-    		File dir = new File(MScanUtils.appFolder + MScanUtils.templateDir);	
+    		File dir = new File(MScanUtils.getTemplateDirPath());	
 
     		String[] templateNames = dir.list(new FilenameFilter() {
     			public boolean accept (File dir, String name) {
@@ -33,7 +33,7 @@ public class AppSettings extends PreferenceActivity {
     		String[] templatePaths = new String[templateNames.length];
     		for(int i = 0; i < templateNames.length; i++){
     			templateNames[i] = templateNames[i].replace(".json", "");
-    			templatePaths[i] = MScanUtils.appFolder + MScanUtils.templateDir + templateNames[i];
+    			templatePaths[i] = MScanUtils.getTemplateDirPath() + templateNames[i];
     		}
     		
             multiSelectPreference.setEntries(templateNames);

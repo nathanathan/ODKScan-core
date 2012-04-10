@@ -1,11 +1,7 @@
 package com.bubblebot;
 
-
 import java.util.Date;
-
-
 import com.bubblebot.RunProcessor.Mode;
-
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -28,7 +24,6 @@ import android.widget.RelativeLayout;
  */
 public class AfterPhotoTaken extends Activity {
 	
-	private boolean aligned = false;
     private String photoName;
     private RunProcessor runProcessor;
     
@@ -38,7 +33,6 @@ public class AfterPhotoTaken extends Activity {
     private long startTime;//only needed in debugMode
     
     private String[] templatePaths;
-    private int templatePathIdx;
 
     @Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -70,24 +64,35 @@ public class AfterPhotoTaken extends Activity {
 		photoName = extras.getString("photoName");
 		
 		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-		templatePaths = ListPreferenceMultiSelect.parseStoredValue(settings.getString("select_templates", ""));
-		
-		if(templatePaths == null){
-			RelativeLayout failureMessage = (RelativeLayout) findViewById(R.id.failureMessage);
-			failureMessage.setVisibility(View.VISIBLE);
-			content.setVisibility(View.VISIBLE);
-			return;
-		}
-		
-		//Start another thread to handle all the image processing:
-		runProcessor = new RunProcessor(handler, photoName,
-				templatePaths,
-				settings.getBoolean("calibrate", false));
 		
 		if( extras.getBoolean("preAligned") ){
+			String [] templatePath = {settings.getString(photoName, "")};
+			if(templatePath[0] == ""){
+				Log.i("mScan", "Could not associate templatePath with photo.");
+				return;
+			}
+			runProcessor = new RunProcessor(handler, photoName,
+					templatePath,
+					settings.getBoolean("calibrate", false));
+			
 			startThread(RunProcessor.Mode.LOAD);
 		}
 		else{
+		
+			templatePaths = ListPreferenceMultiSelect.parseStoredValue(settings.getString("select_templates", ""));
+			
+			if(templatePaths == null){
+				RelativeLayout failureMessage = (RelativeLayout) findViewById(R.id.failureMessage);
+				failureMessage.setVisibility(View.VISIBLE);
+				content.setVisibility(View.VISIBLE);
+				return;
+			}
+			
+			//Start another thread to handle all the image processing:
+			runProcessor = new RunProcessor(handler, photoName,
+					templatePaths,
+					settings.getBoolean("calibrate", false));
+		
 			startThread(RunProcessor.Mode.LOAD_ALIGN);
 		}
 
@@ -138,12 +143,29 @@ public class AfterPhotoTaken extends Activity {
 		
 		return builder.create();
 	}
-
+	/**
+	 * Updates the UI based on the result of the loading/alignment stage.
+	 * @param success
+	 */
+	public void updateUI(boolean success){
+		if(success){
+			MScanUtils.displayImageInWebView((WebView)findViewById(R.id.webview),
+					MScanUtils.getAlignedPhotoPath(photoName));
+		}
+		else {
+			RelativeLayout failureMessage = (RelativeLayout) findViewById(R.id.failureMessage);
+			failureMessage.setVisibility(View.VISIBLE);
+		}
+		content.setVisibility(View.VISIBLE);
+		processButton.setEnabled(success);
+	}
+	
     private Handler handler = new Handler() {
             @Override
             public void handleMessage(Message msg) {
             	
             	RunProcessor.Mode mode = RunProcessor.Mode.values()[msg.what];
+            	boolean success = (msg.arg1 == 1);
             	try{
             		dismissDialog(msg.what);
             	}
@@ -153,34 +175,33 @@ public class AfterPhotoTaken extends Activity {
             	
             	if(MScanUtils.DebugMode){
 	    			Log.i("mScan", "Mode: " + mode);
+	    			if(success){
+	    				Log.i("mScan", "Success!");
+	    			}
 	    			double timeTaken = (double) (new Date().getTime() - startTime) / 1000;
 	    			Log.i("mScan", "Time taken:" + String.format("%.2f", timeTaken));
             	}
             	
             	switch (mode) {
         		case LOAD:
+        			updateUI(success);
+        			break;
         		case LOAD_ALIGN:
-            		aligned = (msg.arg1 == 1);
-	        		if ( aligned ) {
-	        			MScanUtils.displayImageInWebView((WebView)findViewById(R.id.webview),
-	        														MScanUtils.getAlignedPhotoPath(photoName));
-	        			templatePathIdx = msg.arg2;
+	        		if ( success ) {
+	        			int templatePathIdx = msg.arg2;
+	                    //Tracking template in app settings for persistence:
+	                    SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+	            		settings.edit().putString(photoName, templatePaths[templatePathIdx]).commit();
 	        		}
-	        		else {
-	        			RelativeLayout failureMessage = (RelativeLayout) findViewById(R.id.failureMessage);
-	        			failureMessage.setVisibility(View.VISIBLE);
-	        		}
-	        		content.setVisibility(View.VISIBLE);
-	        		processButton.setEnabled(aligned);
+	        		updateUI(success);
         			break;
         		case PROCESS:
-            		if ( msg.arg1 == 1 ) {
+            		if ( success ) {
             			//JSONObject formRoot = JSONUtils.parseFileToJSONObject(MScanUtils.getJsonPath(photoName));
             			//TODO: Attach clinic and other user specified data to JSON output.		
             			//writeJSONObjectToFile(formRoot);
 	            		Intent intent = new Intent(getApplication(), DisplayProcessedForm.class);
 	                    intent.putExtra("photoName", photoName);
-	                    intent.putExtra("templatePath", templatePaths[templatePathIdx]);
 	                    startActivity(intent);
 	        			finish(); 
 	        			//Not sure this finish is necessary, but it might fix the inexplicable crashes

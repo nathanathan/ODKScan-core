@@ -1,9 +1,12 @@
 package com.bubblebot;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -28,8 +31,12 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
-
-//TODO: Include segment images in form.
+/**
+ * This activity converts mScan JSON files into XML files
+ * that can be used with ODK and launches ODK Collect
+ * @author nathan
+ *
+ */
 public class MScan2CollectActivity extends Activity {
 	
     private static final String COLLECT_FORMS_URI_STRING =
@@ -45,6 +52,8 @@ public class MScan2CollectActivity extends Activity {
 
 	private static final String LOG_TAG = "mScan";
 	
+	private String photoName;
+	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -56,7 +65,8 @@ public class MScan2CollectActivity extends Activity {
 
 			if(extras == null){ throw new Exception("No parameters specified"); }
 			
-			String jsonOutPath = extras.getString("jsonOutPath");
+			photoName = extras.getString("photoName");
+			String jsonOutPath = MScanUtils.getJsonPath(photoName);
 			String templatePath = extras.getString("templatePath");
 
 			if(jsonOutPath == null){ throw new Exception("jsonOutPath is null"); }
@@ -77,12 +87,12 @@ public class MScan2CollectActivity extends Activity {
 			Log.i(LOG_TAG,"templatePath : " + templatePath);
 			
 			String templateName = new File(templatePath).getName();
-			String xformPath = templatePath + ".xml";
+			String xFormPath = templatePath + ".xml";
 			String jsonPath = templatePath + ".json";
 			
 			//If there is no xform or the xform is out of date create it.
-			File xformFile = new File(xformPath);
-			if( !xformFile.exists() ||
+			File xformFile = new File(xFormPath);
+			if( !xformFile.exists() || true || //REMOVE THIS
 				new File(jsonPath).lastModified() > xformFile.lastModified()){
 				//////////////
 				Log.i(LOG_TAG, "Unregistering old versions in collect.");
@@ -93,7 +103,7 @@ public class MScan2CollectActivity extends Activity {
 				//////////////
 				Log.i(LOG_TAG, "Creating the xform");
 				//////////////
-			    buildForm(jsonPath, xformPath, templateName, templateName);
+			    buildXForm(jsonPath, xFormPath, templateName, templateName);
 			    /*
 				//////////////
 				Log.i(LOG_TAG, "Registering the new xform with collect.");
@@ -115,7 +125,7 @@ public class MScan2CollectActivity extends Activity {
  				*/
 			}
 
-			int instanceId = jsonOut2XformInstance(jsonOutPath, xformPath);
+			int instanceId = jsonOut2XFormInstance(jsonOutPath, xFormPath);
 	        //////////////
 	        Log.i(LOG_TAG, "Start Collect:");
 	        //////////////
@@ -208,11 +218,18 @@ public class MScan2CollectActivity extends Activity {
 	 * @throws IOException
 	 * @throws XmlPullParserException 
 	 */
-	private int jsonOut2XformInstance(String jsonOutFile, String tempaltePath) throws JSONException, IOException, XmlPullParserException {
+	private int jsonOut2XFormInstance(String jsonOutFile, String tempaltePath) throws JSONException, IOException, XmlPullParserException {
 		//////////////
 		Log.i(LOG_TAG, "Initializing the xform instance:");
 		//////////////
-
+        File formFile = new File(tempaltePath);
+        String formFileName = formFile.getName();
+	    String instanceName = ((formFileName.endsWith(".xml") ?
+	            formFileName.substring(0, formFileName.length() - 4) :
+                formFileName)) +
+                COLLECT_INSTANCE_NAME_DATE_FORMAT.format(new Date());
+	    String instancePath = "/sdcard/odk/instances/" + instanceName + "/";
+	    (new File(instancePath)).mkdirs();
 		//////////////
 	    Log.i(LOG_TAG, "Reading the xform...");
 	    //////////////
@@ -227,12 +244,6 @@ public class MScan2CollectActivity extends Activity {
         Element hhtmlEl = formDoc.getElement(namespace, "h:html");
         Element hheadEl = hhtmlEl.getElement(namespace, "h:head");
         Element modelEl = hheadEl.getElement(namespace, "model");
-        /*
-        String testOutput = "/sdcard/mScan/testout.xml";
-        Log.i(LOG_TAG, "writing to: " + testOutput);
-        writeXMLToFile(modelEl.getElement(namespace, "instance"), testOutput);
-        Log.i(LOG_TAG, "written");
-        */
         Element instanceEl = modelEl.getElement(namespace, "instance");
         Element dataEl = instanceEl.getElement(0);//TODO: Why was this 1 and not 0? Is there a bug in tables?
 		String jrFormId = dataEl.getAttributeValue(namespace, "id");
@@ -251,7 +262,9 @@ public class MScan2CollectActivity extends Activity {
 		if(fieldsLength == 0) {
 			throw new JSONException("There are no files in the json output file.");
 		}
-		//Add missing name properties to the fields:
+		//////////////
+		Log.i(LOG_TAG, "Adding missing name properties to the fields:");
+		//////////////
 		for (int i = 0; i < fieldsLength; i++) {
 			
 			JSONObject field = fields.optJSONObject(i);
@@ -273,78 +286,72 @@ public class MScan2CollectActivity extends Activity {
 		//////////////
 		Log.i(LOG_TAG, "Transfering the values from the JSON output into the xform instance:");
 		//////////////
-        int childIndex = 0;
-        for (int i = 0; i < dataEl.getChildCount(); i++) {
-            Element blankChild = dataEl.getElement(i);
-            if (blankChild == null) { continue; }
-            String key = blankChild.getName();
-            Element child = instance.createElement("", key);
-            JSONObject field = JSONUtils.getObjectWithPropertyValue(fields, "name", key);
-            if (field != null) {
-            	//TODO: Figure out the best way to do types.
-    			
-            	String out_type = field.optString("out_type");
-            	
-            	if( out_type.equals("number") ){
-    				Number[] segmentCounts = JSONUtils.getSegmentValues(field);
-    				child.addChild(0, Node.TEXT, "" + MScanUtils.sum(segmentCounts).intValue());
-    			}
-    			else if( out_type.equals("select") ){
-    				String selected = "";
-    				JSONArray segments = fields.getJSONObject(i).getJSONArray("segments");
-    				for(int j = 0; j < segments.length(); j++) {
-    					JSONArray bubbles = segments.getJSONObject(j).getJSONArray("bubbles");
-        				for(int k = 0; k < bubbles.length(); k++) {
-        					if(bubbles.getJSONObject(k).getInt("value") != 0){
-        						selected += k + " ";
-        					}
-        				}
+		for (int i = 0; i < fieldsLength; i++) {
+			JSONObject field = fields.optJSONObject(i);
+			String fieldName = field.getString("name");
+			
+			JSONArray segments = field.getJSONArray("segments");
+			//Add segment images
+			for (int j = 0; j < segments.length(); j++) {
+				Element fieldImageElement = instance.createElement("", fieldName + "_image_" + j);
+				String imageName = field.getString("label") + "_" + j + ".jpg";
+				fieldImageElement.addChild(0, Node.TEXT, imageName);
+				instance.addChild(i, Node.ELEMENT, fieldImageElement);
+				
+				//Copy segment image
+				InputStream fis = new FileInputStream(MScanUtils.getOutputPath(photoName) + "segments/" + imageName);
+				FileOutputStream fos = new FileOutputStream(instancePath + imageName);
+				// Transfer bytes from in to out
+				byte[] buf = new byte[1024];
+				int len;
+				while ((len = fis.read(buf)) > 0) {
+					fos.write(buf, 0, len);
+				}
+				fos.close();
+				fis.close();
+			}
+			
+			Element fieldElement = instance.createElement("", fieldName);
+        	String out_type = field.optString("out_type");
+        	if( out_type.equals("number") ){
+				Number[] segmentCounts = JSONUtils.getSegmentValues(field);
+				fieldElement.addChild(0, Node.TEXT, "" + MScanUtils.sum(segmentCounts).intValue());
+			}
+			else if( out_type.equals("select") ){
+				String selected = "";
+				for(int j = 0; j < segments.length(); j++) {
+					JSONArray bubbles = segments.getJSONObject(j).getJSONArray("bubbles");
+    				for(int k = 0; k < bubbles.length(); k++) {
+    					if(bubbles.getJSONObject(k).getInt("value") != 0){
+    						selected += k + " ";
+    					}
     				}
-    				child.addChild(0, Node.TEXT, "" + selected);
-    			}
-    			else if( out_type.equals("select1") ){
-    				//TODO: Clean up this redundant code.
-    				String selected = "";
-    				JSONArray segments = fields.getJSONObject(i).getJSONArray("segments");
-    				for(int j = 0; j < segments.length(); j++) {
-    					JSONArray bubbles = segments.getJSONObject(j).getJSONArray("bubbles");
-        				for(int k = 0; k < bubbles.length(); k++) {
-        					if(bubbles.getJSONObject(k).getInt("value") != 0){
-        						selected = "" + k;
-        					}
-        				}
+				}
+				fieldElement.addChild(0, Node.TEXT, "" + selected);
+			}
+			else if( out_type.equals("select1") ){
+				//TODO: Clean up this redundant code.
+				String selected = "";
+				for(int j = 0; j < segments.length(); j++) {
+					JSONArray bubbles = segments.getJSONObject(j).getJSONArray("bubbles");
+    				for(int k = 0; k < bubbles.length(); k++) {
+    					if(bubbles.getJSONObject(k).getInt("value") != 0){
+    						selected = "" + k;
+    					}
     				}
-    				child.addChild(0, Node.TEXT, "" + selected);
-    			}
-    			else{
-    				throw new JSONException("Unknown out_type: " + out_type);
-    				/*
-    				JSONArray textSegments = field.getJSONArray("segments");
-    				int textSegmentsLength = textSegments.length();
-    				for(int j = 0; j < textSegmentsLength; j++){
-    					//TODO: Handle text segments by formating template
-    					child.addChild(0, Node.TEXT, textSegments.getJSONObject(j).optString("value", ""));
-    				}*/
-    			}
-            }
-            else{
-            	Log.e(LOG_TAG, "Could not find value for property labeled: " + key);
-            }
-            instance.addChild(childIndex, Node.ELEMENT, child);
-            childIndex++;
-        }
+				}
+				fieldElement.addChild(0, Node.TEXT, "" + selected);
+			}
+			else{
+				throw new JSONException("Unknown out_type: " + out_type);
+			}
+			instance.addChild(i, Node.ELEMENT, fieldElement);
+		}
+        
         //////////////
         Log.i(LOG_TAG, "Outputing the instance file:");
         //////////////
-        File formFile = new File(tempaltePath);
-        String formFileName = formFile.getName();
-	    String instanceName = ((formFileName.endsWith(".xml") ?
-	            formFileName.substring(0, formFileName.length() - 4) :
-                formFileName)) +
-                COLLECT_INSTANCE_NAME_DATE_FORMAT.format(new Date());
-	    String instancePath = "/sdcard/odk/instances/" + instanceName;
-	    (new File(instancePath)).mkdirs();
-	    String instanceFilePath = instancePath + "/" + instanceName + ".xml";
+	    String instanceFilePath = instancePath + instanceName + ".xml";
 	    writeXMLToFile(instance, instanceFilePath);
 	    //////////////
         Log.i(LOG_TAG, "Registering the instance with Collect:");
@@ -396,9 +403,10 @@ public class MScan2CollectActivity extends Activity {
      * @throws IOException
      * @throws JSONException 
      */
-    public static void buildForm(String templatePath, String outputPath, String title, String id) throws IOException, JSONException {
+    public static void buildXForm(String templatePath, String outputPath, String title, String id) throws IOException, JSONException {
 		Log.i(LOG_TAG, templatePath);
-		JSONObject formRoot = JSONUtils.parseFileToJSONObject(templatePath);
+		JSONObject formRoot = JSONUtils.applyInheritance( JSONUtils.parseFileToJSONObject(templatePath) );
+
 		Log.i(LOG_TAG, "Parsed");
 		JSONArray initFields = formRoot.getJSONArray("fields");
 		int initFieldsLength = initFields.length();
@@ -447,7 +455,12 @@ public class MScan2CollectActivity extends Activity {
         writer.write("<instance>");
         writer.write("<data id=\"" + id + "\">");
         for(int i = 0; i < fieldsLength; i++){
-            writer.write("<" + fieldNames[i] + "/>");
+        	JSONObject field = fields.getJSONObject(i);
+        	JSONArray segments = field.getJSONArray("segments");
+        	for(int j = 0; j < segments.length(); j++){
+	            writer.write("<" + fieldNames[i] + "_image_" + j + "/>");
+        	}
+        	writer.write("<" + fieldNames[i] + "/>");
         }
         writer.write("</data>");
         writer.write("</instance>");
@@ -460,14 +473,27 @@ public class MScan2CollectActivity extends Activity {
         }
         writer.write("</translation>");
         writer.write("</itext>");
+        for(int i = 0; i < fieldsLength; i++){
+        	JSONObject field = fields.getJSONObject(i);
+        	JSONArray segments = field.getJSONArray("segments");
+        	for(int j = 0; j < segments.length(); j++){
+	            writer.write("<bind nodeset=\"/data/" + fieldNames[i] + "_image_" + j + "\" " +
+				            "readonly=\"true()\" " + 
+				            "type=\"binary\"/>");
+        	}
+        }
         writer.write("</model>");
         writer.write("</h:head>");
         writer.write("<h:body>");
         for(int i = 0; i < fieldsLength; i++){
-        	
         	JSONObject field = fields.getJSONObject(i);
-        	String out_type = field.optString("out_type", "");
+        	JSONArray segments = field.getJSONArray("segments");
         	
+        	writer.write("<group appearance=\"field-list\">");
+        	
+        	String out_type = field.optString("out_type", "");
+        	//TODO: Make a xform_body_tag field instead?
+        	//Advantage is simpler code and more flexibility for extending
         	if( out_type.equals("select") || out_type.equals("select1") ){
         		
         		writer.write("<" + out_type +" ref=\"/data/" + fieldNames[i] + "\">");
@@ -488,6 +514,12 @@ public class MScan2CollectActivity extends Activity {
                 writer.write("<label ref=\"jr:itext('/data/" + fieldNames[i] + ":label')\"/>");
                 writer.write("</input>");
         	}
+        	
+            for(int j = 0; j < segments.length(); j++){
+	            writer.write("<upload ref=\"/data/" + fieldNames[i] + "_image_" + j  + "\" "
+	    				+ "mediatype=\"image/*\" />");
+            }
+            writer.write("</group>");
         }
         writer.write("</h:body>");
         writer.write("</h:html>");

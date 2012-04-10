@@ -31,20 +31,13 @@ public class ViewBubbleForms extends ListActivity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 
-		File dir = new File(MScanUtils.appFolder + MScanUtils.photoDir);	
+		File dir = new File(MScanUtils.getOutputDirPath());	
 
 		photoNames = dir.list(new FilenameFilter() {
 			public boolean accept (File dir, String name) {
-				if (new File(dir,name).isDirectory())
-					return false;
-				return name.toLowerCase().endsWith(".jpg");
+				return (new File(dir,name)).isDirectory();
 			}
 		});
-
-
-		for(int i = 0; i < photoNames.length; i++){
-			photoNames[i] = photoNames[i].substring(0, photoNames[i].lastIndexOf(".jpg"));
-		}
 
 		myAdapter = new ArrayAdapter<String>(this, R.layout.filename_list_item, photoNames) {
 			@Override

@@ -19,6 +19,7 @@ public class RunProcessor implements Runnable {
 	private boolean undistort;
 	
 	private Mode mode;
+	//The cpp backend processor.
 	private Processor mProcessor;
 	private Handler handler;
 	private String photoName;
@@ -45,19 +46,17 @@ public class RunProcessor implements Runnable {
 		msg.what = mode.ordinal();
 
 		if(mode == Mode.PROCESS) {
-			if( mProcessor.processForm( MScanUtils.getJsonPath(photoName)) ) {
+			if( mProcessor.processForm( MScanUtils.getOutputPath(photoName) )) {
 				
 				MarkupForm.markupForm(  MScanUtils.getJsonPath(photoName),
 										MScanUtils.getAlignedPhotoPath(photoName),
-										MScanUtils.getMarkedupPhotoPath(photoName));
+										MScanUtils.getMarkedupPhotoPath(photoName) );
 				msg.arg1 = 1;
 			}
 		}
 		else if(mode == Mode.LOAD) {
-			//TODO: Need to figure out a way to keep track of the template that was used to align them image...
-			//		Could redetect.
 			if( mProcessor.loadFormImage(MScanUtils.getAlignedPhotoPath(photoName), false) ) {
-				if(mProcessor.setTemplate( MScanUtils.appFolder + "form_templates/SIS-A01.json" )) {
+				if(mProcessor.setTemplate( templatePaths[0] )) {
 					msg.arg1 = 1;
 				}
 			}

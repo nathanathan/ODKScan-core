@@ -7,6 +7,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Date;
+import java.util.Iterator;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -18,47 +19,38 @@ public class JSONUtils {
 	//Prevent instantiations
 	private JSONUtils(){}
 	
-/*
-	public static void simplifyOutput(String photoName, String outPath) {
-		try {
-			BufferedWriter out = new BufferedWriter(new FileWriter(outPath));
-			out.write(generateSimplifiedJSON(photoName).toString());
-			out.close();
-		} catch (JSONException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			Log.i("mScan", "JSON excetion in JSONUtils.");
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			Log.i("mScan", "IO excetion in JSONUtils.");
-		}
-	}
 	
-	public static JSONObject putFieldValue(JSONObject formRoot, String fieldLabel, String value) throws JSONException{
-		int segIdx = 0;
-		JSONArray fields = formRoot.getJSONArray("fields");
-		int fieldsLength = fields.length();
-		for(int i = 0; i < fieldsLength; i++){
-			JSONObject field = fields.getJSONObject(i);
-			if(field.getString("label").equals(value)){
-				JSONArray segments = field.getJSONArray("segments");
-				JSONObject segment = segments.getJSONObject(segIdx);
-				segment.put("value", value);
-				segments.put(segIdx, segment);
-				field.put("segments", segments);
-				fields.put(i, field);
-				formRoot.put("fields", fields);
-				return formRoot;
+	private static JSONObject inheritFrom(JSONObject child, JSONObject parent) throws JSONException {
+		Iterator<String> propertyIterator = parent.keys();
+		while(propertyIterator.hasNext()) {
+			String currentProperty = propertyIterator.next();
+			if(!child.has(currentProperty)){
+				child.put(currentProperty, parent.get(currentProperty));
 			}
 		}
-		segment.put("value", value);
-		segments.put(segIdx, segment);
-		field.put("segments", segments);
-		fields.put(i, field);
-		formRoot.put("fields", fields);
-		return formRoot;
-	}*/
+		// TODO Auto-generated method stub
+		return child;
+	}
+	/**
+	 * Applies the following inheritance rules to the object and returns the result:
+	 * fields inherit from the root JSONObject
+	 * segments inherit from fields
+	 * @throws JSONException 
+	 */
+	public static JSONObject applyInheritance(JSONObject obj) throws JSONException{
+		JSONArray fields = obj.getJSONArray("fields");
+		int fieldsLength = fields.length();
+        for(int i = 0; i < fieldsLength; i++){
+        	JSONObject field = inheritFrom(fields.getJSONObject(i), obj);
+        	
+        	JSONArray segments = field.getJSONArray("segments");
+        	for(int j = 0; j < segments.length(); j++){
+        		JSONObject segment = segments.getJSONObject(j);
+        		segments.put(j, inheritFrom(segment, field));
+        	}
+        }
+		return obj;
+	}
 	public static JSONObject generateSimplifiedJSON(String photoName) throws JSONException, IOException {
 		JSONObject outRoot = new JSONObject();
 		JSONObject bubbleVals = parseFileToJSONObject(MScanUtils.getJsonPath(photoName));
@@ -195,6 +187,7 @@ public class JSONUtils {
 	 * @param value
 	 * @return
 	 */
+	/*
 	public static JSONObject getObjectWithPropertyValue(JSONArray objectArray, String property, String value) {
 		int arrayLength = objectArray.length();
 		for(int i = 0; i < arrayLength; i++){
@@ -208,5 +201,5 @@ public class JSONUtils {
 			}
 		}
 		return null;
-	}
+	}*/
 }
