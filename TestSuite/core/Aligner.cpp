@@ -14,10 +14,10 @@
 #include <iostream>
 #include <fstream>
 
-
-#define ALWAYS_COMPUTE_TEMPLATE_FEATURES
-//#define SHOW_MATCHES_WINDOW
-
+#if 0
+	#define ALWAYS_COMPUTE_TEMPLATE_FEATURES
+	#define SHOW_MATCHES_WINDOW
+#endif
 
 #define MASK_CENTER_AMOUNT .41
 
@@ -137,7 +137,7 @@ Aligner::Aligner(){
 
 	//Sorry the constructor is such a mess, just ignore everything commented out.
 
-	#define PARAM_SET 6
+	#define PARAM_SET 7
 	#if PARAM_SET == 0
 		detector = Ptr<FeatureDetector>(
 			new GridAdaptedFeatureDetector(

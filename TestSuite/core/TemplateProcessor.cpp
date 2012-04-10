@@ -18,9 +18,6 @@ bool parseJsonFromFile(const char* filePath, Json::Value& myRoot) {
 bool parseJsonFromFile(const string& filePath, Json::Value& myRoot) {
 	return parseJsonFromFile(filePath.c_str(), myRoot);
 }
-
-//TODO: Make it so empty json values are not appended, if they are appended.
-
 //inheritMembers makes the child value inherit the members that it does not override from the specified parent json value.
 //The parent is copied so it can be written over, while the child is passed in and returned with added members by refrence.
 Json::Value& TemplateProcessor::inheritMembers(Json::Value& child, Json::Value parent) const {
@@ -50,7 +47,10 @@ Json::Value TemplateProcessor::fieldFunction(const Json::Value& field){
 	for ( size_t j = 0; j < segments.size(); j++ ) {
 		Json::Value segment = segments[j];
 		inheritMembers(segment, field);
-		outSegments.append(segmentFunction(segment));
+		Json::Value outSegment = segmentFunction(segment);
+		if(!outSegment.isNull()){
+			outSegments.append(outSegment);
+		}
 	}
 
 	outfield["segments"] = outSegments;
@@ -58,17 +58,20 @@ Json::Value TemplateProcessor::fieldFunction(const Json::Value& field){
 }
 Json::Value TemplateProcessor::formFunction(const Json::Value& templateRoot){
 	const Json::Value fields = templateRoot["fields"];
-	Json::Value outform;
-	Json::Value outfields;
+	Json::Value outForm;
+	Json::Value outFields;
 
 	for ( size_t i = 0; i < fields.size(); i++ ) {
 		Json::Value field = fields[i];
 		inheritMembers(field, templateRoot);
-		outfields.append(fieldFunction(field));
+		Json::Value outField = fieldFunction(field);
+		if(!outField.isNull()){
+			outFields.append(outField);
+		}
 	}
 
-	outform["fields"] = outfields;
-	return outform;
+	outForm["fields"] = outFields;
+	return outForm;
 }
 bool TemplateProcessor::start(const char* templatePath){
 	Json::Value templateRoot;
