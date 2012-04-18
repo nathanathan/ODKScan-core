@@ -31,6 +31,9 @@ CourseEvalTest: tests/CourseEvalTest.test
 ifndef $(INPUT_FOLDER)
 	INPUT_FOLDER := experiment_1
 endif
+ifndef $(TEMPLATE)
+	TEMPLATE := checkbox_form
+endif
 Experiment: tests/Experiment.test
 	@rm -rf aligned_forms/$(INPUT_FOLDER)
 	@mkdir aligned_forms/$(INPUT_FOLDER)
@@ -38,13 +41,10 @@ Experiment: tests/Experiment.test
 	@mkdir debug_segment_images
 	@rm -rf bubble_images
 	@mkdir bubble_images
-	./$< $(INPUT_FOLDER)
+	./$< $(INPUT_FOLDER) $(TEMPLATE)
 #Remove the features file so I dont accidentally put in in the apk (it's too big)
-	@rm form_templates/SIS-A01.yml
+	@rm form_templates/$(TEMPLATE).yml
 
-ifndef $(TEMPLATE)
-	TEMPLATE := checkbox_form
-endif
 Checkbox: tests/Checkbox.test
 	@rm -rf aligned_forms/$(INPUT_FOLDER)
 	@mkdir aligned_forms/$(INPUT_FOLDER)

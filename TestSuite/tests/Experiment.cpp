@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
 	string outputDir("aligned_forms/" + experimentDir);
 	string expectedJsonFile( "form_images/experiment.json" );
 
-	string templatePath("form_templates/SIS-A01");
+	string templatePath("form_templates/"+string(argv[2]));
 
 	vector<string> filenames;
 	CrawlFileTree(inputDir, filenames);

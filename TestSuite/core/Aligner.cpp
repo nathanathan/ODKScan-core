@@ -41,13 +41,10 @@ class MaskGenerator : public TemplateProcessor
 	Mat markupImage;
 
 	public:
-	//templImageSize might be different from the size specified in the template if the scale param is used.
-	Mat generate(const string& templatePath, const Size& templImageSize){
-		//templSize = templImageSize;
+	Mat generate(const string& templatePath){
 		bool rv = start(templatePath.c_str());
-		Mat temp;
-		resize(markupImage, temp, templImageSize, 0, 0, INTER_AREA);
-		erode(temp, markupImage, Mat(), Point(-1,-1), 1);
+		//Mat temp;	
+		//erode(markupImage, temp, Mat(), Point(-1,-1), 1);
 		return markupImage;
 	}
 	virtual Json::Value segmentFunction(const Json::Value& segment){
@@ -99,7 +96,7 @@ void crossCheckMatching( Ptr<DescriptorMatcher>& descriptorMatcher,
 }
 
 void loadFeatures( const string& featuresFile, Size& templImageSize,
-					vector<KeyPoint>& templKeypoints, Mat& templDescriptors) throw(cv::Exception) {
+                   vector<KeyPoint>& templKeypoints, Mat& templDescriptors) throw(cv::Exception) {
 							
 	if( !fileExists(featuresFile) ) CV_Error(CV_StsError, "Specified feature file does not exist.");
 	
@@ -135,9 +132,10 @@ void saveFeatures(  const string& featuresFile, const Size& templImageSize,
 
 Aligner::Aligner(){
 
-	//Sorry the constructor is such a mess, just ignore everything commented out.
+	//STANDARD_AREA is a parameter because we don't know how big the image should be before we detect the template.
+	//All tempaltes should be approximately the same size.
 
-	#define PARAM_SET 7
+	#define PARAM_SET 6
 	#if PARAM_SET == 0
 		detector = Ptr<FeatureDetector>(
 			new GridAdaptedFeatureDetector(
@@ -148,6 +146,7 @@ Aligner::Aligner(){
 		descriptorExtractor = Ptr<DescriptorExtractor>(new SurfDescriptorExtractor( 1, 3 ));
 		#define MATCHER_TYPE "FlannBased"
 		#define FH_REPROJECT_THRESH 4.0
+		#define STANDARD_AREA 1259712.f
 	#elif PARAM_SET == 1 
 		//This is the parameter set we used in the paper.
 		//Optimal hessian level seems to vary by phone
@@ -186,6 +185,7 @@ Aligner::Aligner(){
 		descriptorExtractor = Ptr<DescriptorExtractor>(new SurfDescriptorExtractor( 1, 3 ));
 		#define MATCHER_TYPE "FlannBased"
 		#define FH_REPROJECT_THRESH 4.0
+		#define STANDARD_AREA 1259712.f
 	#elif PARAM_SET == 4
 		//ORB 98.1873%
 		detector = FeatureDetector::create("GridORB");
@@ -296,33 +296,41 @@ void Aligner::loadFeatureData(const string& templPath) throw(cv::Exception) {
 		if(templImage.empty())
 			CV_Error(CV_StsError, "Template image not found.");
 
-		resize(templImage, temp, templImage.size(), 0, 0, INTER_AREA);
-		templImage.release();
-		templImage = temp;
-		
-		/*
-		templImage = temp;
-		adaptiveThreshold(temp, templImage, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 9, 15);
-		equalizeHist(temp, templImage);
-		*/
-		
-		templImageSize = templImage.size();
-		
-		#ifdef DEBUG_ALIGN_IMAGE
-			cout << "Extracting keypoints from template image..." << endl;
-		#endif
-		cout << templPath + ".json" << endl;
+		//Read the template json and generate a mask:
 		MaskGenerator g;
-		Mat mask = g.generate(templPath + ".json", templImageSize);
-
+		Mat mask = g.generate(templPath + ".json");
+		if(mask.empty()) CV_Error(CV_StsError, "Could not create mask. There might be a problem with the template.");
 		/*
 		#ifdef MASK_CENTER_AMOUNT
 			Rect roi = resizeRect(Rect(Point(0,0), templImage.size()), MASK_CENTER_AMOUNT);
 			rectangle(mask, roi.tl(), roi.br(), Scalar::all(0), -1);
 		#endif
-		//debugShow(templImage & mask);
 		*/
 		
+		//Resize the template image to the mask size
+		//which is the size specified in the template json.
+		//TODO: Get standard image size from average template image size?
+		//TODO: Add params to template for setting offset??
+		templImageSize = mask.size();
+		resize(templImage, temp, templImageSize, 0, 0, INTER_AREA);
+		templImage.release();
+		templImage = temp;
+		
+		//debugShow(templImage & mask);
+
+		/*
+		#ifdef DEBUG_ALIGN_IMAGE
+			cout << "Template image preprocessing:" << endl;
+		#endif
+		adaptiveThreshold(temp, templImage, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 9, 15);
+		equalizeHist(temp, templImage);
+		*/
+		
+		#ifdef DEBUG_ALIGN_IMAGE
+			cout << "Extracting keypoints from template image..." << endl;
+			cout << templPath + ".json" << endl;
+		#endif
+
 		detector->detect( templImage, templKeypoints, mask );
 
 		#ifdef DEBUG_ALIGN_IMAGE
@@ -339,7 +347,7 @@ void Aligner::loadFeatureData(const string& templPath) throw(cv::Exception) {
 		{
 		Mat templImage, temp;
 		templImage = imread( templPath + ".jpg", 0 );
-		resize(templImage, temp, templImage.size(), 0, 0, INTER_AREA);
+		resize(templImage, temp, templImageSize, 0, 0, INTER_AREA);
 		templateImages.push_back( temp );
 		}
 	#endif

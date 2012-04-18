@@ -163,6 +163,7 @@ Ptr<PCA_classifier>& getClassifier(const string& training_data_uri, const Point&
 				                                               acutal_classifier_size,
 				                                               EIGENBUBBLES, true);//flip training examples. TODO: put this stuff in template
 			if( !success ) {
+				//TODO: A better error message here when the training data isn't found would be a big help.
 				LOGI("\n\nThings are going to break.\n\n");
 				return classifiers[key];
 			}
