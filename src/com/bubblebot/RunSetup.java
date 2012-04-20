@@ -10,8 +10,9 @@ import android.content.res.AssetManager;
 import android.os.Handler;
 import android.util.Log;
 /**
- * The RunSetup class is used to extract the assets while running on a separate thread so as to avoid locking up the UI.
+ * The RunSetup extracts everything in the assets folder to the mScan folder.
  * It also does some version control stuff.
+ * It runs on a separate thread so as to avoid locking up the UI.
  */
 public class RunSetup implements Runnable {
 	

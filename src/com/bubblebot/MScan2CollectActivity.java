@@ -291,7 +291,13 @@ public class MScan2CollectActivity extends Activity {
 			//Add segment images
 			for (int j = 0; j < segments.length(); j++) {
 				Element fieldImageElement = instance.createElement("", fieldName + "_image_" + j);
-				String imageName = field.getString("label") + "_" + j + ".jpg";
+				String imageName;
+				try{
+					imageName = field.getString("name") + "_" + j + ".jpg";
+				}
+				catch(JSONException e){
+					imageName = field.getString("label") + "_" + j + ".jpg";
+				}
 				fieldImageElement.addChild(0, Node.TEXT, imageName);
 				instance.addChild(i, Node.ELEMENT, fieldImageElement);
 				
