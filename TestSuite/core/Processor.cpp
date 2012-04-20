@@ -317,6 +317,7 @@ Json::Value segmentFunction(const Json::Value& segmentTemplate) {
 		}
 	}
 	
+	//Output the segment image:
 	Mat segment_out;
 	cvtColor(segmentImg, segment_out, CV_GRAY2RGB);
 	
@@ -345,7 +346,8 @@ Json::Value segmentFunction(const Json::Value& segmentTemplate) {
 	string segmentName;
 	try{
 		segmentOutPath = segmentTemplate.get("outputPath", 0).asString() + "segments/";
-		segmentName = segmentTemplate.get("label", "unlabeled").asString() + "_" + intToStr(segmentTemplate.get("index", 0).asInt()) + ".jpg";
+		segmentName = segmentTemplate.get("name", segmentTemplate.get("label", "unlabeled")).asString() +
+		              "_" + intToStr(segmentTemplate.get("index", 0).asInt()) + ".jpg";
 		imwrite(segmentOutPath+segmentName, segment_out);
 	}
 	catch(...){
@@ -365,7 +367,7 @@ Json::Value fieldFunction(const Json::Value& field){
 	#endif
 
 	//Add segment index numbers:
-	Json::Value outfield;
+	Json::Value mutableField;
 	const Json::Value segments = field["segments"];
 	Json::Value outSegments;
 	for ( size_t j = 0; j < segments.size(); j++ ) {
@@ -373,14 +375,11 @@ Json::Value fieldFunction(const Json::Value& field){
 		segment["index"] = (int)j;
 		outSegments.append(segment);
 	}
-	outfield = field;
-	outfield["segments"] = outSegments;
+	mutableField = field;
+	mutableField["segments"] = outSegments;
 
-	fieldJsonOut = super::fieldFunction(outfield);
-	fieldJsonOut["label"] = field.get("label", "unlabeled");
-	fieldJsonOut["out_type"] = field.get("out_type", "number");
-	//fieldJsonOut["key"] = field.get("key", -1);
-
+	fieldJsonOut = super::fieldFunction(mutableField);
+	inheritMembers(fieldJsonOut, mutableField);
 	return fieldJsonOut;
 }
 Json::Value formFunction(const Json::Value& templateRoot){
