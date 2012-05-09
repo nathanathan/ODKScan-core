@@ -1,6 +1,8 @@
 ODKScan core
 ============
 
+Code previously available at https://github.com/villagereach/mScan/tree/master/TestSuite
+
 Setup
 =====
 
@@ -9,7 +11,7 @@ Setup
 Building
 ========
 
-	#make Experiment TEMPLATE=template_path INPUT_FOLDER=input_folder OUTPUT_FOLDER=output_folder
+	make Experiment TEMPLATE=template_path INPUT_FOLDER=input_folder OUTPUT_FOLDER=output_folder
 
 Source file information
 =======================
