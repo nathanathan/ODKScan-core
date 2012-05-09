@@ -42,8 +42,8 @@ class Aligner
 		size_t detectForm() const;
 		
 		void alignFormImage( cv::Mat& aligned_image,
-							 const cv::Size& aligned_image_sz,
-							 size_t formIdxArg ) throw(cv::Exception);
+		                     const cv::Size& aligned_image_sz,
+		                     size_t formIdxArg ) throw(cv::Exception);
 };
 
 #endif

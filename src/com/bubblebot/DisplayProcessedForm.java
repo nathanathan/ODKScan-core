@@ -210,16 +210,6 @@ public class DisplayProcessedForm extends Activity {
 			intent.putExtra("templatePath", templatePath);
 			intent.putExtra("photoName", photoName);
 			startActivity(intent);
-			/*
-			try {
-				openInCollect(templatePath);
-			} catch (JSONException e) {
-				// TODO Auto-generated catch block
-				Log.i("mScan", "Err: " + e.toString());
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				Log.i("mScan", "Err: " +  e.toString());
-			}*/
 			return true;
 		case R.id.saveData:
 			saveData();

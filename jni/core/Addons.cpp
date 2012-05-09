@@ -1,14 +1,14 @@
 #include "Addons.h"
 #include <json/json.h>
 #include <fstream>
+#include <stdexcept>
+#include <iostream>
 #include <opencv2/highgui/highgui.hpp>
 
 using namespace std;
 using namespace cv;
 
 
-
-//TODO: maybe move to markup form
 Scalar getColor(bool filled) {
 	if(filled){
 		return Scalar(20, 20, 255);
@@ -16,6 +16,16 @@ Scalar getColor(bool filled) {
 	else{
 		return Scalar(255, 20, 20);
 	}
+}
+Scalar getColor(int colorIdx) {
+	Scalar colors[6] = {
+	 Scalar(0,   0,   255),
+	 Scalar(0,   255, 255),
+	 Scalar(255, 0,   255),
+	 Scalar(0,   255, 0),
+	 Scalar(255, 255, 0),
+	 Scalar(255, 0,   0)};
+	return colors[colorIdx % 6];
 }
 Size operator * (float lhs, Size rhs) {
 	return Size(lhs*rhs.width, lhs*rhs.height);
@@ -131,4 +141,17 @@ void debugShow(const Mat& img){
 			break;
 		}
 	}
+}
+int strToInt( const std::string& s ) {
+	int result;
+	std::istringstream ss( s );
+	ss >> result;
+	if (!ss) throw std::invalid_argument( "StrToInt" );
+	return result;
+}
+string intToStr( int n )
+{
+	std::ostringstream result;
+	result << n;
+	return result.str();
 }

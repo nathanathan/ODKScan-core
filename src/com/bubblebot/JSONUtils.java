@@ -152,12 +152,14 @@ public class JSONUtils {
 		}
 		return fieldCounts;
 	}
+
 	/**
 	 * Assumes segments have integer values and returns them in an array.
 	 * @param field
 	 * @return
 	 * @throws JSONException
 	 */
+
 	public static Number[] getSegmentValues(JSONObject field) throws JSONException {
 
 		JSONArray jArray = field.getJSONArray("segments");

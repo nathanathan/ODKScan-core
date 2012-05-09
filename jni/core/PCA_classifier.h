@@ -6,6 +6,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/ml/ml.hpp>
 #include "Addons.h"
+#include <json/json.h>
 
 /*
 This class implements bubble classification using OpenCV's support vector machine and PCA.
@@ -16,16 +17,9 @@ class PCA_classifier
 		cv::Ptr<CvSVM> statClassifier;
 
 		std::vector<std::string> classifications;
-		int emptyClassificationIndex;
+		Json::Value classifier_params;
 		
 		cv::PCA my_PCA;
-
-		//The weighting and search window stuff might not be necessairy:
-		//If you aren't me I recommend ignoring it because it doesn't get used at the moment.
-		cv::Size search_window;
-
-		//A matrix for precomputing gaussian weights for the search window
-		cv::Mat gaussian_weights;
 
 		//The weights Mat can be used to bias the classifier
 		//Each element corresponds to a classification.
@@ -33,7 +27,14 @@ class PCA_classifier
 		
 		cv::Mat cMask;
 		
-		void update_gaussian_weights();
+		//The weighting and search window stuff might not be necessairy:
+		//If you aren't me I recommend ignoring it because it doesn't get used at the moment.
+		//cv::Size search_window;
+
+		//A matrix for precomputing gaussian weights for the search window
+		//cv::Mat gaussian_weights;
+
+		//void update_gaussian_weights();
 		
 		int getClassificationIdx(const std::string& filepath);
 		
@@ -45,31 +46,26 @@ class PCA_classifier
 
 		PCA_classifier(): statClassifier(new CvSVM){}
 
-		void set_search_window(cv::Size sw);
-
-		//Given a image and location in that image rates how similar it is to the training examples
-		//Lower score = more similar
-		double rateBubble(const cv::Mat& det_img_gray, const cv::Point& bubble_location) const;
-		//Returns a refined location for the object being classified
-		//(currently by doing a hill climbing search with rateBubble as the objective function)
-		cv::Point bubble_align(const cv::Mat& det_img_gray, const cv::Point& bubble_location) const;
-
 		bool train_PCA_classifier( const std::vector<std::string>& examplePaths,
 		                           cv::Size myExampleSize,
 		                           int eigenvalues = 7,
 		                           bool flipExamples = false);
 
-		int classifyBubble(const cv::Mat& det_img_gray, const cv::Point& bubble_location) const;
+		//void set_alignment_radius(int radius);
+		//params are currently not saved
+		void set_classifier_params(const Json::Value& classifier_params_arg);
+
+		//Given a image and location in that image, this rates how similar it is to the training examples
+		//Lower score = more similar
+		double rate_item(const cv::Mat& det_img_gray, const cv::Point& item_location) const;
+		//Returns a refined location for the object being classified
+		//(currently by doing a hill climbing search with rateBubble as the objective function)
+		cv::Point align_item(const cv::Mat& det_img_gray, const cv::Point& seed_location) const;
+
+		Json::Value classify_item(const cv::Mat& det_img_gray, const cv::Point& item_location) const;
 		
-		bool save(const std::string& outputPath) const;
-		bool load(const std::string& inputPath, const cv::Size& requiredExampleSize);
-/*
-		virtual ~PCA_classifier(){
-			std::cout << "destructor" << std::endl;
-			//statClassifier.clear();
-			std::cout << "done" << std::endl;
-		}
-*/
+		void save(const std::string& outputPath) const throw(cv::Exception);
+		void load(const std::string& inputPath) throw(cv::Exception);
 };
 
 #endif

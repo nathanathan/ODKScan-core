@@ -35,15 +35,7 @@ class MarkupForm : public TemplateProcessor
 };
 */
 
-bool markupFormHelper(const char* bvPath, Mat& markupImage, bool drawCounts) {
-	Scalar colors[6] = {
-	 Scalar(0,   0,   255),
-	 Scalar(0,   255, 255),
-	 Scalar(255, 0,   255),
-	 Scalar(0,   255, 0),
-	 Scalar(255, 255, 0),
-	 Scalar(255, 0,   0)};
-	
+bool markupFormHelper(const char* bvPath, Mat& markupImage, bool drawCounts) {	
 	Json::Value bvRoot;
 	
 	if( !parseJsonFromFile(bvPath, bvRoot) ) return false;
@@ -54,7 +46,7 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage, bool drawCounts) {
 		
 		//TODO: For multi-choice forms were going to want something a little different.
 		//	This function is getting pretty complicated and should probably be split up.
-		size_t filledBubbles = 0;
+		size_t filledItems = 0;
 		float avgWidth = 0;
 		float avgY = 0;
 		int endOfField = 0;
@@ -62,99 +54,90 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage, bool drawCounts) {
 		#ifdef SHOW_MIN_ERROR_CUT
 			//Should this be specified in the template??
 			int cutIdx = minErrorCut(computedFilledIntegral(field));
-			int bubbleNum = 0;
+			int ItemNum = 0;
 		#endif
 		
 		string fieldName = field.get("label", "Unlabeled").asString();
-		Scalar boxColor = colors[i%6];
+		Scalar boxColor = getColor(int(i));
 	
 		const Json::Value segments = field["segments"];
 		
 		for ( size_t j = 0; j < segments.size(); j++ ) {
 			const Json::Value segment = segments[j];
-			if(segment.isMember("quad")){//If we're dealing with a bubble-vals JSON file
-				//Draw segment rectangles:
-				vector<Point> quad = orderCorners( jsonArrayToQuad(segment["quad"]) );
-				const Point* p = &quad[0];
-				int n = (int) quad.size();
+
+			//TODO: unaligned segments could be an issue
+
+			//Draw segment rectangles:
+			vector<Point> quad = orderCorners( jsonArrayToQuad(segment["quad"]) );
+			const Point* p = &quad[0];
+			int n = (int) quad.size();
+			polylines(markupImage, &p, &n, 1, true, boxColor, 2, CV_AA);
+			
+			if( segment.get("notFound", false).asBool() ) {
+				polylines(markupImage, &p, &n, 1, true, .25 * boxColor, 2, CV_AA);
+			}
+			else{
 				polylines(markupImage, &p, &n, 1, true, boxColor, 2, CV_AA);
-				
-				if( segment.get("notFound", false).asBool() ) {
-					polylines(markupImage, &p, &n, 1, true, .25 * boxColor, 2, CV_AA);
+			}
+			
+			//Compute some stuff to figure out where to draw output on the form
+			avgWidth += norm(quad[0] - quad[1]);
+			if(endOfField < quad[1].x){
+				endOfField = quad[1].x;
+			}
+			avgY += quad[3].y;// + quad[1].y + quad[2].y + quad[3].y) / 4;
+			
+
+			const Json::Value items = segment["items"];
+			for ( size_t k = 0; k < items.size(); k++ ) {
+				const Json::Value Item = items[k];
+				Point ItemLocation(jsonToPoint(Item["absolute_location"]));
+				Json::Value classification = Item["classification"];
+				if(classification.isBool()){
+					if(classification.asBool()){
+						filledItems++;
+					}
+					circle(markupImage, ItemLocation, 2, 	getColor(classification.asBool()), 1, CV_AA);
+				}
+				else if(classification.isInt()){
+					circle(markupImage, ItemLocation, 2, 	getColor(classification.asInt()), 1, CV_AA);
 				}
 				else{
-					polylines(markupImage, &p, &n, 1, true, boxColor, 2, CV_AA);
+					cout << "Don't know what this is" << endl;
 				}
 				
-				//Compute some stuff to figure out where to draw output on the form
-				avgWidth += norm(quad[0] - quad[1]);
-				if(endOfField < quad[1].x){
-					endOfField = quad[1].x;
-				}
-				avgY += quad[3].y;// + quad[1].y + quad[2].y + quad[3].y) / 4;
-				
-
-				const Json::Value bubbles = segment["bubbles"];
-				for ( size_t k = 0; k < bubbles.size(); k++ ) {
-					const Json::Value bubble = bubbles[k];
-					const int bubbleFilled = bubble["value"].asInt();
-					
-					if(bubbleFilled){
-						filledBubbles++;
-					}
-					
-					// Draw dots on bubbles colored blue if empty and red if filled
-					Point bubbleLocation(jsonToPoint(bubble["location"]));
-					
-					#ifdef SHOW_MIN_ERROR_CUT
-					circle(markupImage, bubbleLocation, 4, 	getColor(bubbleNum < cutIdx), 1, CV_AA);
-					bubbleNum++;
-					#endif
-					
-					circle(markupImage, bubbleLocation, 2, 	colors[bubbleFilled], 1, CV_AA);
-				}
-			}
-			else{//If we're dealing with a regular form template
-				//TODO: What happens if points are doubles?
-				Point tl(segment["x"].asInt(), segment["y"].asInt());
-				rectangle(markupImage, tl, tl + Point(segment["width"].asInt(), segment["height"].asInt()),
-							boxColor, 2);
-			
-				const Json::Value bubble_locations = segment["bubble_locations"];
-				for ( size_t k = 0; k < bubble_locations.size(); k++ ) {
-					Point bubbleLocation(jsonToPoint(bubble_locations[k]));
-					circle(markupImage, tl + bubbleLocation, 3, Scalar(0, 255, 20), -1);
-				}
 			}
 		}
-		
-		//Print the counts on the form:
-		if(drawCounts && avgWidth > 0){
-			avgWidth /= segments.size();
-			avgY /= segments.size();
+		if(field.get("type", "input") == "input"){
+			//Print the counts on the form:
+			if(drawCounts && avgWidth > 0){
+				avgWidth /= segments.size();
+				avgY /= segments.size();
 			
 			
-			Point textBoxTL(endOfField + 5, (int)avgY - 5);
-			if(field.isMember("print_count_location")){
-				textBoxTL = jsonToPoint(field["print_count_location"]);
+				Point textBoxTL(endOfField + 5, (int)avgY - 5);
+				if(field.isMember("print_count_location")){
+					textBoxTL = jsonToPoint(field["print_count_location"]);
+				}
+			
+				stringstream ss;
+				ss << filledItems;
+				putText(markupImage, ss.str(), textBoxTL,  FONT_HERSHEY_SIMPLEX, 1., Scalar::all(0), 3, CV_AA);
+				putText(markupImage, ss.str(), textBoxTL,  FONT_HERSHEY_SIMPLEX, 1., boxColor, 2, CV_AA);
 			}
-			
-			stringstream ss;
-			ss << filledBubbles;
-			putText(markupImage, ss.str(), textBoxTL,  FONT_HERSHEY_SIMPLEX, 1., Scalar::all(0), 3, CV_AA);
-			putText(markupImage, ss.str(), textBoxTL,  FONT_HERSHEY_SIMPLEX, 1., boxColor, 2, CV_AA);
 		}
 		
 	}
 	return true;
 }
+/*
 //DEPRECATED?
-//Makes a JSON file that contains only the fieldnames and their corresponding bubble counts.
-bool MarkupForm::outputFieldCounts(const char* bubbleVals, const char* outputPath){
+//Makes a JSON file that contains only the fieldnames and their corresponding Item counts.
+bool MarkupForm::outputFieldCounts(const char* ItemVals, const char* outputPath){
 	return false; //I don't think this gets used.
 	Json::Value bvRoot;
 	
-	if( !parseJsonFromFile(bubbleVals, bvRoot) ) return false;
+	if( !parseJsonFromFile(ItemVals, bvRoot) ) return false;
 	
 	Json::Value fields = bvRoot["fields"];
 	for ( size_t i = 0; i < fields.size(); i++ ) {
@@ -165,11 +148,11 @@ bool MarkupForm::outputFieldCounts(const char* bubbleVals, const char* outputPat
 		for ( size_t j = 0; j < segments.size(); j++ ) {
 			
 			Json::Value segment = segments[j];
-			const Json::Value bubbles = segment["bubbles"];
+			const Json::Value Items = segment["Items"];
 			
-			for ( size_t k = 0; k < bubbles.size(); k++ ) {
-				const Json::Value bubble = bubbles[k];
-				if(bubble["value"].asInt()){
+			for ( size_t k = 0; k < Items.size(); k++ ) {
+				const Json::Value Item = Items[k];
+				if(Item["value"].asInt()){
 					counter++;
 				}
 			}
@@ -183,7 +166,8 @@ bool MarkupForm::outputFieldCounts(const char* bubbleVals, const char* outputPat
 	outfile.close();
 	return true;
 }
-//Marks up formImage based on the specifications of a bubble-vals JSON file at the given path.
+*/
+//Marks up formImage based on the specifications of a Item-vals JSON file at the given path.
 //Then output the form to the given locaiton.
 bool MarkupForm::markupForm(const char* markupPath, const char* formPath, const char* outputPath, bool drawCounts){
 	Mat markupImage = imread(formPath);

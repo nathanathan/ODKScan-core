@@ -33,32 +33,16 @@
 #endif
 
 //#define TIME_IT
-#define CLASSIFY_BUBBLES true
-#define DO_BUBBLE_ALIGNMENT true
 
 #define REFINE_ALL_BUBBLE_LOCATIONS true
 
 //#define DO_BUBBLE_INFERENCE
 
-//TODO: Move these functions to utils.
-#include <stdexcept>
-int strToInt( const std::string& s ) {
-	int result;
-	std::istringstream ss( s );
-	ss >> result;
-	if (!ss) throw std::invalid_argument( "StrToInt" );
-	return result;
-}
-std::string intToStr( int n )
-{
-	std::ostringstream result;
-	result << n;
-	return result.str();
-}
 
 using namespace std;
 using namespace cv;
 
+/*
 Json::Value genBubblesJson( const vector<int>& bubbleVals, const vector<Point>& bubbleLocations, 
                             const Point& offset, const Json::Value& bubbleLabels,
                             const Mat& transformation = (Mat_<double>(3,3) << 1, 0, 0, 0, 1, 0, 0, 0, 1) ) {
@@ -81,6 +65,7 @@ Json::Value genBubblesJson( const vector<int>& bubbleVals, const vector<Point>& 
 	}
 	return out;
 }
+*/
 
 class Processor::ProcessorImpl : public TemplateProcessor
 {
@@ -107,19 +92,20 @@ private:
 
 
 //NOTE: training_data_uri must be a directory with no leading or trailing slashes.
-Ptr<PCA_classifier>& getClassifier(const string& training_data_uri, const Point& classifier_size){
+Ptr<PCA_classifier>& getClassifier(const Json::Value& classifier){
 
-/*
-	#ifdef DEBUG_PROCESSOR
-		cout << "getClassifier: " << training_data_uri << ", " << classifier_size << endl;
-	#endif
-*/
+	const string& training_data_uri = classifier["training_data_uri"].asString();
+
+	Size acutal_classifier_size = SCALEPARAM * Size(classifier["classifier_width"].asInt(),
+	                                                classifier["classifier_height"].asInt());
 	ostringstream ss;
-
-	Size acutal_classifier_size = SCALEPARAM * Size(classifier_size.x, classifier_size.y);
-	ss << acutal_classifier_size.height << acutal_classifier_size.width;
-	
+	ss << acutal_classifier_size.height << 'x' << acutal_classifier_size.width;
 	string key(training_data_uri + ss.str());
+
+	#ifdef DEBUG_PROCESSOR
+		cout << "classifierKey: " << key << endl;
+	#endif
+
 	ClassiferMap::iterator it = classifiers.find(key);
 /*
 	#ifdef DEBUG_PROCESSOR
@@ -135,16 +121,15 @@ Ptr<PCA_classifier>& getClassifier(const string& training_data_uri, const Point&
 		string dataPath = appRootDir + "training_examples/" + training_data_uri;
 		string cachedDataPath = dataPath + "/cached_classifier_data" + ss.str() + ".yml";
 
-		bool createClassifier = true;
-		//TODO: Reenable cacheing once things work
-		if( fileExists(cachedDataPath) ) {
+		classifiers[key]->set_classifier_params(classifier);
+
+		try{
+			classifiers[key]->load(cachedDataPath);
 			#ifdef DEBUG_PROCESSOR
 				cout << "found cached classifier..." << endl;
 			#endif
-			//TODO: Why do I need the size here?
-			createClassifier = !classifiers[key]->load(cachedDataPath, acutal_classifier_size);
 		}
-		if( createClassifier ) {
+		catch(...){
 			#ifdef DEBUG_PROCESSOR
 				cout << "training new classifier..." << endl;
 			#endif
@@ -164,7 +149,7 @@ Ptr<PCA_classifier>& getClassifier(const string& training_data_uri, const Point&
 				                                               EIGENBUBBLES, true);//flip training examples. TODO: put this stuff in template
 			if( !success ) {
 				//TODO: A better error message here when the training data isn't found would be a big help.
-				LOGI("\n\nThings are going to break.\n\n");
+				LOGI("\n\nCould not train classifier.\n\n");
 				return classifiers[key];
 			}
 
@@ -174,11 +159,10 @@ Ptr<PCA_classifier>& getClassifier(const string& training_data_uri, const Point&
 				cout << "trained" << endl;
 			#endif
 		}
-		classifiers[key]->set_search_window(Size(5,5)); //TODO: put in template
-		return classifiers[key];
 	}
 	return classifiers[key];
 }
+/*
 //TODO: Could probably do with some refactoring here.
 //TODO: Make some debug functions (for example one that shows an image)
 vector<int> classifyBubbles(const Mat& segment, const vector<Point> bubbleLocations, const PCA_classifier& classifier) {
@@ -188,8 +172,9 @@ vector<int> classifyBubbles(const Mat& segment, const vector<Point> bubbleLocati
 	}
 	return out;
 }
+
 vector<Point> getBubbleLocations(const PCA_classifier& classifier, const Mat& segment,
-                                 const Json::Value& bubbleLocationsJSON, bool refine) {
+                                 const Json::Value& items, bool refine) {
 
 	vector <Point> bubbleLocations;
 	vector<Point2f> points1, points2;
@@ -227,41 +212,23 @@ vector<Point> getBubbleLocations(const PCA_classifier& classifier, const Mat& se
 	}
 	return bubbleLocations;
 }
+*/
 Json::Value segmentFunction(const Json::Value& segmentTemplate) {
 
 	Json::Value segmentJsonOut;
 	Mat segmentImg;
 	vector <Point> segBubbleLocs;
 	vector <int> bubbleVals;
-
-	Ptr<PCA_classifier> classifier = getClassifier(segmentTemplate["training_data_uri"].asString(),
-	                                               jsonToPoint(segmentTemplate["classifier_size"]));
-
-	Rect segmentRect( SCALEPARAM * Point(segmentTemplate.get( "x", INT_MIN ).asInt(),
-	                                     segmentTemplate.get( "y", INT_MIN ).asInt()),
+	Rect segmentRect( SCALEPARAM * Point(segmentTemplate.get( "segment_x", INT_MIN ).asInt(),
+	                                     segmentTemplate.get( "segment_y", INT_MIN ).asInt()),
 	                                     SCALEPARAM * Size(segmentTemplate.get("segment_width", INT_MIN).asInt(),
 	                                                       segmentTemplate.get("segment_height", INT_MIN).asInt()));
+	//Transfromation and offest are used to get absolute bubble locations.
+	Mat transformation = (Mat_<double>(3,3) << 1, 0, 0, 0, 1, 0, 0, 0, 1);
+	Point offset = segmentRect.tl();
 
-	string inputType = segmentTemplate.get("in_type", "classifier").asString();
-
-	if(!segmentTemplate.get("bounded", true).asBool()) { //If segments don't have a bounding box
-		segmentImg = formImage(segmentRect);
-		segmentJsonOut["quad"] = quadToJsonArray(rectToQuad( segmentRect ));
-
-		//TODO: Make outputing segment images to collect work.
-		if(false && segmentTemplate.get("type", "").asString() == "text"){
-			imwrite(appRootDir + segmentTemplate.get("label", "unlabeled").asString() + ".jpg", segmentImg);
-			//cout << appRootDir + segmentTemplate.get("label", "unlabeled").asString() + ".jpg" << endl;
-		}
-		else if(inputType == "classifier"){
-			segBubbleLocs = getBubbleLocations(*classifier, segmentImg,
-			                                   segmentTemplate["bubble_locations"], false);
-			bubbleVals = classifyBubbles( segmentImg, segBubbleLocs, *classifier );
-			segmentJsonOut["bubbles"] = genBubblesJson( bubbleVals, segBubbleLocs, segmentRect.tl(), segmentTemplate["bubble_labels"]);
-		}
-
-	}
-	else {
+	//Get the cropped segment image:
+	if(segmentTemplate.get("align_segment", true).asBool()) {
 		Rect expandedRect = resizeRect(segmentRect, 1 + SEGMENT_BUFFER);
 	
 		//Reduce the segment buffer if it goes over the image edge.
@@ -284,27 +251,28 @@ Json::Value segmentFunction(const Json::Value& segmentTemplate) {
 		vector<Point2f> quad;
 		findSegment(segmentImg, segmentRect - expandedRect.tl(), quad);
 
-		if(testQuad(quad, segmentRect, .15) && CLASSIFY_BUBBLES){
+		if(testQuad(quad, segmentRect, .15)){
 			#ifdef DEBUG_PROCESSOR
 				//This makes a stream of dots so we can see how fast things are going.
 				//we get a ! when things go wrong.
 				cout << '.' << flush;
 			#endif
-			Mat transformation = quadToTransformation(quad, segmentRect.size());
+			transformation = quadToTransformation(quad, segmentRect.size());
+			offset = expandedRect.tl();
 			Mat alignedSegment(0, 0, CV_8U);
 			warpPerspective(segmentImg, alignedSegment, transformation, segmentRect.size());
 			segmentImg = alignedSegment;
 			
-			segmentJsonOut["quad"] = quadToJsonArray( quad, expandedRect.tl() );
-
+			segmentJsonOut["quad"] = quadToJsonArray( quad, offset );
+			/*
 			if(inputType == "classifier"){
-				segBubbleLocs = getBubbleLocations(*classifier, segmentImg, segmentTemplate["bubble_locations"], DO_BUBBLE_ALIGNMENT);
+				segBubbleLocs = getBubbleLocations(*classifier, segmentImg, segmentTemplate["items"], DO_BUBBLE_ALIGNMENT);
 				bubbleVals = classifyBubbles( segmentImg, segBubbleLocs, *classifier );
 				segmentJsonOut["bubbles"] = genBubblesJson( bubbleVals, segBubbleLocs, 
 					                                    expandedRect.tl(), 
 				                                            segmentTemplate["bubble_labels"],
 				                                            transformation.inv() );
-			}
+			}*/
 		}
 		else{
 			#ifdef DEBUG_PROCESSOR
@@ -316,23 +284,56 @@ Json::Value segmentFunction(const Json::Value& segmentTemplate) {
 			return segmentJsonOut;
 		}
 	}
+	else {
+		segmentImg = formImage(segmentRect);
+		segmentJsonOut["quad"] = quadToJsonArray(rectToQuad( segmentRect ));
+		/*
+		else if(inputType == "classifier"){
+			segBubbleLocs = getBubbleLocations(*classifier, segmentImg,
+			                                   segmentTemplate["items"], false);
+			bubbleVals = classifyBubbles( segmentImg, segBubbleLocs, *classifier );
+			segmentJsonOut["bubbles"] = genBubblesJson( bubbleVals, segBubbleLocs, segmentRect.tl(), segmentTemplate["bubble_labels"]);
+		}*/
+	}
+
+	//Do classification stuff:
+	Json::Value items = segmentTemplate["items"];
+	if(!items.isNull()){
+		Json::Value itemsJsonOut;
+		Json::Value classifierJson = segmentTemplate["classifier"];
+		bool alignItems = classifierJson.isMember("alignment_radius");
+		Ptr<PCA_classifier> classifier = getClassifier(classifierJson);
+		
+		for (size_t i = 0; i < items.size(); i++) {
+			Json::Value itemJsonOut = items[i];
+
+			//Classify the item
+			Point itemLocation = SCALEPARAM * Point(items[i]["item_x"].asDouble(), items[i]["item_y"].asDouble());
+			if(alignItems){
+				itemLocation = classifier->align_item(segmentImg, itemLocation);
+			}
+			itemJsonOut["classification"] = classifier->classify_item(segmentImg, itemLocation);
+			
+			//Create JSON output
+			Mat absoluteLocation = transformation.inv() * Mat(Point3d( itemLocation.x,
+		                                                                   itemLocation.y, 1.f));
+			itemJsonOut["absolute_location"] = pointToJson(
+				Point( absoluteLocation.at<double>(0,0) / absoluteLocation.at<double>(2, 0),
+				       absoluteLocation.at<double>(1,0) / absoluteLocation.at<double>(2, 0)) +
+				offset);
+
+			itemsJsonOut.append(itemJsonOut);
+		}
+		segmentJsonOut["items"] = itemsJsonOut;
+	}
 	
 	//Output the segment image:
 	Mat segment_out;
 	cvtColor(segmentImg, segment_out, CV_GRAY2RGB);
-	
-	vector <Point> expectedBubbleLocs = getBubbleLocations(*classifier, segmentImg, segmentTemplate["bubble_locations"], false);
-	
+	/*
+	vector <Point> expectedBubbleLocs = getBubbleLocations(*classifier, segmentImg, segmentTemplate["items"], false);
+
 	Point classifier_size = jsonToPoint( segmentTemplate["classifier_size"] );
-	
-	//TODO: colors should be shared between this and markup form.
-	Scalar colors[6] = {
-	 Scalar(0,   0,   255),
-	 Scalar(0,   255, 255),
-	 Scalar(255, 0,   255),
-	 Scalar(0,   255, 0),
-	 Scalar(255, 255, 0),
-	 Scalar(255, 0,   0)};
 
 	for(size_t i = 0; i < expectedBubbleLocs.size(); i++){
 		rectangle(segment_out, expectedBubbleLocs[i] - .5 * classifier_size,
@@ -341,14 +342,15 @@ Json::Value segmentFunction(const Json::Value& segmentTemplate) {
 						   
 		circle(segment_out, segBubbleLocs[i], 1, Scalar(255, 2555, 255), -1);
 	}
-	//TODO: Use xml name/id instead of label
+	*/
 	string segmentOutPath;
 	string segmentName;
 	try{
 		segmentOutPath = segmentTemplate.get("outputPath", 0).asString() + "segments/";
-		segmentName = segmentTemplate.get("name", segmentTemplate.get("label", "unlabeled")).asString() +
-		              "_" + intToStr(segmentTemplate.get("index", 0).asInt()) + ".jpg";
-		imwrite(segmentOutPath+segmentName, segment_out);
+		segmentName = segmentTemplate["name"].asString() + "_image_" +
+		              intToStr(segmentTemplate.get("index", 0).asInt()) + ".jpg";
+		imwrite(segmentOutPath + segmentName, segment_out);
+		segmentJsonOut["imagePath"] = segmentOutPath + segmentName;
 	}
 	catch(...){
 		LOGI(("Could not output segment to: " + segmentOutPath+segmentName).c_str());
@@ -385,7 +387,7 @@ Json::Value fieldFunction(const Json::Value& field){
 Json::Value formFunction(const Json::Value& templateRoot){
 	Json::Value outForm = super::formFunction(templateRoot);
 	outForm["form_scale"] = Json::Value(SCALEPARAM);
-	outForm["name"] = Json::Value(templPath);
+	outForm["templatePath"] = Json::Value(templPath);
 	return outForm;
 }
 

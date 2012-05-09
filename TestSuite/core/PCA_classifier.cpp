@@ -30,7 +30,6 @@
 //#define DISABLE_PCA
 //PCA definately does help but only by a few percent.
 
-
 using namespace std;
 using namespace cv;
 
@@ -43,6 +42,7 @@ int vectorFind(const vector<Tp>& vec, const Tp& element) {
 	}
 	return -1;
 }
+/*
 //This functions sets the values of the gaussian_wights Mat,
 //which can be used to weight bubble ratings when doing bubble alignment.
 //TODO: The gaussian intensity isn't correctly scaling...
@@ -66,9 +66,14 @@ void PCA_classifier::update_gaussian_weights() {
 	minMaxLoc(temp, NULL, &temp_max);
 	gaussian_weights = temp_max - temp + .001;//.001 is to avoid roundoff problems, it might not be necessiary.
 }
-void PCA_classifier::set_search_window(Size sw) {
-	search_window = sw;
+void PCA_classifier::set_alignment_radius(int radius) {
+	search_window = Size(2*radius, 2*radius);
 	update_gaussian_weights();
+}
+*/
+void PCA_classifier::set_classifier_params(const Json::Value& classifier_params_arg){
+	//TODO: Push more of the param setting into this function.
+	classifier_params = classifier_params_arg;
 }
 int PCA_classifier::getClassificationIdx(const string& filepath) {
 	int nameIdx = filepath.find_last_of("/");
@@ -121,50 +126,29 @@ vector<string> readVector(FileStorage& fs, const string& label) {
 	}
 	return vec;
 }
-bool PCA_classifier::save(const string& outputPath) const {
-	//might be clearner to just have save/load (and maybe PCA_set_add) throw exceptions.
-	try {
-		FileStorage fs(outputPath, FileStorage::WRITE);
-		fs << "exampleSizeWidth" << exampleSize.width;
-		fs << "exampleSizeHeight" << exampleSize.height;
-		fs << "PCAmean" << my_PCA.mean;
-		fs << "PCAeigenvectors" << my_PCA.eigenvectors;
-		fs << "PCAeigenvalues" << my_PCA.eigenvalues;
-		writeVector(fs, "classifications", classifications);
-		statClassifier->write(*fs, "classifierData" );
-	}
-	catch( cv::Exception& e ) {
-		const char* err_msg = e.what();
-		cout << err_msg << endl;
-		return false;
-	}
-	return true;
+void PCA_classifier::save(const string& outputPath) const throw(cv::Exception){
+	FileStorage fs(outputPath, FileStorage::WRITE);
+	fs << "exampleSizeWidth" << exampleSize.width;
+	fs << "exampleSizeHeight" << exampleSize.height;
+	fs << "PCAmean" << my_PCA.mean;
+	fs << "PCAeigenvectors" << my_PCA.eigenvectors;
+	fs << "PCAeigenvalues" << my_PCA.eigenvalues;
+	writeVector(fs, "classifications", classifications);
+	statClassifier->write(*fs, "classifierData" );
 }
-bool PCA_classifier::load(const string& inputPath, const Size& requiredExampleSize) {
-	try {
-		FileStorage fs(inputPath, FileStorage::READ);
-		fs["exampleSizeWidth"] >> exampleSize.width;
-		fs["exampleSizeHeight"] >> exampleSize.height;
-		if(requiredExampleSize != exampleSize){
-			return false; //is this ok in a try expression?
-		}
-		fs["PCAmean"] >> my_PCA.mean;
-		fs["PCAeigenvectors"] >> my_PCA.eigenvectors;
-		fs["PCAeigenvalues"] >> my_PCA.eigenvalues;
-		
-		classifications = readVector(fs, "classifications");
-		search_window = exampleSize;
-		update_gaussian_weights();
-		statClassifier->clear();
-		statClassifier->read(*fs, cvGetFileNodeByName(*fs, cvGetRootFileNode(*fs), "classifierData") );
-	}
-	catch( cv::Exception& e ) {
-		const char* err_msg = e.what();
-		cout << err_msg << endl;
-		return false;
-	}
-	emptyClassificationIndex = vectorFind(classifications, string("empty"));
-	return true;
+void PCA_classifier::load(const string& inputPath) throw(cv::Exception){
+	FileStorage fs(inputPath, FileStorage::READ);
+	fs["exampleSizeWidth"] >> exampleSize.width;
+	fs["exampleSizeHeight"] >> exampleSize.height;
+	fs["PCAmean"] >> my_PCA.mean;
+	fs["PCAeigenvectors"] >> my_PCA.eigenvectors;
+	fs["PCAeigenvalues"] >> my_PCA.eigenvalues;
+	
+	classifications = readVector(fs, "classifications");
+	//search_window = exampleSize;
+	//update_gaussian_weights();
+	statClassifier->clear();
+	statClassifier->read(*fs, cvGetFileNodeByName(*fs, cvGetRootFileNode(*fs), "classifierData") );
 }
 //Loads a image with the specified filename and adds it to the PCA set.
 //Classifications are inferred from the filename and added to training_bubble_values.
@@ -208,8 +192,8 @@ bool PCA_classifier::train_PCA_classifier(const vector<string>& examplePaths, Si
 	statClassifier->clear();
 	weights = (Mat_<float>(3,1) << 1, 1, 1);//TODO: fix the weighting stuff 
 	exampleSize = myExampleSize;
-	search_window = myExampleSize;
-	update_gaussian_weights();
+	//search_window = myExampleSize;
+	//update_gaussian_weights();
 
 	#ifdef USE_MASK
 		cMask = gaussian_weights < .002;
@@ -252,8 +236,7 @@ bool PCA_classifier::train_PCA_classifier(const vector<string>& examplePaths, Si
 	#else
 		statClassifier->train_auto(comparisonVectors, trainingBubbleValuesMat, Mat(), Mat(), CvSVMParams());
 	#endif
-	
-	emptyClassificationIndex = vectorFind(classifications, string("empty"));
+
 	return true;
 }
 //Rates a range of pixels in det_img_gray on how likely it is to be a bubble.
@@ -261,13 +244,13 @@ bool PCA_classifier::train_PCA_classifier(const vector<string>& examplePaths, Si
 //Back projection tries to reconstruct a image/vector just using components of the PCA set (generated from the training data).
 //The theory is that if there is little difference between the reconstructed image and the original image
 //(as measured by the SSD) then the image is probably similar to some of the images used to generate the PCA set.
-inline double PCA_classifier::rateBubble(const Mat& det_img_gray, const Point& bubble_location) const {
+inline double PCA_classifier::rate_item(const Mat& det_img_gray, const Point& item_location) const {
 	Mat query_pixels, pca_components;
 
 	#ifdef USE_GET_RECT_SUB_PIX
-		getRectSubPix(det_img_gray, exampleSize, bubble_location, query_pixels);
+		getRectSubPix(det_img_gray, exampleSize, item_location, query_pixels);
 	#else
-		Rect window = Rect(bubble_location - Point(exampleSize.width/2,
+		Rect window = Rect(item_location - Point(exampleSize.width/2,
 		                                           exampleSize.height/2), exampleSize);
 		//Constrain the window to the image size:
 		window = window & Rect(Point(0,0), det_img_gray.size());
@@ -297,15 +280,14 @@ inline double PCA_classifier::rateBubble(const Mat& det_img_gray, const Point& b
 	Mat out = my_PCA.backProject(pca_components) - query_pixels;
 	return sum(out.mul(out)).val[0];
 }
-#define USE_HILLCLIMBING
-#ifdef USE_HILLCLIMBING
+
 //This using a hillclimbing algorithm to find the location that minimizes the value of the rate bubble function.
 //It might only find a local instead of global minimum but it is much faster than a global search.
-Point PCA_classifier::bubble_align(const Mat& det_img_gray, const Point& bubble_location) const {
+Point PCA_classifier::align_item(const Mat& det_img_gray, const Point& seed_location) const {
 	int iterations = 10;
 
 	Mat sofar = Mat::zeros(Size(2*iterations+1, 2*iterations+1), CV_8UC1);
-	Point offset = Point(bubble_location.x - iterations, bubble_location.y - iterations);
+	Point offset = Point(seed_location.x - iterations, seed_location.y - iterations);
 	Point loc = Point(iterations, iterations);
 	
 	double minDirVal = 100.;
@@ -316,7 +298,7 @@ Point PCA_classifier::bubble_align(const Mat& det_img_gray, const Point& bubble_
 				if(sofar.at<uchar>(j,i) != 123) {
 					sofar.at<uchar>(j,i) = 123;
 					
-					double rating = rateBubble(det_img_gray, Point(i,j) + offset);
+					double rating = rate_item(det_img_gray, Point(i,j) + offset);
 					rating *= MAX(1, norm(loc - Point(iterations, iterations)));
 					
 					if(rating <= minDirVal){
@@ -351,52 +333,45 @@ Point PCA_classifier::bubble_align(const Mat& det_img_gray, const Point& bubble_
 	#endif
 	return loc + offset;
 }
-#else
+/*
 //This bit of code finds the location in the search_window most likely to be a bubble
 //then it checks that rather than the exact specified location.
 //This section probably slows things down by quite a bit and it might not provide significant
 //improvement to accuracy. We will need to run some tests to find out if it's worth using.
-Point PCA_classifier::bubble_align(const Mat& det_img_gray, const Point& bubble_location) const {
+Point PCA_classifier::align_item(const Mat& det_img_gray, const Point& seed_location) const {
 	if(search_window.width == 0 || search_window.height == 0){
-		return bubble_location;
+		return seed_location;
 	}
 
 	Mat out(search_window, CV_32F);
-	Point offset = Point(bubble_location.x - search_window.width/2,
-	                     bubble_location.y - search_window.height/2);
+	Point offset = Point(seed_location.x - search_window.width/2,
+	                     seed_location.y - search_window.height/2);
 	
 	for(int i = 0; i < search_window.width; i++) {
 		for(int j = 0; j < search_window.height; j++) {
-			out.at<float>(j,i) = rateBubble(det_img_gray, Point(i,j) + offset);
+			out.at<float>(j,i) = rate_item(det_img_gray, Point(i,j) + offset);
 		}
 	}
 	out = out.mul(gaussian_weights);
-	
-	/*
-	out = out.mul(gaussian_weights);
-	Mat temp;
-	medianBlur(out, temp, 5);
-	out = temp;
-	*/
 	
 	Point min_location;
 	minMaxLoc(out, NULL,NULL, &min_location);
 	
 	return min_location + offset;
 }
-#endif
+*/
 
 //Compare the specified bubble with all the training bubbles via PCA.
-int PCA_classifier::classifyBubble(const Mat& det_img_gray, const Point& bubble_location) const {
+Json::Value PCA_classifier::classify_item(const Mat& det_img_gray, const Point& item_location) const {
 
 	int classificationIndex;	
 	Mat query_pixels;
-	//cout << bubble_location << endl;
+	//cout << item_location << endl;
 	#ifdef USE_GET_RECT_SUB_PIX
 		getRectSubPix(det_img_gray, Size(exampleSize.width, exampleSize.height),
-		              bubble_location, query_pixels);
+		              item_location, query_pixels);
 	#else									 
-		Rect window = Rect(bubble_location - Point(exampleSize.width/2,
+		Rect window = Rect(item_location - Point(exampleSize.width/2,
 		                                           exampleSize.height/2), exampleSize);
 		//Constrain the window to the image size:
 		window = window & Rect(Point(0,0), det_img_gray.size());
@@ -428,11 +403,7 @@ int PCA_classifier::classifyBubble(const Mat& det_img_gray, const Point& bubble_
 	#else
 		classificationIndex = statClassifier->predict( my_PCA.project(query_pixels) );
 	#endif
-	
-	if(classificationIndex == emptyClassificationIndex){
-		return  0;
-	}
-	else{
-		return  classificationIndex + 1;
-	}
+	string classification_label = classifications[classificationIndex];
+	Json::Value default_classification = classifier_params.get("default_classification", 0);
+	return classifier_params["classification_map"].get(classification_label, default_classification);
 }

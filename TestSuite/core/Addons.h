@@ -6,7 +6,6 @@ It's a pretty random mix of stuff and it if grows much larger it should probably
 #define ADDONS_H
 #include "configuration.h"
 
-
 #include <opencv2/core/core.hpp>
 
 #include <json/value.h>
@@ -14,6 +13,7 @@ It's a pretty random mix of stuff and it if grows much larger it should probably
 
 //OpenCV oriented functions:
 cv::Scalar getColor(bool filled);
+cv::Scalar getColor(int colorIdx);
 cv::Size operator * (float lhs, cv::Size rhs);
 cv::Rect operator * (float lhs, cv::Rect rhs);
 std::vector <cv::Point> rectToQuad(const cv::Rect& r);
@@ -38,4 +38,7 @@ bool returnTrue(Tp& anything){
 	return true;
 }
 void debugShow(const cv::Mat & image);
+
+int strToInt( const std::string& s );
+std::string intToStr( int n );
 #endif
