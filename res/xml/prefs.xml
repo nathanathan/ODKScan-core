@@ -2,7 +2,7 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
     <com.bubblebot.ListPreferenceMultiSelect android:defaultValue="#ALL#"
     android:key="select_templates"
-    android:title="Tempaltes to use" android:dialogTitle="Tempaltes to use"
+    android:title="Templates to use" android:dialogTitle="Templates to use"
     android:summary="Specify types of form you would like to scan"
     android:entries="@array/select_templates_default_entries"
     android:entryValues="@array/select_templates_default_values"/>
