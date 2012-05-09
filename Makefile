@@ -18,17 +18,21 @@ OPENCV_INCLUDES := `pkg-config opencv --cflags --libs`
 #Simplify?
 INCLUDES := $(OPENCV_INCLUDES) -I./jsoncpp-src-0.5.0/include -I./src -I./
 
+ODKScan: ODKScan.run
+	echo "Made executable ODKScan.run"
+
+
 ifndef $(INPUT_FOLDER)
-	INPUT_FOLDER := example_input
+INPUT_FOLDER := example_input
 endif
 ifndef $(OUTPUT_FOLDER)
-	OUTPUT_FOLDER := output
+OUTPUT_FOLDER := output
 endif
 ifndef $(TEMPLATE)
-	TEMPLATE := assets/form_templates/example
+TEMPLATE := assets/form_templates/example
 endif
-Experiment: tests/Experiment.test
-	@rm -r $(OUTPUT_FOLDER)
+Experiment: tests/Experiment.run
+	@rm -rf $(OUTPUT_FOLDER)
 	@mkdir $(OUTPUT_FOLDER)
 	@rm -rf debug_segment_images
 	@mkdir debug_segment_images
@@ -37,7 +41,7 @@ Experiment: tests/Experiment.test
 	./$< $(TEMPLATE) $(INPUT_FOLDER) $(OUTPUT_FOLDER)
 
 #does linking
-%.test: %.cpp $(ALL_SRCS) $(ALL_OBJS) $(ALL_HEADERS)
+%.run: %.cpp $(ALL_SRCS) $(ALL_OBJS) $(ALL_HEADERS)
 	g++ -g -o $@ $< $(ALL_OBJS) $(INCLUDES)
 
 #does compiling

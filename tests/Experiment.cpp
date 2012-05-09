@@ -16,7 +16,8 @@ then prints out stats breaking down the results by image label and pipeline stag
 #include <sys/stat.h>
 
 using namespace std;
-
+//TODO: Calibration?
+//TODO: move this function?
 string getLabel(const string& filepath){
 	int start = filepath.find_last_of("/") + 1;
 	return	filepath.substr(start, filepath.find_last_of("_") - start);
@@ -31,12 +32,11 @@ int main(int argc, char *argv[]) {
 	string templatePath(argv[1]);
 	string inputDir(argv[2]);
 	string outputDir(argv[3]);
-	//Ensure the i/o dirs ends with a '/'
+	//This code ensures the i/o dirs end with a '/'
 	if(inputDir[inputDir.size() - 1] != '/') inputDir.append("/");
 	if(outputDir[outputDir.size() - 1] != '/') outputDir.append("/");
 
-	string expectedJsonFile;
-	expectedJsonFile = argc > 4 ? string(argv[4]) : "";
+	string expectedJsonFile = argc > 4 ? string(argv[4]) : "";
 
 	vector<string> filenames;
 	CrawlFileTree(inputDir, filenames);
@@ -69,6 +69,7 @@ int main(int argc, char *argv[]) {
 		init = clock();
 		
 		Processor myProcessor("assets/");
+
 		#define DO_CAMERA_CALIBRATION true
 		if( !myProcessor.loadFormImage((*it).c_str(), DO_CAMERA_CALIBRATION)) {
 			cout << "\E[31m" <<  "Could not load. Arg: " << "\e[0m" << (*it) << endl;
@@ -128,14 +129,6 @@ int main(int argc, char *argv[]) {
 	for ( mapit=collectors.begin() ; mapit != collectors.end(); mapit++ ){
 		cout << (*mapit).first << endl << (*mapit).second;
 		overall += (*mapit).second;
-		#ifdef OUT_CSV_PATH
-			outfile << (*mapit).first << ", ";
-			(*mapit).second.printAsRow(outfile);
-		#endif
 	}
 	cout << "overall" << endl << overall;
-
-	#ifdef OUT_CSV_PATH
-		outfile.close();
-	#endif
 }

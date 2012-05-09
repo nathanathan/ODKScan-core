@@ -8,10 +8,11 @@ Setup
 
 1. Install OpenCV
 
-Building
-========
+Usage
+=====
 
-	make Experiment TEMPLATE=template_path INPUT_FOLDER=input_folder OUTPUT_FOLDER=output_folder
+	make
+	./ODKScan.run assets/form_templates/example example_input/img0.jpg output/img0
 
 Source file information
 =======================
