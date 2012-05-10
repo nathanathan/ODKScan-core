@@ -1,12 +1,21 @@
 ODKScan core
 ============
 
-Code previously available at https://github.com/villagereach/mScan/tree/master/TestSuite
+ODKScan is a tool for extracting information from images of paper forms.
+It does optical mark recognition (so it can handle bubble/checkbox forms).
+This repo contains the backend code that is shared between the ODKScan web-app and Android app.
 
 Setup
 =====
 
 1. Install OpenCV
+   (install guide: http://opencv.willowgarage.com/wiki/InstallGuide)
+2. Set OPENCV_INCLUDES in the makefile. If you're using ubuntu you just need to do this:
+
+	#install pkg-config:
+	apt-get install pkg-config
+	#add this to your .bashrc:
+	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
 
 Usage
 =====
@@ -26,3 +35,4 @@ Source file information
 * FileUtils (.h|.cpp) -- A utility for crawling file trees and returning all the file names.
 * MarkupForm (.h|.cpp) -- Contains a function for marking up a form using a JSON form template or bubble vals file.
 
+Code previously available at https://github.com/villagereach/mScan/tree/master/TestSuite

@@ -53,9 +53,8 @@ Experiment: tests/Experiment.run
 clean:
 	rm -rf debug_segment_images
 	rm $(ALL_OBJS)
-	rm tests/*.test
-	rm TemplateEditor.test
-	rm jni-transfer
+	rm tests/*.run
+	rm *.run
 
 #Some helpful sources I used to make this makefile:
 #http://stackoverflow.com/questions/5799820/makefile-and-c-project
