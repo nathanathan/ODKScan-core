@@ -82,8 +82,9 @@ int PCA_classifier::getClassificationIdx(const string& filepath) {
 	int classificationIdx = vectorFind(classifications, classification);
 	
 	if(vectorFind(classifications, classification) < 0) {
-		classifications.push_back(classification);
 		classificationIdx = classifications.size();
+		classifications.push_back(classification);
+		
 		#ifdef DEBUG_CLASSIFIER
 			cout << "Adding classification: " << classification << endl;
 		#endif
