@@ -12,6 +12,7 @@ Setup
    (install guide: http://opencv.willowgarage.com/wiki/InstallGuide)
 2. Set OPENCV_INCLUDES in the makefile. If you're using ubuntu you just need to do this:
 
+==
 	#install pkg-config:
 	apt-get install pkg-config
 	#add this to your .bashrc:
