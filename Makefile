@@ -19,8 +19,7 @@ OPENCV_INCLUDES := `pkg-config opencv --cflags --libs`
 INCLUDES := $(OPENCV_INCLUDES) -I./jsoncpp-src-0.5.0/include -I./src -I./
 
 ODKScan: ODKScan.run
-	echo "Made executable ODKScan.run"
-
+	@echo "Made executable ODKScan.run"
 
 ifndef $(INPUT_FOLDER)
 INPUT_FOLDER := example_input

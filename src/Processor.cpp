@@ -42,30 +42,49 @@
 using namespace std;
 using namespace cv;
 
-/*
-Json::Value genBubblesJson( const vector<int>& bubbleVals, const vector<Point>& bubbleLocations, 
-                            const Point& offset, const Json::Value& bubbleLabels,
-                            const Mat& transformation = (Mat_<double>(3,3) << 1, 0, 0, 0, 1, 0, 0, 0, 1) ) {
-
-	assert(bubbleLocations.size() == bubbleVals.size());
-	Json::Value out;
-	for(size_t i = 0; i < bubbleVals.size(); i++){
-		Json::Value bubble;
-		bubble["value"] = Json::Value( bubbleVals[i] );
-		Mat actualLocation = transformation * Mat(Point3d( bubbleLocations[i].x,
-                                                                   bubbleLocations[i].y, 1.f));
-		bubble["location"] = pointToJson(
-			Point( actualLocation.at<double>(0,0) / actualLocation.at<double>(2, 0),
-			       actualLocation.at<double>(1,0) / actualLocation.at<double>(2, 0)) +
-			offset);
-		if( !bubbleLabels.isNull() ){
-			bubble["label"] = bubbleLabels[i];
+//TODO: Make this function better
+Json::Value getFieldValue(const Json::Value& field){
+	Json::Value output;
+	const Json::Value segments = field["segments"];
+	for ( size_t i = 0; i < segments.size(); i++ ) {
+		const Json::Value segment = segments[i]; cout <<"a"<< endl;
+		const Json::Value items = segment["items"];
+		cout <<"b"<< endl;
+		for ( size_t j = 0; j < items.size(); j++ ) {
+			const Json::Value classification = items[j].get("classification", false);
+			const Json::Value itemValue = items[j]["value"];
+			switch ( classification.type() )
+			{
+			case Json::stringValue:
+				output = Json::Value(output.asString() +
+				                     classification.asString());
+			break;
+			case Json::booleanValue:
+				if(!itemValue.isNull()){
+					if(classification.asBool()){
+						output = Json::Value(output.asString() +
+							             itemValue.asString());
+					}
+					else{
+						output = Json::Value(output.asString());
+					}
+					break;
+				}
+				//Fall through and be counted as a 1 or 0
+			case Json::intValue:
+			case Json::uintValue:
+				output = Json::Value(output.asInt() + classification.asInt());
+			break;
+			case Json::realValue:
+				output = Json::Value(output.asDouble() + classification.asDouble());
+			break;
+			default:
+			break;
+			}
 		}
-		out.append(bubble);
 	}
-	return out;
+	return output;
 }
-*/
 
 class Processor::ProcessorImpl : public TemplateProcessor
 {
@@ -382,6 +401,7 @@ Json::Value fieldFunction(const Json::Value& field){
 
 	fieldJsonOut = super::fieldFunction(mutableField);
 	inheritMembers(fieldJsonOut, mutableField);
+	fieldJsonOut["value"] = getFieldValue(fieldJsonOut);
 	return fieldJsonOut;
 }
 Json::Value formFunction(const Json::Value& templateRoot){
