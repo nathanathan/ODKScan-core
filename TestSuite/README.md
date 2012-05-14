@@ -1,6 +1,9 @@
 TestSuite
 =========
 
+Deprecated. (See https://github.com/nathanathan/ODKScan-core for up-to-date code)
+-----------
+
 This is a testing suite for the form scanning procedure.
 None of the tests work out of the box.
 You will need to have a form image and form template, and to specify their respective paths in the code for the test you are running.
