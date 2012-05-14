@@ -17,15 +17,14 @@ LOCAL_C_INCLUDES +=  $(OPENCV_INCLUDES) $(ANDROID_OPENCV_INCLUDES)
 
 LOCAL_MODULE := bubblebot
 
-CORE_SRCS := $(addprefix core/, $(notdir $(wildcard jni/core/*.cpp)))
-JSON_PARSER_SRCS := $(addprefix ../, $(wildcard jsoncpp-src-0.5.0/src/lib_json/*.cpp))
+CORE_SRCS := $(wildcard $(LOCAL_PATH)/ODKScan-core/src/*.cpp)
+JSON_PARSER_SRCS := $(wildcard $(LOCAL_PATH)/ODKScan-core/jsoncpp-src-0.5.0/src/lib_json/*.cpp)
+#Remove the local path prefix from the srcs and put them in a single list
+ODKSCAN_SRCS := $(subst $(LOCAL_PATH),, $(CORE_SRCS) $(JSON_PARSER_SRCS))
 
-LOCAL_C_INCLUDES += jni/core
-LOCAL_C_INCLUDES += jsoncpp-src-0.5.0/include
+LOCAL_C_INCLUDES += $(LOCAL_PATH)/ODKScan-core/src
+LOCAL_C_INCLUDES += $(LOCAL_PATH)/ODKScan-core/jsoncpp-src-0.5.0/include
 
-LOCAL_SRC_FILES := $(CORE_SRCS) gen/bubblebot.cpp $(JSON_PARSER_SRCS)
-
-#
-
+LOCAL_SRC_FILES := $(ODKSCAN_SRCS) gen/bubblebot.cpp
 
 include $(BUILD_SHARED_LIBRARY)
