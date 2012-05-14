@@ -31,14 +31,4 @@ It defines platform specific constants
 #define DEBUG_CLASSIFIER
 #define OUTPUT_BUBBLE_IMAGES
 #define OUTPUT_EXAMPLES
-/*
-To vary parameters with tests use externs like this
-#include <opencv2/core/core.hpp>
-extern cv::Point TEST_PARAM;
-*/
-#if 0
-extern int EIGENBUBBLES;
-#else
-#define EIGENBUBBLES 9
-#endif
 #endif

@@ -26,8 +26,7 @@
 // I think .5 is the largest value that won't cause ambiguous cases.
 #define SEGMENT_BUFFER .25
 
-//TODO: Can probably get rid of this...
-#ifdef SEGMENT_OUTPUT_DIRECTORY
+#ifdef OUTPUT_BUBBLE_IMAGES
 	#include "NameGenerator.h"
 	NameGenerator namer;
 #endif
@@ -35,9 +34,6 @@
 //#define TIME_IT
 
 #define REFINE_ALL_BUBBLE_LOCATIONS true
-
-//#define DO_BUBBLE_INFERENCE
-
 
 using namespace std;
 using namespace cv;
@@ -47,9 +43,8 @@ Json::Value getFieldValue(const Json::Value& field){
 	Json::Value output;
 	const Json::Value segments = field["segments"];
 	for ( size_t i = 0; i < segments.size(); i++ ) {
-		const Json::Value segment = segments[i]; cout <<"a"<< endl;
+		const Json::Value segment = segments[i];
 		const Json::Value items = segment["items"];
-		cout <<"b"<< endl;
 		for ( size_t j = 0; j < items.size(); j++ ) {
 			const Json::Value classification = items[j].get("classification", false);
 			const Json::Value itemValue = items[j]["value"];
@@ -163,9 +158,11 @@ Ptr<PCA_classifier>& getClassifier(const Json::Value& classifier){
 				cout << classifiers.size() << endl;
 			#endif
 			*/
+			const Json::Value advanced = classifier.get("advanced", Json::Value());
 			bool success = classifiers[key]->train_PCA_classifier( filepaths,
 				                                               acutal_classifier_size,
-				                                               EIGENBUBBLES, true);//flip training examples. TODO: put this stuff in template
+				                                               advanced.get("eigenvalues", 9).asInt(),
+			                                                       advanced.get("flip_training_data", true).asBool());
 			if( !success ) {
 				//TODO: A better error message here when the training data isn't found would be a big help.
 				LOGI("\n\nCould not train classifier.\n\n");
@@ -181,57 +178,6 @@ Ptr<PCA_classifier>& getClassifier(const Json::Value& classifier){
 	}
 	return classifiers[key];
 }
-/*
-//TODO: Could probably do with some refactoring here.
-//TODO: Make some debug functions (for example one that shows an image)
-vector<int> classifyBubbles(const Mat& segment, const vector<Point> bubbleLocations, const PCA_classifier& classifier) {
-	vector<int> out;
-	for (size_t i = 0; i < bubbleLocations.size(); i++) {
-		out.push_back( classifier.classifyBubble(segment, bubbleLocations[i]) ); 
-	}
-	return out;
-}
-
-vector<Point> getBubbleLocations(const PCA_classifier& classifier, const Mat& segment,
-                                 const Json::Value& items, bool refine) {
-
-	vector <Point> bubbleLocations;
-	vector<Point2f> points1, points2;
-	
-	if(!refine){
-		for (size_t i = 0; i < bubbleLocationsJSON.size(); i++) {
-			bubbleLocations.push_back( SCALEPARAM * jsonToPoint(bubbleLocationsJSON[i]) );
-		}
-		return bubbleLocations;
-	}
-	if(REFINE_ALL_BUBBLE_LOCATIONS || bubbleLocationsJSON.size() < 25){
-		for (size_t i = 0; i < bubbleLocationsJSON.size(); i++) {
-			bubbleLocations.push_back(
-				classifier.bubble_align(segment,
-				                        SCALEPARAM * jsonToPoint(bubbleLocationsJSON[i]) ) );
-		}
-		return bubbleLocations;
-	}
-	
-	for (size_t i = 0; i < bubbleLocationsJSON.size(); i++) {
-		bubbleLocations.push_back( SCALEPARAM * jsonToPoint(bubbleLocationsJSON[i]) );
-		if(i % 3 == 2) {
-			Point refinedLocation = classifier.bubble_align(segment, bubbleLocations.back());
-			points1.push_back(Point2f(bubbleLocations.back().x, bubbleLocations.back().y));
-			points2.push_back(Point2f(refinedLocation.x, refinedLocation.y));
-		}
-	}
-	
-	Mat H = findHomography( Mat(points1), Mat(points2), CV_RANSAC); //CV_LMEDS is suprisingly bad
-	
-	for (size_t i = 0; i < bubbleLocations.size(); i++) {
-		Mat actualLocation = H * Mat(Point3d(bubbleLocations[i].x, bubbleLocations[i].y, 1.f));
-		bubbleLocations[i] = Point( actualLocation.at<double>(0,0) / actualLocation.at<double>(2, 0),
-		                            actualLocation.at<double>(1,0) / actualLocation.at<double>(2, 0));
-	}
-	return bubbleLocations;
-}
-*/
 Json::Value segmentFunction(const Json::Value& segmentTemplate) {
 
 	Json::Value segmentJsonOut;
@@ -383,7 +329,8 @@ Json::Value fieldFunction(const Json::Value& field){
 		cout << "mask" << endl;
 		return Json::Value();
 	}
-	#ifdef SEGMENT_OUTPUT_DIRECTORY
+
+	#ifdef OUTPUT_BUBBLE_IMAGES
 		namer.setPrefix(field.get("label", "unlabeled").asString());
 	#endif
 
