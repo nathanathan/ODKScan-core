@@ -19,22 +19,6 @@
 using namespace std;
 using namespace cv;
 
-//TODO: Simplify this using the template processor class
-//	Or maybe it's not worth the effort since we might go to marking up photos with JSON
-/*
-class MarkupForm : public TemplateProcessor
-{
-	private:
-	typedef TemplateProcessor super;
-
-	Json::Value segmentFunction(const Json::Value& segment);
-	Json::Value fieldFunction(const Json::Value& field);
-	Json::Value formFunction(const Json::Value& templateRoot);
-	bool start(const char* templatePath);
-
-};
-*/
-
 bool markupFormHelper(const char* bvPath, Mat& markupImage, bool drawCounts) {	
 	Json::Value bvRoot;
 	
@@ -93,10 +77,8 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage, bool drawCounts) {
 				const Json::Value Item = items[k];
 				Point ItemLocation(jsonToPoint(Item["absolute_location"]));
 				Json::Value classification = Item["classification"];
+
 				if(classification.isBool()){
-					if(classification.asBool()){
-						filledItems++;
-					}
 					circle(markupImage, ItemLocation, 2, 	getColor(classification.asBool()), 1, CV_AA);
 				}
 				else if(classification.isInt()){
@@ -108,65 +90,27 @@ bool markupFormHelper(const char* bvPath, Mat& markupImage, bool drawCounts) {
 				
 			}
 		}
-		if(field.get("type", "input") == "input"){
-			//Print the counts on the form:
+		if(field.isMember("value")){
+			Point textBoxTL;
 			if(drawCounts && avgWidth > 0){
 				avgWidth /= segments.size();
 				avgY /= segments.size();
-			
-			
-				Point textBoxTL(endOfField + 5, (int)avgY - 5);
-				if(field.isMember("print_count_location")){
-					textBoxTL = jsonToPoint(field["print_count_location"]);
-				}
-			
-				stringstream ss;
-				ss << filledItems;
-				putText(markupImage, ss.str(), textBoxTL,  FONT_HERSHEY_SIMPLEX, 1., Scalar::all(0), 3, CV_AA);
-				putText(markupImage, ss.str(), textBoxTL,  FONT_HERSHEY_SIMPLEX, 1., boxColor, 2, CV_AA);
+				textBoxTL = Point(endOfField + 5, (int)avgY - 5);
 			}
+			if(field.isMember("markup_location")){
+				textBoxTL = Point(field["markup_location"]["x"].asInt(), field["markup_location"]["y"].asInt());
+			}
+			stringstream ss;
+			ss << field.get("value", "");
+			putText(markupImage, ss.str(), textBoxTL,
+			        FONT_HERSHEY_SIMPLEX, 1., Scalar::all(0), 3, CV_AA);
+			putText(markupImage, ss.str(), textBoxTL,
+			        FONT_HERSHEY_SIMPLEX, 1., boxColor, 2, CV_AA);
 		}
 		
 	}
 	return true;
 }
-/*
-//DEPRECATED?
-//Makes a JSON file that contains only the fieldnames and their corresponding Item counts.
-bool MarkupForm::outputFieldCounts(const char* ItemVals, const char* outputPath){
-	return false; //I don't think this gets used.
-	Json::Value bvRoot;
-	
-	if( !parseJsonFromFile(ItemVals, bvRoot) ) return false;
-	
-	Json::Value fields = bvRoot["fields"];
-	for ( size_t i = 0; i < fields.size(); i++ ) {
-
-		Json::Value field = fields[i];
-		Json::Value segments = field["segments"];
-		int counter = 0;
-		for ( size_t j = 0; j < segments.size(); j++ ) {
-			
-			Json::Value segment = segments[j];
-			const Json::Value Items = segment["Items"];
-			
-			for ( size_t k = 0; k < Items.size(); k++ ) {
-				const Json::Value Item = Items[k];
-				if(Item["value"].asInt()){
-					counter++;
-				}
-			}
-		}
-		field["count"] = counter;
-		field.removeMember("segments");
-	}
-	
-	ofstream outfile(outputPath, ios::out | ios::binary);
-	outfile << bvRoot;
-	outfile.close();
-	return true;
-}
-*/
 //Marks up formImage based on the specifications of a Item-vals JSON file at the given path.
 //Then output the form to the given locaiton.
 bool MarkupForm::markupForm(const char* markupPath, const char* formPath, const char* outputPath, bool drawCounts){
