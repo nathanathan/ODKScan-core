@@ -1,10 +1,13 @@
+/*
+ * include the headers required by the generated cpp code
+ */
 %{
 #include "MarkupForm.h"
 %}
 
 %typemap(javaimports) MarkupForm "
 
-/** MarkupForm - for marking up form
+/** MarkupForm - This class is used to mark up form images with the JSON output.
 */"
 
-%include "core/MarkupForm.h"
+%include "ODKScan-core/src/MarkupForm.h"
