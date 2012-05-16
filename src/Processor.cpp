@@ -504,7 +504,7 @@ bool writeFormImage(const char* outputPath) {
 //TODO: If the wrong path is specified this causes a freeze which I should fix.
 bool loadFeatureData(const char* templatePathArg) {
 	try{
-		string templatePath(templatePathArg);
+		string templatePath = addSlashIfNeeded(templatePathArg);
 		aligner.loadFeatureData(templatePath + "form.jpg",
 		                        templatePath + "template.json",
 		                        templatePath + "cached_features.yml");
