@@ -29,8 +29,6 @@ class Aligner
 	
 		Aligner();
 		
-		void loadFeatureData(const std::string& templPath) throw(cv::Exception);
-		//This version of load features data doesn't make assumptions about the paths/extensions:
 		void loadFeatureData(const std::string& imagePath,
 		                     const std::string& jsonPath, const std::string& featuresFile) throw(cv::Exception);
 		
@@ -41,7 +39,7 @@ class Aligner
 		
 		//Returns the index of the feature data to use
 		//alignFormImage will default to using the last index detected
-		size_t detectForm() const;
+		size_t detectForm() const throw(cv::Exception);
 		
 		void alignFormImage( cv::Mat& aligned_image,
 		                     const cv::Size& aligned_image_sz,
