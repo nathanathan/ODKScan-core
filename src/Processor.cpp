@@ -229,15 +229,6 @@ Json::Value segmentFunction(const Json::Value& segmentTemplate) {
 			segmentImg = alignedSegment;
 			
 			segmentJsonOut["quad"] = quadToJsonArray( quad, offset );
-			/*
-			if(inputType == "classifier"){
-				segBubbleLocs = getBubbleLocations(*classifier, segmentImg, segmentTemplate["items"], DO_BUBBLE_ALIGNMENT);
-				bubbleVals = classifyBubbles( segmentImg, segBubbleLocs, *classifier );
-				segmentJsonOut["bubbles"] = genBubblesJson( bubbleVals, segBubbleLocs, 
-					                                    expandedRect.tl(), 
-				                                            segmentTemplate["bubble_labels"],
-				                                            transformation.inv() );
-			}*/
 		}
 		else{
 			#ifdef DEBUG_PROCESSOR
@@ -252,13 +243,6 @@ Json::Value segmentFunction(const Json::Value& segmentTemplate) {
 	else {
 		segmentImg = formImage(segmentRect);
 		segmentJsonOut["quad"] = quadToJsonArray(rectToQuad( segmentRect ));
-		/*
-		else if(inputType == "classifier"){
-			segBubbleLocs = getBubbleLocations(*classifier, segmentImg,
-			                                   segmentTemplate["items"], false);
-			bubbleVals = classifyBubbles( segmentImg, segBubbleLocs, *classifier );
-			segmentJsonOut["bubbles"] = genBubblesJson( bubbleVals, segBubbleLocs, segmentRect.tl(), segmentTemplate["bubble_labels"]);
-		}*/
 	}
 
 	//Do classification stuff:
@@ -315,7 +299,8 @@ Json::Value segmentFunction(const Json::Value& segmentTemplate) {
 		segmentName = segmentTemplate["name"].asString() + "_image_" +
 		              intToStr(segmentTemplate.get("index", 0).asInt()) + ".jpg";
 		imwrite(segmentOutPath + segmentName, segment_out);
-		segmentJsonOut["imagePath"] = segmentOutPath + segmentName;
+		segmentJsonOut["imagePath"] = segmentOutPath + segmentName;//TODO: Remove this.
+		segmentJsonOut["image_path"] = segmentJsonOut["imagePath"];
 	}
 	catch(...){
 		LOGI(("Could not output segment to: " + segmentOutPath+segmentName).c_str());
@@ -353,10 +338,7 @@ Json::Value fieldFunction(const Json::Value& field){
 }
 Json::Value formFunction(const Json::Value& templateRoot){
 	Json::Value outForm = super::formFunction(templateRoot);
-	outForm["form_scale"] = Json::Value(SCALEPARAM);
-	outForm["templatePath"] = Json::Value(templPath);
-	//TODO: replace templatePath instance with templateDir
-	outForm["template_dir"] = Json::Value(templPath);
+	outForm["form_scale"] = SCALEPARAM;
 	return outForm;
 }
 
@@ -364,19 +346,15 @@ public:
 
 ProcessorImpl(const string& appRootDir) : appRootDir(string(appRootDir)) {}
 
-//The template is persistent because it is used for both alignment and processing.
-bool setTemplate(const char* templatePath) {
+bool setTemplate(const char* templatePathArg) {
 	#ifdef DEBUG_PROCESSOR
 		cout << "setting template..." << endl;
 	#endif
-	templPath = string(templatePath);
-	//We don't need a file extension so this removes it if one is provided.
-	if(templPath.find(".") != string::npos){
-		templPath = templPath.substr(0, templPath.find_last_of("."));
-	}
-	
-	if(!parseJsonFromFile(templPath + ".json", root)) return false;
-	return true;
+	//TODO: Remove templPath variable?
+	templPath = addSlashIfNeeded(templatePathArg);
+	bool success = parseJsonFromFile(templPath + "template.json", root);
+	//root["template_path"] = templPath;
+	return success;
 }
 bool loadFormImage(const char* imagePath, bool undistort) {
 	#ifdef DEBUG_PROCESSOR
@@ -527,15 +505,9 @@ bool writeFormImage(const char* outputPath) {
 bool loadFeatureData(const char* templatePathArg) {
 	try{
 		string templatePath(templatePathArg);
-		if(*templatePath.rbegin() != '/'){
-			//Eventually this will be deprecated
-			aligner.loadFeatureData(templatePath);
-		}
-		else{
-			aligner.loadFeatureData(templatePath + "form.jpg",
-			                        templatePath + "template.json",
-			                        templatePath + "cached_features.yml");
-		}
+		aligner.loadFeatureData(templatePath + "form.jpg",
+		                        templatePath + "template.json",
+		                        templatePath + "cached_features.yml");
 	}
 	catch(cv::Exception& e){
 		LOGI(e.what());

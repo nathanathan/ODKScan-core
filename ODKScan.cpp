@@ -55,8 +55,8 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	
-	if( !myProcessor.setTemplate((templatePath + "template.json").c_str()) ) {
-		cout << "\E[31m" <<  "Could not set template. Arg: " << "\e[0m" << templatePath + "template.json" << endl;
+	if( !myProcessor.setTemplate(templatePath.c_str()) ) {
+		cout << "\E[31m" <<  "Could not set template. Arg: " << "\e[0m" << templatePath << endl;
 		return 1;
 	}
 	

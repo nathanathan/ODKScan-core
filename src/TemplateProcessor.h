@@ -27,5 +27,4 @@ class TemplateProcessor
 	virtual ~TemplateProcessor(){}
 };
 
-bool parseJsonFromFile(const char* filePath, Json::Value& myRoot);
 bool parseJsonFromFile(const std::string& filePath, Json::Value& myRoot);

@@ -5,18 +5,21 @@
 
 using namespace std;
 
-bool parseJsonFromFile(const char* filePath, Json::Value& myRoot) {
+bool parseJsonFromFile(const string& filePath, Json::Value& myRoot) {
 	ifstream JSONin;
 	Json::Reader reader;
 	
-	JSONin.open(filePath, ifstream::in);
+	JSONin.open(filePath.c_str(), ifstream::in);
 	bool parse_successful = reader.parse( JSONin, myRoot );
 	
 	JSONin.close();
-	return parse_successful;
-}
-bool parseJsonFromFile(const string& filePath, Json::Value& myRoot) {
-	return parseJsonFromFile(filePath.c_str(), myRoot);
+	if(parse_successful){
+		return true;
+	}
+	else{
+		cout << reader.getFormatedErrorMessages() << endl;
+	}
+	return false;
 }
 //inheritMembers makes the child value inherit the members that it does not override from the specified parent json value.
 //The parent is copied so it can be written over, while the child is passed in and returned with added members by refrence.
