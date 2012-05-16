@@ -29,8 +29,10 @@ class Aligner
 	
 		Aligner();
 		
-		//Potential efficiency gains by loading descriptors and not keypoints.
 		void loadFeatureData(const std::string& templPath) throw(cv::Exception);
+		//This version of load features data doesn't make assumptions about the paths/extensions:
+		void loadFeatureData(const std::string& imagePath,
+		                     const std::string& jsonPath, const std::string& featuresFile) throw(cv::Exception);
 		
 		//This will be a bit slow because it resizes the image and
 		//computes its features and descriptors.

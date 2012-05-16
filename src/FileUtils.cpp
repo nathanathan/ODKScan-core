@@ -20,6 +20,13 @@ extern "C" {
 
 using namespace std;
 
+string addSlashIfNeeded(const string& str){
+	if(*str.rbegin() != '/'){
+		return str + "/";
+	}
+	return str;
+}
+
 // helper function that recursively searches directories for files
 static void HandleDir(char *dirpath, DIR *d, vector<string> &filenames);
 

@@ -22,11 +22,9 @@ int main(int argc, char *argv[]) {
 		return 0;
 	}
 
-	string templatePath(argv[1]);
+	string templatePath = addSlashIfNeeded(argv[1]);
 	string inputImage(argv[2]);
-	string outputDir(argv[3]);
-	//This code ensures the out dir end with a '/'
-	if(outputDir[outputDir.size() - 1] != '/') outputDir.append("/");
+	string outputDir = addSlashIfNeeded(argv[3]);
 
 	string expectedJsonFile = argc > 4 ? string(argv[4]) : "";
 
@@ -57,8 +55,8 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	
-	if( !myProcessor.setTemplate(templatePath.c_str()) ) {
-		cout << "\E[31m" <<  "Could not set template. Arg: " << "\e[0m" << templatePath << endl;
+	if( !myProcessor.setTemplate((templatePath + "template.json").c_str()) ) {
+		cout << "\E[31m" <<  "Could not set template. Arg: " << "\e[0m" << templatePath + "template.json" << endl;
 		return 1;
 	}
 	

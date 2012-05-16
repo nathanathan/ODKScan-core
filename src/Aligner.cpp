@@ -355,6 +355,89 @@ void Aligner::loadFeatureData(const string& templPath) throw(cv::Exception) {
 	templDescriptorsVec.push_back(templDescriptors);
 	templImageSizeVec.push_back(templImageSize);
 }
+void Aligner::loadFeatureData(const string& imagePath, const string& jsonPath, const string& featuresFile) throw(cv::Exception) {
+
+	vector<KeyPoint> templKeypoints;
+	Mat templDescriptors;
+	Size templImageSize;
+
+	try{
+		#ifdef ALWAYS_COMPUTE_TEMPLATE_FEATURES
+			CV_Error(CV_StsError, "Always compute template features is on.");
+		#endif
+		loadFeatures( featuresFile, templImageSize, templKeypoints, templDescriptors );
+	}
+	catch( cv::Exception& e ) {
+	
+		cout << e.what() << endl;
+		LOGI("Creating new feature data:");
+		
+		if(detector.empty() || descriptorExtractor.empty())
+			CV_Error(CV_StsError, "Cound not create detector/extractor.");
+		
+		Mat templImage, temp;
+		templImage = imread( imagePath, 0 );
+		if(templImage.empty())
+			CV_Error(CV_StsError, "Template image not found.");
+
+		//Read the template json and generate a mask:
+		//TODO: Generate the mask outside of this class?
+		MaskGenerator g;
+		Mat mask = g.generate(jsonPath);
+		if(mask.empty()) CV_Error(CV_StsError, "Could not create mask. There might be a problem with the template.");
+		/*
+		#ifdef MASK_CENTER_AMOUNT
+			Rect roi = resizeRect(Rect(Point(0,0), templImage.size()), MASK_CENTER_AMOUNT);
+			rectangle(mask, roi.tl(), roi.br(), Scalar::all(0), -1);
+		#endif
+		*/
+		
+		//Resize the template image to the mask size
+		//which is the size specified in the template json.
+		//TODO: Get standard image size from average template image size?
+		templImageSize = mask.size();
+		resize(templImage, temp, templImageSize, 0, 0, INTER_AREA);
+		templImage.release();
+		templImage = temp;
+		
+		//debugShow(templImage & mask);
+
+		/*
+		#ifdef DEBUG_ALIGN_IMAGE
+			cout << "Template image preprocessing:" << endl;
+		#endif
+		adaptiveThreshold(temp, templImage, 255, ADAPTIVE_THRESH_GAUSSIAN_C, THRESH_BINARY, 9, 15);
+		equalizeHist(temp, templImage);
+		*/
+		
+		#ifdef DEBUG_ALIGN_IMAGE
+			cout << "Extracting keypoints from template image..." << endl;
+		#endif
+
+		detector->detect( templImage, templKeypoints, mask );
+
+		#ifdef DEBUG_ALIGN_IMAGE
+			cout << "\t" << templKeypoints.size() << " points" << endl;
+			cout << "Computing descriptors for keypoints from template image..." << endl;
+		#endif
+		
+		descriptorExtractor->compute( templImage, templKeypoints, templDescriptors );
+		cout << featuresFile << endl;
+
+		saveFeatures(featuresFile, templImageSize, templKeypoints, templDescriptors);
+	}
+	#ifdef SHOW_MATCHES_WINDOW
+		{
+		Mat templImage, temp;
+		templImage = imread( imagePath, 0 );
+		resize(templImage, temp, templImageSize, 0, 0, INTER_AREA);
+		templateImages.push_back( temp );
+		}
+	#endif
+	templKeypointsVec.push_back(templKeypoints);
+	templDescriptorsVec.push_back(templDescriptors);
+	templImageSizeVec.push_back(templImageSize);
+}
 size_t Aligner::detectForm() const{
 	//TODO: Make this code unterrible
 	LOGI("Detect from");

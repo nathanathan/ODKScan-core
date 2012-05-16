@@ -98,7 +98,7 @@ private:
 
 	string templPath;
 	string appRootDir;
-	string imageDir;
+	//string imageDir;
 
 	#ifdef TIME_IT
 		clock_t init;
@@ -355,6 +355,8 @@ Json::Value formFunction(const Json::Value& templateRoot){
 	Json::Value outForm = super::formFunction(templateRoot);
 	outForm["form_scale"] = Json::Value(SCALEPARAM);
 	outForm["templatePath"] = Json::Value(templPath);
+	//TODO: replace templatePath instance with templateDir
+	outForm["template_dir"] = Json::Value(templPath);
 	return outForm;
 }
 
@@ -374,10 +376,6 @@ bool setTemplate(const char* templatePath) {
 	}
 	
 	if(!parseJsonFromFile(templPath + ".json", root)) return false;
-	
-	//JsonOutput["template_path"] = templPath;
-	//trainClassifier(JsonOutput.get("training_image_directory", "").asString());
-	
 	return true;
 }
 bool loadFormImage(const char* imagePath, bool undistort) {
@@ -423,11 +421,10 @@ bool loadFormImage(const char* imagePath, bool undistort) {
 		remap(formImage, temp, map1, map2, INTER_LINEAR);
 		formImage = temp;
 	}
-
+/*
 	string path = string(imagePath);
 	imageDir = path.substr(0, path.find_last_of("/") + 1);
-	//JsonOutput["image_path"] = imagePath;
-	
+*/	
 	#ifdef TIME_IT
 		LOGI("LoadFormImage time: ");
 		ostringstream ss;
@@ -527,9 +524,18 @@ bool writeFormImage(const char* outputPath) {
 	return imwrite(outputPath, formImage);
 }
 //TODO: If the wrong path is specified this causes a freeze which I should fix.
-bool loadFeatureData(const char* templatePath) {
+bool loadFeatureData(const char* templatePathArg) {
 	try{
-		aligner.loadFeatureData(templatePath);
+		string templatePath(templatePathArg);
+		if(*templatePath.rbegin() != '/'){
+			//Eventually this will be deprecated
+			aligner.loadFeatureData(templatePath);
+		}
+		else{
+			aligner.loadFeatureData(templatePath + "form.jpg",
+			                        templatePath + "template.json",
+			                        templatePath + "cached_features.yml");
+		}
 	}
 	catch(cv::Exception& e){
 		LOGI(e.what());
@@ -542,22 +548,15 @@ int detectForm(){
 	try{
 		LOGI("Detecting form...");
 		aligner.setImage(formImage);
-		formIdx = aligner.detectForm();
+		formIdx = (int)aligner.detectForm();
 	}
 	catch(cv::Exception& e){
 		LOGI(e.what());
 		return -1;
 	}
-	return (int)formIdx;
+	return formIdx;
 }
 };
-
-string addSlashIfNeeded(const string& str){
-	if(*str.rbegin() != '/'){
-		return str + "/";
-	}
-	return str;
-}
 
 /* This stuff hooks the Processor class up to the implementation class: */
 Processor::Processor() : processorImpl(new ProcessorImpl("")){

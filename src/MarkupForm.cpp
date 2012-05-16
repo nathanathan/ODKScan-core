@@ -1,8 +1,6 @@
-//TODO: renames this since it does more than just marking up forms now.
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-//#include <opencv2/legacy/compat.hpp> //I'm not sure if I need this
 
 #include <json/json.h>
 
@@ -13,8 +11,6 @@
 #include "Addons.h"
 #include "AlignmentUtils.h"
 #include "TemplateProcessor.h"
-
-//#define SHOW_MIN_ERROR_CUT
 
 using namespace std;
 using namespace cv;
