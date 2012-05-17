@@ -19,7 +19,6 @@ public class JSONUtils {
 	//Prevent instantiations
 	private JSONUtils(){}
 	
-	
 	private static JSONObject inheritFrom(JSONObject child, JSONObject parent) throws JSONException {
 		Iterator<String> propertyIterator = parent.keys();
 		while(propertyIterator.hasNext()) {
@@ -28,7 +27,6 @@ public class JSONUtils {
 				child.put(currentProperty, parent.get(currentProperty));
 			}
 		}
-		// TODO Auto-generated method stub
 		return child;
 	}
 	/**
@@ -182,26 +180,4 @@ public class JSONUtils {
 		}
 		return bubbleCounts;
 	}
-	/**
-	 * Search over an object array for the object with the given property value.
-	 * @param fields
-	 * @param property
-	 * @param value
-	 * @return
-	 */
-	/*
-	public static JSONObject getObjectWithPropertyValue(JSONArray objectArray, String property, String value) {
-		int arrayLength = objectArray.length();
-		for(int i = 0; i < arrayLength; i++){
-			try {
-				//Log.i("mScan", "Prop: " + objectArray.getJSONObject(i).getString(property).replaceAll(" ", "_"));
-				if(objectArray.getJSONObject(i).getString(property).replaceAll(" ", "_").equals(value)){
-					return objectArray.getJSONObject(i);
-				}
-			} catch (JSONException e) {
-				continue;
-			}
-		}
-		return null;
-	}*/
 }

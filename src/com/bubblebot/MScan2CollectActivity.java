@@ -9,7 +9,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.Iterator;
 
@@ -71,29 +70,18 @@ public class MScan2CollectActivity extends Activity {
 			String templatePath = extras.getString("templatePath");
 
 			if(jsonOutPath == null){ throw new Exception("jsonOutPath is null"); }
-			if(templatePath == null){
-				//////////////
-				Log.i(LOG_TAG, "templatePath is null. Getting template from jsonOut:");
-				//////////////
-				JSONObject formRoot = JSONUtils.parseFileToJSONObject(jsonOutPath);
-				if ( formRoot.has("templatePath") ){
-					templatePath = formRoot.getString("templatePath");
-				}
-				else{
-					throw new Exception("Could not identify template.");
-				}
-			}
+			if(templatePath == null){ throw new Exception("Could not identify template."); }
 			
 			Log.i(LOG_TAG,"jsonOutPath : " + jsonOutPath);
 			Log.i(LOG_TAG,"templatePath : " + templatePath);
 			
 			String templateName = new File(templatePath).getName();
-			String xFormPath = templatePath + ".xml";
-			String jsonPath = templatePath + ".json";
+			String jsonPath = new File(templatePath, "template.json").getPath();
+			String xFormPath = new File(templatePath, templateName + ".xml").getPath();
 			
 			//If there is no xform or the xform is out of date create it.
 			File xformFile = new File(xFormPath);
-			if( !xformFile.exists() || true || //REMOVE THIS
+			if( !xformFile.exists() || true || //TODO: REMOVE THIS
 				new File(jsonPath).lastModified() > xformFile.lastModified()){
 				//////////////
 				Log.i(LOG_TAG, "Unregistering old versions in collect.");
@@ -159,21 +147,6 @@ public class MScan2CollectActivity extends Activity {
 		}
 		
 	}
-    private static String xmlTagSanitize(String string) {
-    	return string.replaceAll(" ", "_")
-		             .replaceAll("[-.:']", "")
-		             .replace("0", "zero")
-		             .replace("1", "one")
-		             .replace("2", "two")
-		             .replace("3", "three")
-		             .replace("4", "four")
-		             .replace("5", "five")
-		             .replace("6", "six")
-		             .replace("7", "seven")
-		             .replace("8", "eight")
-		             .replace("9", "nine")
-		             .toLowerCase();
-	}
 	/**
      * Verify that the form is in collect and put it in collect if it is not.
      * @param filepath
@@ -220,48 +193,6 @@ public class MScan2CollectActivity extends Activity {
         while ( oIter.hasNext() )
             oBuilder.append( separator ).append( oIter.next() );
         return oBuilder.toString();
-    }
-	/**
-	 * Combines the values in a homogenous list of objects
-	 * Number are added
-	 * Booleans are treated as 1s and 0s and added
-	 * String are concatinated
-	 * @param pColl
-	 * @return combined value object which will be a number or String
-	 */
-	protected static Object combine( Iterable< ? extends Object > pColl )
-    {
-        Iterator< ? extends Object > oIter;
-        if ( pColl == null || ( !( oIter = pColl.iterator() ).hasNext() ) )
-            return "";
-        Object firstValue = oIter.next();
-    	if(firstValue instanceof Boolean){
-    		int output = ((Boolean) firstValue) ? 1 : 0;
-    		while ( oIter.hasNext() ){
-    			if( (Boolean)oIter.next() ){
-    				output++;
-    			}
-    		}
-    		return output;
-    	}
-    	else if(firstValue instanceof String){
-    		 StringBuilder oBuilder = new StringBuilder(String.valueOf(firstValue));
-    		while ( oIter.hasNext() ){
-    			oBuilder.append(oIter.next());
-    		}
-    		return oBuilder.toString();
-    	}
-    	else if(firstValue instanceof Number){
-    		double output = (Double)firstValue;
-    		while ( oIter.hasNext() ){
-    			output += (Double)oIter.next();
-    		}
-    		return output;
-    	}
-    	else{
-    		//Throw an exception?
-    		return null;
-    	}
     }
 	/**
 	 * Generates an instance of an xform at xFormPath from the JSON output file
@@ -314,26 +245,6 @@ public class MScan2CollectActivity extends Activity {
 		if(fieldsLength == 0){
 			throw new JSONException("There are no fields in the json output file.");
 		}
-		/*
-		//////////////
-		Log.i(LOG_TAG, "Adding missing name properties to the fields:");
-		//////////////
-		for (int i = 0; i < fieldsLength; i++) {
-			
-			JSONObject field = fields.optJSONObject(i);
-			
-			if (field.has("name")) {
-				continue;
-			}
-			else if (field.has("label")) {
-				field.put("name", xmlTagSanitize(field.getString("label")));
-				//fields.put(i, field);
-			}
-			else{
-				throw new JSONException("Field " + i + " has no name or label.");
-			}
-		}
-		*/
 		//////////////
 		Log.i(LOG_TAG, "Transfering the values from the JSON output into the xform instance:");
 		//////////////
@@ -364,45 +275,7 @@ public class MScan2CollectActivity extends Activity {
 			}
 			//Create instance element for field value:
 			Element fieldElement = instance.createElement("", fieldName);
-        	String type = field.optString("type");
-        	if( type.equals("input") ) {
-				ArrayList<Object> classifications = new ArrayList<Object>();
-				for(int j = 0; j < segments.length(); j++) {
-					JSONArray items = segments.getJSONObject(j).getJSONArray("items");
-					
-					if(items == null) continue;
-					
-    				for(int k = 0; k < items.length(); k++) {
-    					JSONObject item = items.getJSONObject(k);
-    					classifications.add(item.get("classification"));
-    				}
-				}
-        		fieldElement.addChild(Node.TEXT, "" + String.valueOf(combine(classifications)));
-			}
-			else if( type.equals("select") || type.equals("select1") ) {
-				ArrayList<String> itemValues = new ArrayList<String>();
-				for(int j = 0; j < segments.length(); j++) {
-					JSONArray items = segments.getJSONObject(j).getJSONArray("items");
-					
-					if(items == null) throw new JSONException("select types must have items.");
-					
-    				for(int k = 0; k < items.length(); k++) {
-    					JSONObject item = items.getJSONObject(k);
-    					if(item.getBoolean("classification")) {
-    						itemValues.add(item.getString("value"));
-    					}
-    				}
-				}
-				if(type.equals("select")) {
-					fieldElement.addChild(Node.TEXT, "" + join(itemValues, " "));
-				}
-				else {
-					fieldElement.addChild(Node.TEXT, "" + itemValues.get(0));
-				}
-			}
-			else {
-				throw new JSONException("Unknown type: " + type);
-			}
+			fieldElement.addChild(Node.TEXT, "" + field.optString("value"));
 			instance.addChild(Node.ELEMENT, fieldElement);
 		}
         
@@ -532,6 +405,7 @@ public class MScan2CollectActivity extends Activity {
         	JSONArray segments = field.getJSONArray("segments");
         	for(int j = 0; j < segments.length(); j++){
 	            writer.write("<bind nodeset=\"/data/" + fieldNames[i] + "_image_" + j + "\" " +
+	            		    "appearance=\"web\"" +
 				            "readonly=\"true()\" " + 
 				            "type=\"binary\"/>");
         	}
@@ -564,8 +438,8 @@ public class MScan2CollectActivity extends Activity {
         	}
             writer.write("</" + type + ">");
             for(int j = 0; j < segments.length(); j++){
-	            writer.write("<upload ref=\"/data/" + fieldNames[i] + "_image_" + j  + "\" "
-	    				+ "mediatype=\"image/*\" />");
+	            writer.write("<upload ref=\"/data/" + fieldNames[i] + "_image_" + j  + "\" " +
+	    		             "mediatype=\"image/*\" />");
             }
             writer.write("</group>");
         }

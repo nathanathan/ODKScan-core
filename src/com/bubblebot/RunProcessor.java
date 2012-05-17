@@ -1,5 +1,6 @@
 package com.bubblebot;
 
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
@@ -44,60 +45,72 @@ public class RunProcessor implements Runnable {
 		Message msg = new Message();
 		msg.arg1 = 0;//I'm using arg1 as a success indicator. A value of 1 means success.
 		msg.what = mode.ordinal();
-
-		if(mode == Mode.PROCESS) {
-			if( mProcessor.processForm( MScanUtils.getOutputPath(photoName) )) {
-				
-				MarkupForm.markupForm(  MScanUtils.getJsonPath(photoName),
-										MScanUtils.getAlignedPhotoPath(photoName),
-										MScanUtils.getMarkedupPhotoPath(photoName) );
-				msg.arg1 = 1;
-			}
-		}
-		else if(mode == Mode.LOAD) {
-			if( mProcessor.loadFormImage(MScanUtils.getAlignedPhotoPath(photoName), false) ) {
-				if(mProcessor.setTemplate( templatePaths[0] )) {
+		
+		try{
+			if(mode == Mode.PROCESS) {
+				if( mProcessor.processForm( MScanUtils.getOutputPath(photoName) )) {
+					
+					MarkupForm.markupForm(  MScanUtils.getJsonPath(photoName),
+											MScanUtils.getAlignedPhotoPath(photoName),
+											MScanUtils.getMarkedupPhotoPath(photoName) );
 					msg.arg1 = 1;
 				}
 			}
-		}
-		else if(mode == Mode.LOAD_ALIGN) {
-			
-			if(mProcessor.loadFormImage(MScanUtils.getPhotoPath(photoName), undistort)) {
-				Log.i("mScan","Loading: " + photoName);
-				
-				int formIdx = 0;
-				
-				for(int i = 0; i < templatePaths.length; i++){ 
-					//Log.i("mScan", "loadingFD: " + MScanUtils.appFolder + templatePaths[i]);
-					mProcessor.loadFeatureData(templatePaths[i]);
+			else if(mode == Mode.LOAD) {
+				if( mProcessor.loadFormImage(MScanUtils.getAlignedPhotoPath(photoName), false) ) {
+					if(mProcessor.setTemplate( templatePaths[0] )) {
+						msg.arg1 = 1;
+					}
 				}
+			}
+			else if(mode == Mode.LOAD_ALIGN) {
 				
-				if(templatePaths.length > 1) {
-					formIdx = mProcessor.detectForm();
-				}
-				
-				if(formIdx >= 0) {
-					if(mProcessor.setTemplate(templatePaths[formIdx])) {
-						Log.i("mScan","template loaded");
-						if( mProcessor.alignForm(MScanUtils.getAlignedPhotoPath(photoName), formIdx) ) {
-							msg.arg1 = 1;//indicates success
-							Log.i("mScan","aligned");
+				if(mProcessor.loadFormImage(MScanUtils.getPhotoPath(photoName), undistort)) {
+					Log.i("mScan","Loading: " + photoName);
+					
+					int formIdx = 0;
+					
+					for(int i = 0; i < templatePaths.length; i++){ 
+						Log.i("mScan", "loadingFD: " + templatePaths[i]);
+						if(mProcessor.loadFeatureData(templatePaths[i])){
+							new Exception("Could not load feature data from: " + templatePaths[i]);
+						}
+					}
+					
+					if(templatePaths.length > 1) {
+						formIdx = mProcessor.detectForm();
+					}
+					
+					if(formIdx >= 0) {
+						if(mProcessor.setTemplate(templatePaths[formIdx])) {
+							Log.i("mScan","template loaded");
+							if( mProcessor.alignForm(MScanUtils.getAlignedPhotoPath(photoName), formIdx) ) {
+								msg.arg1 = 1;//indicates success
+								Log.i("mScan","aligned");
+							}
+						}
+						else {
+							Log.i("mScan","Failed to set template.");
+							new Exception("Failed to set template.");
 						}
 					}
 					else {
-						Log.i("mScan","Faled to set template.");
+						Log.i("mScan","Failed to detect form.");
+						new Exception("Failed to detect form.");
 					}
+					//Indicate which template was used.
+					msg.arg2 = formIdx;
 				}
 				else {
-					Log.i("mScan","Faled to detect form.");
+					Log.i("mScan","Failed to load image: " + photoName);
+					new Exception("Failed to load image: " + photoName);
 				}
-				//Indicate which template was used.
-				msg.arg2 = formIdx;
 			}
-			else {
-				Log.i("mScan","Faled to load image: " + photoName);
-			}
+		}
+		catch(Exception e){
+			Bundle errorMessage = new Bundle();
+			errorMessage.putString("errorMessage", e.toString());
+			msg.setData(errorMessage);
 		}
 		handler.sendMessage(msg);
 	

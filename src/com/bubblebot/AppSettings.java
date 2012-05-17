@@ -23,9 +23,13 @@ public class AppSettings extends PreferenceActivity {
 
     		String[] templateNames = dir.list(new FilenameFilter() {
     			public boolean accept (File dir, String name) {
+    				//TODO: Make sure necessary files are present at some point
+    				return new File(dir,name).isDirectory();
+    				/*
     				if (new File(dir,name).isDirectory())
     					return false;
     				return name.toLowerCase().endsWith(".json");
+    				*/
     			}
     		});
             
