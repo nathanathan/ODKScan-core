@@ -45,36 +45,39 @@ Json::Value getFieldValue(const Json::Value& field){
 	for ( size_t i = 0; i < segments.size(); i++ ) {
 		const Json::Value segment = segments[i];
 		const Json::Value items = segment["items"];
+		if( items.isNull() ){
+			return Json::Value();
+		}
 		for ( size_t j = 0; j < items.size(); j++ ) {
 			const Json::Value classification = items[j].get("classification", false);
 			const Json::Value itemValue = items[j]["value"];
 			switch ( classification.type() )
 			{
-			case Json::stringValue:
-				output = Json::Value(output.asString() +
-				                     classification.asString());
-			break;
-			case Json::booleanValue:
-				if(!itemValue.isNull()){
-					if(classification.asBool()){
-						output = Json::Value(output.asString() +
-							             itemValue.asString());
+				case Json::stringValue:
+					output = Json::Value(output.asString() +
+						             classification.asString());
+				break;
+				case Json::booleanValue:
+					if(!itemValue.isNull()){
+						if(classification.asBool()){
+							output = Json::Value(output.asString() +
+									     itemValue.asString());
+						}
+						else{
+							output = Json::Value(output.asString());
+						}
+						break;
 					}
-					else{
-						output = Json::Value(output.asString());
-					}
-					break;
-				}
-				//Fall through and be counted as a 1 or 0
-			case Json::intValue:
-			case Json::uintValue:
-				output = Json::Value(output.asInt() + classification.asInt());
-			break;
-			case Json::realValue:
-				output = Json::Value(output.asDouble() + classification.asDouble());
-			break;
-			default:
-			break;
+					//Fall through and be counted as a 1 or 0
+				case Json::intValue:
+				case Json::uintValue:
+					output = Json::Value(output.asInt() + classification.asInt());
+				break;
+				case Json::realValue:
+					output = Json::Value(output.asDouble() + classification.asDouble());
+				break;
+				default:
+				break;
 			}
 		}
 	}
@@ -115,10 +118,6 @@ Ptr<PCA_classifier>& getClassifier(const Json::Value& classifier){
 	ostringstream ss;
 	ss << acutal_classifier_size.height << 'x' << acutal_classifier_size.width;
 	string key(training_data_uri + ss.str());
-
-	#ifdef DEBUG_PROCESSOR
-		cout << "classifierKey: " << key << endl;
-	#endif
 
 	ClassiferMap::iterator it = classifiers.find(key);
 /*
@@ -333,7 +332,10 @@ Json::Value fieldFunction(const Json::Value& field){
 
 	fieldJsonOut = super::fieldFunction(mutableField);
 	inheritMembers(fieldJsonOut, mutableField);
-	fieldJsonOut["value"] = getFieldValue(fieldJsonOut);
+	Json::Value value = getFieldValue(fieldJsonOut);
+	if(!value.isNull()){
+		fieldJsonOut["value"] = value;
+	}
 	return fieldJsonOut;
 }
 Json::Value formFunction(const Json::Value& templateRoot){
