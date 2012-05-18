@@ -294,16 +294,18 @@ Json::Value segmentFunction(const Json::Value& segmentTemplate) {
 	string segmentOutPath;
 	string segmentName;
 	try{
-		segmentOutPath = segmentTemplate.get("outputPath", 0).asString() + "segments/";
+		segmentOutPath = segmentTemplate.get("output_path", 0).asString() + "segments/";
 		segmentName = segmentTemplate["name"].asString() + "_image_" +
 		              intToStr(segmentTemplate.get("index", 0).asInt()) + ".jpg";
 		imwrite(segmentOutPath + segmentName, segment_out);
-		segmentJsonOut["imagePath"] = segmentOutPath + segmentName;//TODO: Remove this.
-		segmentJsonOut["image_path"] = segmentJsonOut["imagePath"];
+		segmentJsonOut["image_path"] = segmentOutPath + segmentName;
 	}
 	catch(...){
 		LOGI(("Could not output segment to: " + segmentOutPath+segmentName).c_str());
 	}
+	segmentJsonOut.removeMember("classifier");
+	segmentJsonOut.removeMember("index");
+	segmentJsonOut.removeMember("output_path");
 	return segmentJsonOut;
 }
 Json::Value fieldFunction(const Json::Value& field){
@@ -336,11 +338,15 @@ Json::Value fieldFunction(const Json::Value& field){
 	if(!value.isNull()){
 		fieldJsonOut["value"] = value;
 	}
+	fieldJsonOut.removeMember("items");
+	fieldJsonOut.removeMember("classifier");
 	return fieldJsonOut;
 }
 Json::Value formFunction(const Json::Value& templateRoot){
 	Json::Value outForm = super::formFunction(templateRoot);
 	outForm["form_scale"] = SCALEPARAM;
+	outForm.removeMember("items");
+	outForm.removeMember("classifier");
 	return outForm;
 }
 
@@ -472,7 +478,7 @@ bool processForm(const char* outputPath) {
 		        (int)!root << (int)formImage.empty() << endl;
 		return false;
 	}
-	root["outputPath"] = outputPath;
+	root["output_path"] = outputPath;
 	const Json::Value JsonOutput = formFunction(root);
 
 	#ifdef  DEBUG_PROCESSOR
@@ -480,11 +486,13 @@ bool processForm(const char* outputPath) {
 	#endif
 	
 	#ifdef  DEBUG_PROCESSOR
-		cout << "outputting bubble vals... " << endl;
+		cout << "outputting bubble vals..." << endl;
 	#endif
 
 	ofstream outfile((string(outputPath) + "output.json").c_str(), ios::out | ios::binary);
-	outfile << JsonOutput;
+	//outfile << JsonOutput;
+	Json::FastWriter writer;
+	outfile << writer.write( JsonOutput );
 	outfile.close();
 
 	#ifdef TIME_IT
