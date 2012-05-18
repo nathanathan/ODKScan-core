@@ -255,7 +255,7 @@ public class MScan2CollectActivity extends Activity {
 			//Add segment images
 			for(int j = 0; j < segments.length(); j++){
 				JSONObject segment = segments.getJSONObject(j);
-				String imagePath = segment.getString("imagePath");
+				String imagePath = segment.getString("image_path");
 				String imageName = new File(imagePath).getName();
 				//TODO: Generate this instead in case the backend code changes.
 				Element fieldImageElement = instance.createElement("", imageName.substring(0, imageName.length() - 4));
@@ -425,8 +425,9 @@ public class MScan2CollectActivity extends Activity {
         	//TODO: Make a xform_body_tag field instead?
         	//Advantage is simpler code and more flexibility for extending
         	if( type.equals("select") || type.equals("select1") ){
-
-                JSONArray items = field.getJSONArray("items");
+        		//Get the items from the first segment.
+        		JSONObject segment = segments.getJSONObject(0);
+                JSONArray items = segment.getJSONArray("items");
                 for(int j = 0; j < items.length(); j++){
                 	JSONObject item = items.getJSONObject(j);
 	                writer.write("<item>");

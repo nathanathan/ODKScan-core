@@ -134,6 +134,7 @@ public class AfterPhotoTaken extends Activity {
 			break;
 		case PROCESS:
 			builder.setTitle(getResources().getString(R.string.processing_form));
+			builder.setMessage("The first time you use a template this will be slow because the classifier is being trained.");
 			break;
 		default:
 			return null;

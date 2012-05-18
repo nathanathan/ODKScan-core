@@ -6,12 +6,14 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Date;
 import java.util.Iterator;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.json.JSONTokener;
 
 import android.util.Log;
 
@@ -109,6 +111,7 @@ public class JSONUtils {
 
 		return new JSONObject(text.toString());
 	}
+
 	public static JSONArray parseFileToJSONArray(String bvFilename) throws JSONException, IOException {
 		File jsonFile = new File(bvFilename);
 
