@@ -6,14 +6,12 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.Date;
 import java.util.Iterator;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.json.JSONTokener;
 
 import android.util.Log;
 
@@ -106,27 +104,9 @@ public class JSONUtils {
 		while((line = br.readLine()) != null) 
 		{
 			text.append(line);
-			text.append('\n');
 		}
 
 		return new JSONObject(text.toString());
-	}
-
-	public static JSONArray parseFileToJSONArray(String bvFilename) throws JSONException, IOException {
-		File jsonFile = new File(bvFilename);
-
-		//Read text from file
-		StringBuilder text = new StringBuilder();
-		BufferedReader br = new BufferedReader(new FileReader(jsonFile));
-		String line;
-
-		while ((line = br.readLine()) != null) 
-		{
-			text.append(line);
-			text.append('\n');
-		}
-
-		return new JSONArray(text.toString());
 	}
 	public static JSONObject[] JSONArray2Array(JSONArray jsonArray) throws JSONException {
 		JSONObject[] output = new JSONObject[jsonArray.length()];
