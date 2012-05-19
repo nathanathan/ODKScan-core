@@ -436,8 +436,8 @@ void Aligner::alignFormImage(Mat& aligned_img, const Size& aligned_img_sz, size_
 	vector<Point2f> points2; KeyPoint::convert(templKeypoints, points2, trainIdxs);
 
 	Point3d sc = Point3d( ((double)aligned_img_sz.width) / templImageSize.width,
-						  ((double)aligned_img_sz.height) / templImageSize.height,
-						  1.0);
+	                      ((double)aligned_img_sz.height) / templImageSize.height,
+	                      1.0);
 	
 	if( points1.size() < 4 || points2.size() < 4) CV_Error(CV_StsError, "Not enough matches.");
 	

@@ -36,8 +36,8 @@ int main(int argc, char *argv[]) {
 	mkdir((outputPath + "segments").c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
 	string alignedFormOutfile(outputPath  + "aligned.jpg");
-	string markedupFormOutfile(outputPath + "markedup.jpg");
-	string jsonOutfile(outputPath + "output.json");
+	//string markedupFormOutfile(outputPath + "markedup.jpg");
+	//string jsonOutfile(outputPath + "output.json");
 	
 	cout << "Processing image: " << inputImage << endl;
 
@@ -67,13 +67,15 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	
-	if( !myProcessor.processForm(outputPath.c_str()) ) {
-		cout << "\E[31m" << "Could not process. Arg: " << "\e[0m" << jsonOutfile << endl;
+	if( !myProcessor.processForm(outputPath.c_str(), true) ) {
+		cout << "\E[31m" << "Could not process. Arg: " << "\e[0m" << outputPath << endl;
 		return 1;
 	}
+/*
 	if( !MarkupForm::markupForm(jsonOutfile.c_str(), alignedFormOutfile.c_str(), markedupFormOutfile.c_str()) ) {
 		cout << "\E[31m" <<  "Could not markup. Arg: " << "\e[0m" << markedupFormOutfile  << endl;
 		return 1;
 	}
+*/
 	return 0;
 }

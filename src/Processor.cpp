@@ -83,7 +83,108 @@ Json::Value getFieldValue(const Json::Value& field){
 	}
 	return output;
 }
+Mat markupForm(const Json::Value& bvRoot, const Mat& inputImage, bool drawCounts) {
+	Mat markupImage;
+	cvtColor(inputImage, markupImage, CV_GRAY2RGB);
+	const Json::Value fields = bvRoot["fields"];
+	for ( size_t i = 0; i < fields.size(); i++ ) {
+		const Json::Value field = fields[i];
+		
+		float avgWidth = 0;
+		float avgY = 0;
+		int endOfField = 0;
 
+		Scalar boxColor = getColor(int(i));
+	
+		const Json::Value segments = field["segments"];
+		
+		for ( size_t j = 0; j < segments.size(); j++ ) {
+			const Json::Value segment = segments[j];
+
+			//Draw segment rectangles:
+			vector<Point> quad = orderCorners( jsonArrayToQuad(segment["quad"]) );
+			const Point* p = &quad[0];
+			int n = (int) quad.size();
+			polylines(markupImage, &p, &n, 1, true, boxColor, 2, CV_AA);
+			
+			if( segment.get("notFound", false).asBool() ) {
+				polylines(markupImage, &p, &n, 1, true, .25 * boxColor, 2, CV_AA);
+			}
+			else{
+				polylines(markupImage, &p, &n, 1, true, boxColor, 2, CV_AA);
+			}
+			
+			//Compute some stuff to figure out where to draw output on the form
+			avgWidth += norm(quad[0] - quad[1]);
+			if(endOfField < quad[1].x){
+				endOfField = quad[1].x;
+			}
+			avgY += quad[3].y;// + quad[1].y + quad[2].y + quad[3].y) / 4;
+			
+
+			const Json::Value items = segment["items"];
+			for ( size_t k = 0; k < items.size(); k++ ) {
+				const Json::Value Item = items[k];
+				Point ItemLocation(jsonToPoint(Item["absolute_location"]));
+				Json::Value classification = Item["classification"];
+
+				if(classification.isBool()){
+					circle(markupImage, ItemLocation, 2, 	getColor(classification.asBool()), 1, CV_AA);
+				}
+				else if(classification.isInt()){
+					circle(markupImage, ItemLocation, 2, 	getColor(classification.asInt()), 1, CV_AA);
+				}
+				else{
+					cout << "Don't know what this is" << endl;
+				}
+				
+			}
+		}
+		if(field.isMember("value")){
+			Point textBoxTL;
+			if(drawCounts && avgWidth > 0){
+				avgWidth /= segments.size();
+				avgY /= segments.size();
+				textBoxTL = Point(endOfField + 5, (int)avgY - 5);
+			}
+			if(field.isMember("markup_location")){
+				textBoxTL = Point(field["markup_location"]["x"].asInt(), field["markup_location"]["y"].asInt());
+			}
+			stringstream ss;
+			ss << field.get("value", "");
+			putText(markupImage, ss.str(), textBoxTL,
+			        FONT_HERSHEY_SIMPLEX, 1., Scalar::all(0), 3, CV_AA);
+			putText(markupImage, ss.str(), textBoxTL,
+			        FONT_HERSHEY_SIMPLEX, 1., boxColor, 2, CV_AA);
+		}
+	}
+	return markupImage;
+}
+Json::Value minifyJsonOutput(const Json::Value& JsonOutput){
+	Json::Value minifiedOutput;
+	Json::Value minifiedOutputFields;
+	const Json::Value fields = JsonOutput["fields"];
+	for ( size_t i = 0; i < fields.size(); i++ ) {
+		Json::Value minifiedOutputField;
+		Json::Value minifiedOutputSegments;
+		const Json::Value field = fields[i];
+		const Json::Value segments = field["segments"];
+		for ( size_t j = 0; j < segments.size(); j++ ) {
+			Json::Value minifiedOutputSegment;
+			const Json::Value segment = segments[j];
+			minifiedOutputSegment["image_path"] = segment["image_path"];
+			minifiedOutputSegments.append(minifiedOutputSegment);
+		}
+		minifiedOutputField["segments"] = minifiedOutputSegments;
+		if ( field.isMember("value") ) {
+			minifiedOutputField["value"] = field["value"];
+		}
+		minifiedOutputField["name"] = field["name"];
+		minifiedOutputFields.append(minifiedOutputField);
+	}
+	minifiedOutput["fields"] = minifiedOutputFields;
+	return minifiedOutput;
+}
 class Processor::ProcessorImpl : public TemplateProcessor
 {
 private:
@@ -465,7 +566,7 @@ bool alignForm(const char* alignedImageOutputPath, size_t formIdx) {
 	#endif
 	return writeFormImage(alignedImageOutputPath);
 }
-bool processForm(const char* outputPath) {
+bool processForm(const string& outputPath, bool minifyJson) {
 	#ifdef  DEBUG_PROCESSOR
 		cout << "Processing form" << endl;
 	#endif
@@ -488,11 +589,19 @@ bool processForm(const char* outputPath) {
 	#ifdef  DEBUG_PROCESSOR
 		cout << "outputting bubble vals..." << endl;
 	#endif
-
-	ofstream outfile((string(outputPath) + "output.json").c_str(), ios::out | ios::binary);
-	//outfile << JsonOutput;
-	Json::FastWriter writer;
-	outfile << writer.write( JsonOutput );
+	
+	//Create the marked up image:
+	imwrite(outputPath + "markedup.jpg", markupForm(JsonOutput, formImage, true));
+	
+	//Create the json output file
+	ofstream outfile((outputPath + "output.json").c_str(), ios::out | ios::binary);
+	if(minifyJson){
+		Json::FastWriter writer;
+		outfile << writer.write( minifyJsonOutput(JsonOutput) );
+	}
+	else{
+		outfile << JsonOutput;
+	}
 	outfile.close();
 
 	#ifdef TIME_IT
@@ -505,13 +614,8 @@ bool processForm(const char* outputPath) {
 }
 //Writes the form image to a file.
 bool writeFormImage(const char* outputPath) {
-	//string path(outputPath);
-	//TODO: Make this create directory paths if one does not already exist
-	//		maybe make a function in addons to do that so it can be used for debug images as well.
-	//see http://stackoverflow.com/questions/675039/how-can-i-create-directory-tree-in-c-linux
 	return imwrite(outputPath, formImage);
 }
-//TODO: If the wrong path is specified this causes a freeze which I should fix.
 bool loadFeatureData(const char* templatePathArg) {
 	try{
 		string templatePath = addSlashIfNeeded(templatePathArg);
@@ -544,7 +648,7 @@ int detectForm(){
 Processor::Processor() : processorImpl(new ProcessorImpl("")){
 	LOGI("Processor successfully constructed.");
 }
-Processor::Processor(const char* appRootDir) : processorImpl(new ProcessorImpl(addSlashIfNeeded(string(appRootDir)))){
+Processor::Processor(const char* appRootDir) : processorImpl(new ProcessorImpl(addSlashIfNeeded(appRootDir))){
 	LOGI("Processor successfully constructed.");
 }
 bool Processor::loadFormImage(const char* imagePath, bool undistort){
@@ -563,8 +667,8 @@ bool Processor::alignForm(const char* alignedImageOutputPath, int formIdx){
 	if(formIdx < 0) return false;
 	return processorImpl->alignForm(alignedImageOutputPath, (size_t)formIdx);
 }
-bool Processor::processForm(const char* outPath) {
-	return processorImpl->processForm(outPath);
+bool Processor::processForm(const char* outputPath, bool minifyJson) {
+	return processorImpl->processForm(addSlashIfNeeded(outputPath), minifyJson);
 }
 bool Processor::writeFormImage(const char* outputPath) const{
 	return processorImpl->writeFormImage(outputPath);

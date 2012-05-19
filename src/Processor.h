@@ -5,22 +5,23 @@
 
 /*
 This class handles most of the JSON parsing and provides an interface to the image processing pipeline.
+TODO:
+I think this could be split into an alignment class and a classifier class.
+The tricky part is setTemplate, which sets the form width/height used in alignForm.
+I don't think this is necessairy, alignForm could get the width and height from loadFeatureData.
 */
 class Processor{
 	public:
-		//Note: Functions are specified in the order they should be invoked.
-		
-		//The constructor takes as an arguement a "root" path that all other paths are relative to.
-		//TODO: Make all other paths relative to appRootDir
+		//The constructor takes as an arguement a root path that it will look for training data and calibration data on.
 		//The default constructor sets the root path to ""
 		Processor();
 		Processor(const char* appRootDir);
-		bool loadFormImage(const char* imagePath, bool undistort = false);
+		bool loadFormImage(const char* imagePath, bool undistort = false);//TODO: Use a calibration data path instead of a boolean.
 		bool loadFeatureData(const char* templatePath);
 		int detectForm();
 		bool setTemplate(const char* templatePath);
 		bool alignForm(const char* alignedImageOutputPath, int templateIdx = 0);
-		bool processForm(const char* outPath);
+		bool processForm(const char* outputPath, bool minifyJson = false);
 		bool writeFormImage(const char* outputPath) const;
 
 	private:
