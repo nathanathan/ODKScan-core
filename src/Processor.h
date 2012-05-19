@@ -16,7 +16,7 @@ class Processor{
 		//The default constructor sets the root path to ""
 		Processor();
 		Processor(const char* appRootDir);
-		bool loadFormImage(const char* imagePath, bool undistort = false);//TODO: Use a calibration data path instead of a boolean.
+		bool loadFormImage(const char* imagePath, const char* calibrationFilePath = NULL);
 		bool loadFeatureData(const char* templatePath);
 		int detectForm();
 		bool setTemplate(const char* templatePath);

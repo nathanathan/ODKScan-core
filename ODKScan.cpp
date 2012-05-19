@@ -4,7 +4,6 @@ This is an executable wrapper for ODKScan.
 #include "Processor.h"
 #include "FileUtils.h"
 #include "StatCollector.h"
-#include "MarkupForm.h"
 
 #include <iostream>
 #include <string>
@@ -44,8 +43,8 @@ int main(int argc, char *argv[]) {
 	Processor myProcessor("assets/");
 	//TODO: Specify camera calibration somewhere else?
 	//template doesn't make sense because it a property of the input image.
-	#define DO_CAMERA_CALIBRATION false
-	if( !myProcessor.loadFormImage(inputImage.c_str(), DO_CAMERA_CALIBRATION)) {
+	#define CAMERA_CALIBRATION_FILE NULL
+	if( !myProcessor.loadFormImage(inputImage.c_str(), CAMERA_CALIBRATION_FILE)) {
 		cout << "\E[31m" <<  "Could not load. Arg: " << "\e[0m" << inputImage << endl;
 		return 1;
 	}

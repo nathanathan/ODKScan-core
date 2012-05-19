@@ -465,7 +465,7 @@ bool setTemplate(const char* templatePathArg) {
 	//root["template_path"] = templPath;
 	return success;
 }
-bool loadFormImage(const char* imagePath, bool undistort) {
+bool loadFormImage(const char* imagePath, const char* calibrationFilePath) {
 	#ifdef DEBUG_PROCESSOR
 		cout << "loading form image..." << flush;
 	#endif
@@ -487,16 +487,16 @@ bool loadFormImage(const char* imagePath, bool undistort) {
 		flip(temp,formImage, 1);
 	}
 
-	if(undistort){
+	if(calibrationFilePath){
 		Mat cameraMatrix, distCoeffs;
 		Mat map1, map2;
 		Size imageSize = formImage.size();
 		
-		String cameraCalibFile(appRootDir + "camera.yml");
+		//string calibPathString(calibrationFilePath);
 		
-		if( !fileExists(cameraCalibFile) ) return false;
+		if( !fileExists(calibrationFilePath) ) return false;
 		
-		FileStorage fs(cameraCalibFile, FileStorage::READ);
+		FileStorage fs(calibrationFilePath, FileStorage::READ);
 		fs["camera_matrix"] >> cameraMatrix;
 		fs["distortion_coefficients"] >> distCoeffs;
 		
@@ -651,8 +651,8 @@ Processor::Processor() : processorImpl(new ProcessorImpl("")){
 Processor::Processor(const char* appRootDir) : processorImpl(new ProcessorImpl(addSlashIfNeeded(appRootDir))){
 	LOGI("Processor successfully constructed.");
 }
-bool Processor::loadFormImage(const char* imagePath, bool undistort){
-	return processorImpl->loadFormImage(imagePath, undistort);
+bool Processor::loadFormImage(const char* imagePath, const char* calibrationFilePath){
+	return processorImpl->loadFormImage(imagePath, calibrationFilePath);
 }
 bool Processor::loadFeatureData(const char* templatePath){
 	return processorImpl->loadFeatureData(templatePath);
