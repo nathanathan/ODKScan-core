@@ -105,4 +105,7 @@ public class MScanUtils {
 		}
 		return sum;
 	}
+	public static String getCalibPath() {
+		return appFolder + "camera.yml";
+	}
 }

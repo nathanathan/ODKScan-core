@@ -48,16 +48,12 @@ public class RunProcessor implements Runnable {
 		
 		try{
 			if(mode == Mode.PROCESS) {
-				if( mProcessor.processForm( MScanUtils.getOutputPath(photoName) )) {
-					
-					MarkupForm.markupForm(  MScanUtils.getJsonPath(photoName),
-											MScanUtils.getAlignedPhotoPath(photoName),
-											MScanUtils.getMarkedupPhotoPath(photoName) );
+				if( mProcessor.processForm( MScanUtils.getOutputPath(photoName), true )) {
 					msg.arg1 = 1;
 				}
 			}
 			else if(mode == Mode.LOAD) {
-				if( mProcessor.loadFormImage(MScanUtils.getAlignedPhotoPath(photoName), false) ) {
+				if( mProcessor.loadFormImage(MScanUtils.getAlignedPhotoPath(photoName), null) ) {
 					if(mProcessor.setTemplate( templatePaths[0] )) {
 						msg.arg1 = 1;
 					}
@@ -65,7 +61,7 @@ public class RunProcessor implements Runnable {
 			}
 			else if(mode == Mode.LOAD_ALIGN) {
 				
-				if(mProcessor.loadFormImage(MScanUtils.getPhotoPath(photoName), undistort)) {
+				if(mProcessor.loadFormImage(MScanUtils.getPhotoPath(photoName), MScanUtils.getCalibPath())) {
 					Log.i("mScan","Loading: " + photoName);
 					
 					int formIdx = 0;
