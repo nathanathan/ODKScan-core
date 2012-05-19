@@ -43,9 +43,15 @@ All Android java activites are under the src/com/mScan/ folder:
 
 Cloning
 =======
-This project uses submodules so you will need to run something like this:
+
+This project uses submodules so you will need to run this after cloning::
 
   git submodule update --init --recursive
+
+And to update the submodules to their latest version do this::
+
+  git submodule foreach git pull
+
 
 Building the project
 ====================
