@@ -42,7 +42,9 @@ public class MScanUtils {
 	public static String getTrainingExampleDirPath() {
 		return appFolder + "training_examples/";
 	}
-
+	public static String getCalibPath() {
+		return appFolder + "camera.yml";
+	}
     public static void displayImageInWebView(WebView myWebView, String imagePath){
 		myWebView.getSettings().setCacheMode(WebSettings.LOAD_NO_CACHE);
 		myWebView.getSettings().setBuiltInZoomControls(true);
@@ -104,8 +106,5 @@ public class MScanUtils {
 			sum += numberArray[i].doubleValue();
 		}
 		return sum;
-	}
-	public static String getCalibPath() {
-		return appFolder + "camera.yml";
 	}
 }

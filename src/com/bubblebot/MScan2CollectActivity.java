@@ -255,15 +255,19 @@ public class MScan2CollectActivity extends Activity {
 			//Add segment images
 			for(int j = 0; j < segments.length(); j++){
 				JSONObject segment = segments.getJSONObject(j);
+				String imageName = fieldName + "_image_" + j;
+				Element fieldImageElement = instance.createElement("", imageName);
+				if(!segment.has("image_path") || segment.isNull("image_path") ){
+					fieldImageElement.addChild(Node.TEXT, "segmentNotAligned.jpg");
+					instance.addChild(Node.ELEMENT, fieldImageElement);
+					continue;
+				}
 				String imagePath = segment.getString("image_path");
-				String imageName = new File(imagePath).getName();
-				//TODO: Generate this instead in case the backend code changes.
-				Element fieldImageElement = instance.createElement("", imageName.substring(0, imageName.length() - 4));
 				fieldImageElement.addChild(Node.TEXT, new File(imagePath).getName());
 				instance.addChild(Node.ELEMENT, fieldImageElement);
 				//Copy segment image
 				InputStream fis = new FileInputStream(imagePath);
-				FileOutputStream fos = new FileOutputStream(instancePath + imageName);
+				FileOutputStream fos = new FileOutputStream(instancePath + new File(imagePath).getName());
 				// Transfer bytes from in to out
 				byte[] buf = new byte[1024];
 				int len;

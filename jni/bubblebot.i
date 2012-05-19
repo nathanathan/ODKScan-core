@@ -20,4 +20,3 @@
 %}
 
 %include "Processor.i"
-%include "MarkupForm.i"

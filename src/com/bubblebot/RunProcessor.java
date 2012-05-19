@@ -5,7 +5,6 @@ import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
 
-import com.bubblebot.jni.MarkupForm;
 import com.bubblebot.jni.Processor;
 /*
  * RunProcessor is used to run the image processing algorithms on a separate thread.
@@ -60,8 +59,8 @@ public class RunProcessor implements Runnable {
 				}
 			}
 			else if(mode == Mode.LOAD_ALIGN) {
-				
-				if(mProcessor.loadFormImage(MScanUtils.getPhotoPath(photoName), MScanUtils.getCalibPath())) {
+				//TODO: Enable undistortion
+				if( mProcessor.loadFormImage(MScanUtils.getPhotoPath(photoName), null) ) {
 					Log.i("mScan","Loading: " + photoName);
 					
 					int formIdx = 0;
