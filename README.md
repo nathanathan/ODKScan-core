@@ -3,13 +3,19 @@ ODKScan core
 
 ODKScan is a tool for extracting information from images of paper forms.
 It does optical mark recognition (so it can handle bubble/checkbox forms).
-This repo contains the backend code that is shared between the ODKScan web-app and Android app.
+This repo contains the backend code that is shared between
+[the ODKScan web-app](https://github.com/nathanathan/ODKScan_webapp)
+and [the ODKScan Android app](https://github.com/villagereach/mScan).
 
 Setup
 =====
 
 1. Install OpenCV
-   (install guide: http://opencv.willowgarage.com/wiki/InstallGuide)
+
+	Install guide: http://opencv.willowgarage.com/wiki/InstallGuide
+	
+	(If you run into any compile errors, disabling some of the features with cmake flags has helped me a couple times.)
+
 2. Set OPENCV_INCLUDES in the makefile. If you're using ubuntu you just need to do this:
 
 ==
