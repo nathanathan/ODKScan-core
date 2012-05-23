@@ -65,16 +65,11 @@ int main(int argc, char *argv[]) {
 		cout << "\E[31m" <<  "Could not align. Arg: " << "\e[0m" << alignedFormOutfile  << endl;
 		return 1;
 	}
-	
-	if( !myProcessor.processForm(outputPath.c_str(), true) ) {
+	#define MINIFY_OUTPUT false
+	if( !myProcessor.processForm(outputPath.c_str(), MINIFY_OUTPUT) ) {
 		cout << "\E[31m" << "Could not process. Arg: " << "\e[0m" << outputPath << endl;
 		return 1;
 	}
-/*
-	if( !MarkupForm::markupForm(jsonOutfile.c_str(), alignedFormOutfile.c_str(), markedupFormOutfile.c_str()) ) {
-		cout << "\E[31m" <<  "Could not markup. Arg: " << "\e[0m" << markedupFormOutfile  << endl;
-		return 1;
-	}
-*/
+
 	return 0;
 }
