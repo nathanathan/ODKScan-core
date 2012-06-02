@@ -113,6 +113,7 @@ public class BubbleBot extends Activity {
 	}
 
 	public void setupSpinner() {
+		/*
 		final String [] healthCenterNames = getResources().getStringArray(R.array.healthCenterNames);
 		Spinner spinny = (Spinner) findViewById(R.id.healthCenterSpinner);
 		ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, healthCenterNames);
@@ -138,6 +139,7 @@ public class BubbleBot extends Activity {
 			}
 			
 		});
+		*/
 	}
 	private boolean checkSDCard() {
 		//http://developer.android.com/guide/topics/data/data-storage.html#filesExternal

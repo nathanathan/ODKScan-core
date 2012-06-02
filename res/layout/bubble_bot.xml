@@ -6,19 +6,18 @@
     android:orientation="vertical">
 <TextView  
     style="@style/StandardFont"
-    android:textSize="60dip"
+    android:textSize="65dip"
     android:text="@string/app_name"
     android:textColor="#fff"
-    android:background="#025"
     android:layout_margin="5dp"/>
-<TextView  
+<!--<TextView      android:background="#025"
     style="@style/StandardFont"
     android:padding="20dp"
     android:text="@string/the_current_health_center_is"/>
 <Spinner
     android:id="@+id/healthCenterSpinner"
     style="@style/StandardFont"
-    android:layout_margin="3dp" />
+    android:layout_margin="3dp" />  -->
 <TableLayout 
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_marginTop="20dp"

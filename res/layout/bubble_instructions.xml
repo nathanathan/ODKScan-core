@@ -10,7 +10,7 @@
     style="@style/StandardFont"
     android:gravity="left"
     android:padding="3dp"
-    android:text="mScan uses computer vision to covert paper forms into digital information.">
+    android:text="ODK Scan uses computer vision to covert paper forms into digital information.">
 </TextView>
 <TextView  
     style="@style/StandardFont"
