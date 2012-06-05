@@ -148,7 +148,8 @@ public class AfterPhotoTaken extends Activity {
 	 * Updates the UI based on the result of the loading/alignment stage.
 	 * @param success
 	 */
-	public void updateUI(boolean success){
+	public void updateUI(boolean success, String errorMessage){
+		Log.i("mScan", "errorMessage:" + errorMessage);
 		if(success){
 			MScanUtils.displayImageInWebView((WebView)findViewById(R.id.webview),
 					MScanUtils.getAlignedPhotoPath(photoName));
@@ -167,6 +168,7 @@ public class AfterPhotoTaken extends Activity {
             	
             	RunProcessor.Mode mode = RunProcessor.Mode.values()[msg.what];
             	boolean success = (msg.arg1 == 1);
+            	String errorMessage = msg.getData().getString("errorMessage");
             	try{
             		dismissDialog(msg.what);
             	}
@@ -182,10 +184,9 @@ public class AfterPhotoTaken extends Activity {
 	    			double timeTaken = (double) (new Date().getTime() - startTime) / 1000;
 	    			Log.i("mScan", "Time taken:" + String.format("%.2f", timeTaken));
             	}
-            	
             	switch (mode) {
         		case LOAD:
-        			updateUI(success);
+        			updateUI(success, errorMessage);
         			break;
         		case LOAD_ALIGN:
 	        		if ( success ) {
@@ -194,7 +195,7 @@ public class AfterPhotoTaken extends Activity {
 	                    SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
 	            		settings.edit().putString(photoName, templatePaths[templatePathIdx]).commit();
 	        		}
-	        		updateUI(success);
+	        		updateUI(success, errorMessage);
         			break;
         		case PROCESS:
             		if ( success ) {

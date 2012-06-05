@@ -29,7 +29,7 @@
 <string name="could_not_register">Sorry, the form could not be registered.</string>
 
 <!-- Popup menu -->
-<string name ="export_to_ODK">Export to ODK</string>
+<string name ="export_to_ODK">Export to Collect</string>
 <string name="save_data">Save Data</string>
 <string name="display_data">Display Data</string>
 <string name="main_menu">Main Menu</string>

@@ -79,9 +79,9 @@ public class DisplayProcessedForm extends Activity {
 		Intent intent;
 		switch (item.getItemId()) {
 		case R.id.displayData:
-			intent = new Intent(getApplication(), DisplayProcessedData.class);
-			intent.putExtra("photoName", photoName);
-			startActivity(intent); 
+//			intent = new Intent(getApplication(), DisplayProcessedData.class);
+//			intent.putExtra("photoName", photoName);
+//			startActivity(intent); 
 			return true;
 		case R.id.uploadData:
 			return true;
@@ -93,7 +93,7 @@ public class DisplayProcessedForm extends Activity {
 			startActivity(intent);
 			return true;
 		case R.id.saveData:
-			saveData();
+			//saveData();
 			//TODO: Disable the button if this succeeds
 			return true;
 		case R.id.scanNewForm:
@@ -112,6 +112,7 @@ public class DisplayProcessedForm extends Activity {
      * Append the output to a CSV output file with the health center name included
      * The original output is not modified, and does not have any app specified data included in it.
      */
+	/*
 	private void saveData() {
 		//SharedPreferences settings = getSharedPreferences(getResources().getString(R.string.prefs_name), 0);
 		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
@@ -183,5 +184,5 @@ public class DisplayProcessedForm extends Activity {
 			e.printStackTrace();
 			Log.i("mScan", "IO excetion while saving data.");
 		}
-	}
+	}*/
 }

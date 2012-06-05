@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-	package="com.bubblebot" android:versionCode="116" android:versionName="1.16">
+	package="com.bubblebot" android:versionCode="119" android:versionName="1.19">
 	<application android:debuggable="false" android:icon="@drawable/icon"
 	    android:theme="@android:style/Theme.Light"
 		android:label="ODK Scan">
@@ -20,9 +20,8 @@
 
 		<activity 
 		    android:name="BubbleBot" 
-		    android:theme="@android:style/Theme.NoTitleBar"
 		    android:screenOrientation="portrait"
-			android:label="mScan">
+			android:label="ODK Scan">
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN" />
 				<category android:name="android.intent.category.LAUNCHER" />

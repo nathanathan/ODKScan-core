@@ -52,7 +52,7 @@ public class MScanUtils {
 		myWebView.setVisibility(View.VISIBLE);
 		
 		// HTML is used to display the image.
-		String html =   "<body bgcolor=\"Black\">+" +
+		String html =   "<body bgcolor=\"White\">" +
 						//"<p>" +  + "</p>" +
 						"<center> <img src=\"file:///" +
 						imagePath +
@@ -85,26 +85,26 @@ public class MScanUtils {
 		} 
 		return -1;
 	}
-	/**
-	 * Combine the elements in the array using the + operator
-	 * @param array
-	 */
-	public static String sum(String[] stringArray){
-		String sum = "";
-		for(int i = 0; i < stringArray.length; i++){
-			sum += stringArray[i];
-		}
-		return sum;
-	}
-	/**
-	 * Combine the elements in the array using the + operator
-	 * @param array
-	 */
-	public static Number sum(Number[] numberArray){
-		Double sum = 0.0;
-		for(int i = 0; i < numberArray.length; i++){
-			sum += numberArray[i].doubleValue();
-		}
-		return sum;
-	}
+//	/**
+//	 * Combine the elements in the array using the + operator
+//	 * @param array
+//	 */
+//	public static String sum(String[] stringArray){
+//		String sum = "";
+//		for(int i = 0; i < stringArray.length; i++){
+//			sum += stringArray[i];
+//		}
+//		return sum;
+//	}
+//	/**
+//	 * Combine the elements in the array using the + operator
+//	 * @param array
+//	 */
+//	public static Number sum(Number[] numberArray){
+//		Double sum = 0.0;
+//		for(int i = 0; i < numberArray.length; i++){
+//			sum += numberArray[i].doubleValue();
+//		}
+//		return sum;
+//	}
 }

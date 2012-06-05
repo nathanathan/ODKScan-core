@@ -28,6 +28,7 @@ import android.content.ComponentName;
 import android.content.ContentValues;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
@@ -60,6 +61,17 @@ public class MScan2CollectActivity extends Activity {
 		super.onCreate(savedInstanceState);
 
 		try {
+			//Initialize the intent that will start collect and use it to see if collect is installed.
+		    Intent intent = new Intent();
+		    intent.setFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+		    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+		    intent.setComponent(new ComponentName("org.odk.collect.android",
+		            "org.odk.collect.android.activities.FormEntryActivity"));
+		    PackageManager packMan = getPackageManager();
+		    if(packMan.queryIntentActivities(intent, 0).size() == 0){
+		    	throw new Exception("ODK Collect was not found on this device.");
+		    }
+			
 			//Read in parameters from the intent's extras.
 			Bundle extras = getIntent().getExtras();
 
@@ -81,7 +93,7 @@ public class MScan2CollectActivity extends Activity {
 			
 			//If there is no xform or the xform is out of date create it.
 			File xformFile = new File(xFormPath);
-			if( !xformFile.exists() || true || //TODO: REMOVE THIS
+			if( !xformFile.exists() || 
 				new File(jsonPath).lastModified() > xformFile.lastModified()){
 				//////////////
 				Log.i(LOG_TAG, "Unregistering old versions in collect.");
@@ -119,14 +131,9 @@ public class MScan2CollectActivity extends Activity {
 	        //////////////
 	        Log.i(LOG_TAG, "Start Collect:");
 	        //////////////
-		    Intent intent = new Intent();
-		    intent.setFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
-		    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-		    intent.setComponent(new ComponentName("org.odk.collect.android",
-		            "org.odk.collect.android.activities.FormEntryActivity"));
 		    intent.setAction(Intent.ACTION_EDIT);
-		    intent.setData(Uri.parse(COLLECT_INSTANCES_URI_STRING + "/" +
-		            instanceId));
+		    intent.putExtra("start", true);
+		    intent.setData(Uri.parse(COLLECT_INSTANCES_URI_STRING + "/" + instanceId));
 		    startActivity(intent);
 		    finish();
 		    

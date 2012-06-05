@@ -49,6 +49,7 @@ public class JSONUtils {
         }
 		return obj;
 	}
+	/*
 	public static JSONObject generateSimplifiedJSON(String photoName) throws JSONException, IOException {
 		JSONObject outRoot = new JSONObject();
 		JSONObject bubbleVals = parseFileToJSONObject(MScanUtils.getJsonPath(photoName));
@@ -69,6 +70,7 @@ public class JSONUtils {
 		outRoot.put("fields", outFields);
 		return outRoot;
 	}
+
 	public static String generateSimplifiedJSONString(String photoName) {
 		try {
 			String outString = generateSimplifiedJSON(photoName).toString();
@@ -87,7 +89,7 @@ public class JSONUtils {
 			Log.i("mScan", "IO excetion in JSONUtils.");
 			return "";
 		}
-	}
+	}	*/
 	public static void writeJSONObjectToFile(JSONObject obj, String outPath) throws JSONException, IOException {
 		BufferedWriter out = new BufferedWriter(new FileWriter(outPath));
 		out.write(obj.toString(4));
@@ -115,6 +117,7 @@ public class JSONUtils {
 		}
 		return output;
 	}
+	/*
 	public static String[] getFields(JSONObject bubbleVals) throws JSONException {
 		JSONArray fields = bubbleVals.getJSONArray("fields");
 		String[] fieldString = new String[fields.length()];
@@ -133,14 +136,13 @@ public class JSONUtils {
 		}
 		return fieldCounts;
 	}
-
+*/
 	/**
 	 * Assumes segments have integer values and returns them in an array.
 	 * @param field
 	 * @return
 	 * @throws JSONException
 	 */
-
 	public static Number[] getSegmentValues(JSONObject field) throws JSONException {
 
 		JSONArray jArray = field.getJSONArray("segments");

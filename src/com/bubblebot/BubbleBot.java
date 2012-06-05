@@ -8,6 +8,8 @@ import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.os.Bundle;
 import android.os.Environment;
@@ -20,6 +22,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.Spinner;
+import android.widget.TextView;
 import android.widget.Toast;
 
 /* Bubblebot activity
@@ -36,41 +39,38 @@ public class BubbleBot extends Activity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.bubble_bot); // Setup the UI
-		
+
 		//settings = getSharedPreferences(getResources().getString(R.string.prefs_name), 0);
 		settings = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-		
+
 		//Create the app folder if it doesn't exist:
 		new File(MScanUtils.appFolder).mkdirs();
 		
 		if(!checkSDCard()) return;
 		
-		checkVersion();
+		try {
+			PackageManager packMan = getPackageManager();
+			PackageInfo packInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
+			{
+	            // dynamically construct the main screen header string
+	            TextView mainMenuMessageLabel = (TextView) findViewById(R.id.main_menu_header);
+	            mainMenuMessageLabel.setText(packInfo.applicationInfo.loadLabel(packMan).toString() + ' ' + packInfo.versionName);
+			}
+            //check version and run setup if needed
+    		int storedVersionCode = settings.getInt("version", 0);
+    		int appVersionCode = packInfo.versionCode;
+			if(appVersionCode == 0 || storedVersionCode < appVersionCode ) {
+				pd = ProgressDialog.show(this, "Please wait...", "Extracting assets", true);
+				Thread thread = new Thread(new RunSetup(handler, settings, getAssets(), appVersionCode));
+				thread.start();
+			}
+		} catch (NameNotFoundException e) {
+			//TODO: Make a popup
+		}
 		
 		hookupButtonHandlers();
 		
 		setupSpinner();
-		/*
-		Intent intent = new Intent(getApplication(), Template2Xform.class);
-		intent.putExtra("templatePath", MScanUtils.appFolder + "form_templates/checkbox_form");
-		startActivity(intent);
-		*/
-	}
-	//Checks if the app is up-to-date and runs the setup if necessary
-	private void checkVersion() {
-		int storedVersionCode = settings.getInt("version", 0);
-		int appVersionCode = 0;
-		try {
-			appVersionCode = getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
-		} catch (NameNotFoundException e) {
-			//Do nothing.
-		}
-		if(appVersionCode == 0 || storedVersionCode < appVersionCode ) {
-			//TODO: It might be simpler to have all the runnables in separate files.
-			pd = ProgressDialog.show(this, "Please wait...", "Extracting assets", true);
-			Thread thread = new Thread(new RunSetup(handler, settings, getAssets(), appVersionCode));
-			thread.start();
-		}
 	}
 	private void hookupButtonHandlers() {
 		// Hook up handler for scan form button
