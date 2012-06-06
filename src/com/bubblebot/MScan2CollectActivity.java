@@ -9,8 +9,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Date;
-import java.util.Iterator;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -90,46 +90,62 @@ public class MScan2CollectActivity extends Activity {
 			String templateName = new File(templatePath).getName();
 			String jsonPath = new File(templatePath, "template.json").getPath();
 			String xFormPath = new File(templatePath, templateName + ".xml").getPath();
-			
-			//If there is no xform or the xform is out of date create it.
+
+			//////////////
+			Log.i(LOG_TAG, "Checking if there is no xform or the xform is out of date.");
+			//////////////
 			File xformFile = new File(xFormPath);
 			if( !xformFile.exists() || 
 				new File(jsonPath).lastModified() > xformFile.lastModified()){
 				//////////////
-				Log.i(LOG_TAG, "Unregistering old versions in collect.");
+				Log.i(LOG_TAG, "Unregistering any existing old versions of xform.");
 				//////////////
 			    String [] deleteArgs = { templateName };
 		        int deleteResult = getContentResolver().delete(COLLECT_FORMS_CONTENT_URI, "jrFormId like ?", deleteArgs);
-		        Log.w(LOG_TAG, "removing " + deleteResult + " rows.");
+		        Log.w(LOG_TAG, "Removing " + deleteResult + " rows.");
 				//////////////
-				Log.i(LOG_TAG, "Creating the xform");
+				Log.i(LOG_TAG, "Creating new xform.");
 				//////////////
 			    buildXForm(jsonPath, xFormPath, templateName, templateName);
-			    /*
-				//////////////
-				Log.i(LOG_TAG, "Registering the new xform with collect.");
-				//////////////
-		        ContentValues insertValues = new ContentValues();
-		        insertValues.put("formFilePath", xformPath);
-		        insertValues.put("displayName", templateName);
-		        insertValues.put("jrFormId", templateName);
-		        Uri insertResult = getContentResolver().insert(COLLECT_FORMS_CONTENT_URI, insertValues);
-		      
-		        // launch Collect
-		        int formId = Integer.valueOf(insertResult.getLastPathSegment());
-		        Intent intent = new Intent();
-		        intent.setComponent(new ComponentName("org.odk.collect.android",
-		                "org.odk.collect.android.activities.FormEntryActivity"));
-		        intent.setAction(Intent.ACTION_EDIT);
-		        intent.setData(Uri.parse(COLLECT_FORMS_URI_STRING + "/" + formId));
-		        startActivityForResult(intent, ODK_COLLECT_ADDROW_RETURN);
- 				*/
 			}
-			verifyFormInCollect(xFormPath, templateName);
-			
-			int instanceId = jsonOut2XFormInstance(jsonOutPath, xFormPath);
+			String jrFormId = verifyFormInCollect(xFormPath, templateName);
+			//////////////
+			Log.i(LOG_TAG, "Checking if the form instance is already registered with collect.");
+			//////////////
+			int instanceId;
+		    String instanceName = templateName
+		    		+ '_' + photoName + '_'
+		    		+ COLLECT_INSTANCE_NAME_DATE_FORMAT.format(new Date(new File(templatePath).lastModified()));
+		    String instancePath = "/sdcard/odk/instances/" + instanceName + "/";
+		    (new File(instancePath)).mkdirs();
+		    String instanceFilePath = instancePath + instanceName + ".xml";
+			String selection = "instanceFilePath = ?";
+	        String[] selectionArgs = { instanceFilePath };
+	        Cursor c = getContentResolver().query(COLLECT_INSTANCES_CONTENT_URI, null, selection, selectionArgs, null);
+	        //Log.i(LOG_TAG, Arrays.toString(c.getColumnNames()));
+	    	if(c.moveToFirst()){
+	    		//////////////
+				Log.i(LOG_TAG, "Registered odk instance found.");
+				//////////////
+	    		instanceId = c.getInt(c.getColumnIndex("_id"));
+	    	}
+	    	else{
+				//////////////
+				Log.i(LOG_TAG, "Registered odk instance not found, creating one...");
+				//////////////
+	    		jsonOut2XFormInstance(jsonOutPath, xFormPath, instancePath, instanceName);
+	            ContentValues insertValues = new ContentValues();
+	            insertValues.put("displayName", instanceName);
+	            insertValues.put("instanceFilePath", instanceFilePath);
+	            insertValues.put("jrFormId", jrFormId);
+	            Uri insertResult = getContentResolver().insert(
+	                    COLLECT_INSTANCES_CONTENT_URI, insertValues);
+	            instanceId = Integer.valueOf(insertResult.getLastPathSegment());
+	    	}
+	    	c.close();
+			Log.i(LOG_TAG, "instanceId: " + instanceId);
 	        //////////////
-	        Log.i(LOG_TAG, "Start Collect:");
+	        Log.i(LOG_TAG, "Starting Collect...");
 	        //////////////
 		    intent.setAction(Intent.ACTION_EDIT);
 		    intent.putExtra("start", true);
@@ -157,22 +173,14 @@ public class MScan2CollectActivity extends Activity {
 	/**
      * Verify that the form is in collect and put it in collect if it is not.
      * @param filepath
-     * @return
+     * @return jrFormId
      */
 	private String verifyFormInCollect(String filepath, String jrFormId) {
-        Log.d("CSTF", "filepath<" + filepath + ">");
-
         String[] projection = { "jrFormId" };
         String selection = "formFilePath = ?";
         String[] selectionArgs = { filepath };
         Cursor c = managedQuery(COLLECT_FORMS_CONTENT_URI, projection,
                 selection, selectionArgs, null);
-        /*
-        String [] columnNames = c.getColumnNames();
-        for(int i = 0; i < columnNames.length; i++){
-        	 Log.d("CSTF", columnNames[i]);
-        }
-        */
         if (c.getCount() != 0) {
             c.moveToFirst();
             String value = c.getString(c.getColumnIndex("jrFormId"));
@@ -187,42 +195,13 @@ public class MScan2CollectActivity extends Activity {
         insertValues.put("jrFormId", jrFormId);
         insertValues.put("formFilePath", filepath);
         getContentResolver().insert(COLLECT_FORMS_CONTENT_URI, insertValues);
-        
         return jrFormId;
-    }
-	// Credits to kurellajunior on this post http://snippets.dzone.com/posts/show/91
-	protected static String join( Iterable< ? extends Object > pColl, String separator )
-    {
-        Iterator< ? extends Object > oIter;
-        if ( pColl == null || ( !( oIter = pColl.iterator() ).hasNext() ) )
-            return "";
-        StringBuilder oBuilder = new StringBuilder( String.valueOf( oIter.next() ) );
-        while ( oIter.hasNext() )
-            oBuilder.append( separator ).append( oIter.next() );
-        return oBuilder.toString();
     }
 	/**
 	 * Generates an instance of an xform at xFormPath from the JSON output file
-	 * and registers it with ODK Collect.
-	 * @param xFormPath
-	 * @param jsonOutFile
-	 * @return the instanceId
-	 * @throws JSONException
-	 * @throws IOException
-	 * @throws XmlPullParserException 
 	 */
-	private int jsonOut2XFormInstance(String jsonOutFile, String xFormPath) throws JSONException, IOException, XmlPullParserException {
-		//////////////
-		Log.i(LOG_TAG, "Initializing the xform instance:");
-		//////////////
-        File formFile = new File(xFormPath);
-        String formFileName = formFile.getName();
-	    String instanceName = ((formFileName.endsWith(".xml") ?
-	            formFileName.substring(0, formFileName.length() - 4) :
-                formFileName)) +
-                COLLECT_INSTANCE_NAME_DATE_FORMAT.format(new Date());
-	    String instancePath = "/sdcard/odk/instances/" + instanceName + "/";
-	    (new File(instancePath)).mkdirs();
+	private void jsonOut2XFormInstance(String jsonOutFile, String xFormPath, String instancePath, String instanceName)
+			throws JSONException, IOException, XmlPullParserException {
 		//////////////
 	    Log.i(LOG_TAG, "Reading the xform...");
 	    //////////////
@@ -289,16 +268,11 @@ public class MScan2CollectActivity extends Activity {
 			fieldElement.addChild(Node.TEXT, "" + field.optString("value"));
 			instance.addChild(Node.ELEMENT, fieldElement);
 		}
-        
         //////////////
         Log.i(LOG_TAG, "Outputing the instance file:");
         //////////////
 	    String instanceFilePath = instancePath + instanceName + ".xml";
 	    writeXMLToFile(instance, instanceFilePath);
-	    //////////////
-        Log.i(LOG_TAG, "Registering the instance with Collect:");
-        //////////////
-        return registerInstance(instanceName, instanceFilePath, jrFormId);
 	}
 	/**
 	 * Write the given XML tree out to a file
@@ -317,22 +291,6 @@ public class MScan2CollectActivity extends Activity {
         instanceSerializer.flush();
         instanceWriter.close();
 	}
-	/**
-	 * Register the given xform with Collect
-	 * @param name
-	 * @param filepath
-	 * @param jrFormId
-	 * @return instanceId
-	 */
-    private int registerInstance(String name, String filepath, String jrFormId) {
-        ContentValues insertValues = new ContentValues();
-        insertValues.put("displayName", name);
-        insertValues.put("instanceFilePath", filepath);
-        insertValues.put("jrFormId", jrFormId);
-        Uri insertResult = getContentResolver().insert(
-                COLLECT_INSTANCES_CONTENT_URI, insertValues);
-        return Integer.valueOf(insertResult.getLastPathSegment());
-    }
     /**
      * Builds an xfrom from a json template and writes it out to the specified file.
      * Note:
