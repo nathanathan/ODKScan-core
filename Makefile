@@ -30,6 +30,9 @@ endif
 ifndef $(TEMPLATE)
 TEMPLATE := assets/form_templates/example
 endif
+ifndef $(EXPECTED_JSON)
+EXPECTED_JSON := example_input/output.json
+endif
 Experiment: tests/Experiment.run
 	@rm -rf $(OUTPUT_FOLDER)
 	@mkdir $(OUTPUT_FOLDER)
@@ -37,7 +40,7 @@ Experiment: tests/Experiment.run
 	@mkdir debug_segment_images
 	@rm -rf bubble_images
 	@mkdir bubble_images
-	./$< $(TEMPLATE) $(INPUT_FOLDER) $(OUTPUT_FOLDER)
+	./$< $(TEMPLATE) $(INPUT_FOLDER) $(OUTPUT_FOLDER) $(EXPECTED_JSON)
 
 #does linking
 %.run: %.cpp $(ALL_SRCS) $(ALL_OBJS) $(ALL_HEADERS)

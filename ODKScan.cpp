@@ -23,11 +23,7 @@ int main(int argc, char *argv[]) {
 
 	string templatePath = addSlashIfNeeded(argv[1]);
 	string inputImage(argv[2]);
-	string outputDir = addSlashIfNeeded(argv[3]);
-
-	string expectedJsonFile = argc > 4 ? string(argv[4]) : "";
-
-	string outputPath(outputDir);
+	string outputPath = addSlashIfNeeded(argv[3]);
 
 	//Make a directory with the name of the form
 	//TODO: Move?

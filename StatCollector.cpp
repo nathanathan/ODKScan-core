@@ -14,7 +14,7 @@ using namespace cv;
 
 //Compares 2 segments
 //returns false if the found segment wasn't fount
-void StatCollector::compareSegmentBubbleVals(const Json::Value& foundSeg, const Json::Value& actualSeg){
+void StatCollector::compareItems(const Json::Value& foundSeg, const Json::Value& actualSeg){
 	#if DEBUG > 0
 	cout << "Comparing segments..." << endl;
 	#endif
@@ -25,14 +25,14 @@ void StatCollector::compareSegmentBubbleVals(const Json::Value& foundSeg, const 
 		return;
 	}
 	
-	const Json::Value fBubbles = foundSeg["bubbles"];
-	const Json::Value aBubbles = actualSeg["bubbles"];
+	const Json::Value foundItems = foundSeg["items"];
+	const Json::Value actualItems = actualSeg["items"];
 
-	assert( fBubbles.size() == aBubbles.size());
+	assert( foundItems.size() == actualItems.size());
 
-	for( size_t i = 0; i < fBubbles.size(); i++){
-		bool found = fBubbles[i]["value"].asBool();
-		bool actual = aBubbles[i]["value"].asBool();
+	for( size_t i = 0; i < foundItems.size(); i++){
+		bool found = foundItems[i]["value"].asBool();
+		bool actual = actualItems[i]["value"].asBool();
 		
 		if(found && actual){
 			tp++;
@@ -56,30 +56,6 @@ void StatCollector::compareSegmentBubbleVals(const Json::Value& foundSeg, const 
 		}
 	}
 }
-vector<Point> StatCollector::compareSegmentBubbleOffsets(const Json::Value& foundSeg, const Json::Value& actualSeg) const{
-	#if DEBUG > 0
-	cout << "Comparing segment bubble offsets..." << endl;
-	#endif
-	vector<Point> out;
-	if( foundSeg.get("notFound", false).asBool() ) {
-		return out;
-	}
-	
-	Point segmentOffset(actualSeg.get("x", -1).asInt(),
-						actualSeg.get("y", -1).asInt());
-	
-	const Json::Value fBubbles = foundSeg["bubbles"];
-	const Json::Value expectedLocations = actualSeg["bubble_locations"];
-
-	assert( fBubbles.size() == expectedLocations.size());
-
-	for( size_t i = 0; i < fBubbles.size(); i++){
-		Point expectedLocation = segmentOffset + jsonToPoint(expectedLocations[i]);
-		Point actualLocation = jsonToPoint(fBubbles[i]["location"]);
-		out.push_back(expectedLocation - actualLocation);
-	}
-	return out;
-}
 void StatCollector::compareFields(const Json::Value& foundField, const Json::Value& actualField, ComparisonMode mode){
 	#if DEBUG > 0
 	cout << "Comparing fields..." << endl;
@@ -92,11 +68,7 @@ void StatCollector::compareFields(const Json::Value& foundField, const Json::Val
 	for( size_t i = 0; i < fSegments.size(); i++){
 
 		if(mode == COMP_BUBBLE_VALS){
-			compareSegmentBubbleVals(fSegments[i], aSegments[i]);
-		}
-		else{
-			vector<Point> segmentOffsets = compareSegmentBubbleOffsets(fSegments[i], aSegments[i]);
-			offsets.insert(offsets.end(), segmentOffsets.begin(), segmentOffsets.end());
+			compareItems(fSegments[i], aSegments[i]);
 		}
 
 	}
@@ -116,9 +88,9 @@ void StatCollector::compareFiles(const string& foundPath, const string& actualPa
 	Note that we expect unique labels for this to work, and that unlabeled0 and unlabeled1 are reserved labels.
 	*/
 	for( size_t i = 0; i < fFields.size(); i++){
-		const Json::Value fFieldLabel = fFields[i].get("label", "unlabeled0");
+		const Json::Value fFieldLabel = fFields[i].get("name", "unlabeled0");
 		for( size_t j = 0; j < aFields.size(); j++){
-			const Json::Value aFieldLabel = aFields[j].get("label", "unlabeled1");
+			const Json::Value aFieldLabel = aFields[j].get("name", "unlabeled1");
 			//unlabeled0 does not match unlabeled1, thus those fields are ignored.
 			if(fFieldLabel == aFieldLabel) {
 				compareFields(fFields[i], aFields[j], mode);

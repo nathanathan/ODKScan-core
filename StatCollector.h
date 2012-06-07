@@ -15,8 +15,7 @@ std::vector<double> times;
 std::vector<cv::Point> offsets;
 
 private:
-	void compareSegmentBubbleVals(const Json::Value& foundSeg, const Json::Value& actualSeg);
-	std::vector<cv::Point> compareSegmentBubbleOffsets(const Json::Value& foundSeg, const Json::Value& actualSeg) const;
+	void compareItems(const Json::Value& foundSeg, const Json::Value& actualSeg);
 	void compareFields(const Json::Value& foundField, const Json::Value& actualField, ComparisonMode mode);
 public:
 	int errors, numImages;
