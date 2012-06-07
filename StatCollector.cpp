@@ -13,7 +13,7 @@ using namespace std;
 using namespace cv;
 
 //Compares 2 segments
-//returns false if the found segment wasn't fount
+//returns false if the found segment wasn't found
 void StatCollector::compareItems(const Json::Value& foundSeg, const Json::Value& actualSeg){
 	#if DEBUG > 0
 	cout << "Comparing segments..." << endl;
@@ -31,28 +31,36 @@ void StatCollector::compareItems(const Json::Value& foundSeg, const Json::Value&
 	assert( foundItems.size() == actualItems.size());
 
 	for( size_t i = 0; i < foundItems.size(); i++){
-		bool found = foundItems[i]["value"].asBool();
-		bool actual = actualItems[i]["value"].asBool();
+		bool found = foundItems[i]["classification"].asBool();
+		bool actual = actualItems[i]["classification"].asBool();
 		
 		if(found && actual){
 			tp++;
+			#ifdef PRINT_MISS_LOCATIONS
+			cout << "true positive at:" << endl;
+			cout << "\t" << foundItems[i]["absolute_location"][0u].asInt() << ", " << foundItems[i]["absolute_location"][1u].asInt() << endl;
+			#endif
 		}
 		else if(found && !actual){
 			#ifdef PRINT_MISS_LOCATIONS
 			cout << "false positive at:" << endl;
-			cout << "\t" << fBubbles[i]["location"][0u].asInt() << ", " << fBubbles[i]["location"][1u].asInt() << endl;
+			cout << "\t" << foundItems[i]["absolute_location"][0u].asInt() << ", " << foundItems[i]["absolute_location"][1u].asInt() << endl;
 			#endif
 			fp++;
 		}
 		else if(!found && actual){
 			#ifdef PRINT_MISS_LOCATIONS
 			cout << "false negative at:" << endl;
-			cout << "\t" << fBubbles[i]["location"][0u].asInt() << ", " << fBubbles[i]["location"][1u].asInt() << endl;
+			cout << "\t" << foundItems[i]["absolute_location"][0u].asInt() << ", " << foundItems[i]["absolute_location"][1u].asInt() << endl;
 			#endif
 			fn++;
 		}
 		else{
 			tn++;
+			#ifdef PRINT_MISS_LOCATIONS
+				cout << "true negative at:" << endl;
+				cout << "\t" << foundItems[i]["absolute_location"][0u].asInt() << ", " << foundItems[i]["absolute_location"][1u].asInt() << endl;
+			#endif
 		}
 	}
 }
