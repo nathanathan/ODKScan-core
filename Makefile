@@ -21,6 +21,8 @@ INCLUDES := $(OPENCV_INCLUDES) -I./jsoncpp-src-0.5.0/include -I./src -I./
 ODKScan: ODKScan.run
 	@echo "Made executable ODKScan.run"
 
+#Example call:
+#make Experiment TEMPLATE=assets/form_templates/checkbox_test_form INPUT_FOLDER=example_input/checkbox_test
 ifndef $(INPUT_FOLDER)
 INPUT_FOLDER := example_input
 endif
