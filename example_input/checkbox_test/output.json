@@ -1,0 +1,623 @@
+
+{
+	"fields" : 
+	[
+		
+		{
+			"fields" : 
+			[
+				
+				{
+					"classifier" : 
+					{
+						"classification_map" : 
+						{
+							"empty" : false
+						},
+						"classifier_height" : 24,
+						"classifier_width" : 24,
+						"default_classification" : true,
+						"training_data_uri" : "checkboxes"
+					},
+					"items" : 
+					[
+						
+						{
+							"item_x" : 50,
+							"item_y" : 20
+						},
+						
+						{
+							"item_x" : 50,
+							"item_y" : 50
+						},
+						
+						{
+							"item_x" : 50,
+							"item_y" : 80
+						}
+					],
+					"label" : "square checkboxes",
+					"name" : "square_checkboxes",
+					"segments" : 
+					[
+						
+						{
+							"segment_height" : 100,
+							"segment_width" : 100,
+							"segment_x" : 100,
+							"segment_y" : 200
+						},
+						
+						{
+							"segment_height" : 100,
+							"segment_width" : 100,
+							"segment_x" : 200,
+							"segment_y" : 200
+						},
+						
+						{
+							"segment_height" : 100,
+							"segment_width" : 100,
+							"segment_x" : 300,
+							"segment_y" : 200
+						},
+						
+						{
+							"segment_height" : 100,
+							"segment_width" : 100,
+							"segment_x" : 400,
+							"segment_y" : 200
+						},
+						
+						{
+							"segment_height" : 100,
+							"segment_width" : 100,
+							"segment_x" : 500,
+							"segment_y" : 200
+						},
+						
+						{
+							"segment_height" : 100,
+							"segment_width" : 100,
+							"segment_x" : 600,
+							"segment_y" : 200
+						}
+					]
+				},
+				
+				{
+					"classifier" : 
+					{
+						"classification_map" : 
+						{
+							"empty" : false
+						},
+						"classifier_height" : 14,
+						"classifier_width" : 16,
+						"default_classification" : true,
+						"training_data_uri" : "bubbles"
+					},
+					"items" : 
+					[
+						
+						{
+							"item_x" : 20,
+							"item_y" : 25,
+							"label" : "A",
+							"value" : "A"
+						},
+						
+						{
+							"item_x" : 60,
+							"item_y" : 25,
+							"label" : "B",
+							"value" : "B"
+						},
+						
+						{
+							"item_x" : 20,
+							"item_y" : 50,
+							"label" : "C",
+							"value" : "C"
+						},
+						
+						{
+							"item_x" : 60,
+							"item_y" : 50,
+							"label" : "D",
+							"value" : "D"
+						},
+						
+						{
+							"item_x" : 20,
+							"item_y" : 75,
+							"label" : "E",
+							"value" : "E"
+						},
+						
+						{
+							"item_x" : 60,
+							"item_y" : 75,
+							"label" : "F",
+							"value" : "F"
+						}
+					],
+					"label" : "bubbles",
+					"name" : "bubbles",
+					"segment_height" : 100,
+					"segment_width" : 80,
+					"segments" : 
+					[
+						
+						{
+							"segment_x" : 300,
+							"segment_y" : 900
+						}
+					],
+					"type" : "select"
+				}
+			],
+			"height" : 1169,
+			"imageFilename" : "example.jpg",
+			"label" : "square checkboxes",
+			"name" : "square_checkboxes",
+			"output_path" : "output/image_1/",
+			"segments" : 
+			[
+				
+				{
+					"image_path" : "output/image_1/segments/square_checkboxes_image_0.jpg",
+					"items" : 
+					[
+						
+						{
+							"absolute_location" : [ 150, 221 ],
+							"classification" : true,
+							"item_x" : 50,
+							"item_y" : 20
+						},
+						
+						{
+							"absolute_location" : [ 151, 251 ],
+							"classification" : true,
+							"item_x" : 50,
+							"item_y" : 50
+						},
+						
+						{
+							"absolute_location" : [ 151, 281 ],
+							"classification" : true,
+							"item_x" : 50,
+							"item_y" : 80
+						}
+					],
+					"quad" : 
+					[
+						[ 101, 202 ],
+						[ 200, 202 ],
+						[ 202, 302 ],
+						[ 102, 302 ]
+					]
+				},
+				
+				{
+					"image_path" : "output/image_1/segments/square_checkboxes_image_1.jpg",
+					"items" : 
+					[
+						
+						{
+							"absolute_location" : [ 252, 222 ],
+							"classification" : false,
+							"item_x" : 50,
+							"item_y" : 20
+						},
+						
+						{
+							"absolute_location" : [ 252, 252 ],
+							"classification" : false,
+							"item_x" : 50,
+							"item_y" : 50
+						},
+						
+						{
+							"absolute_location" : [ 252, 282 ],
+							"classification" : true,
+							"item_x" : 50,
+							"item_y" : 80
+						}
+					],
+					"quad" : 
+					[
+						[ 204, 202 ],
+						[ 302, 203 ],
+						[ 301, 303 ],
+						[ 203, 302 ]
+					]
+				},
+				
+				{
+					"image_path" : "output/image_1/segments/square_checkboxes_image_2.jpg",
+					"items" : 
+					[
+						
+						{
+							"absolute_location" : [ 352, 222 ],
+							"classification" : true,
+							"item_x" : 50,
+							"item_y" : 20
+						},
+						
+						{
+							"absolute_location" : [ 352, 252 ],
+							"classification" : true,
+							"item_x" : 50,
+							"item_y" : 50
+						},
+						
+						{
+							"absolute_location" : [ 352, 282 ],
+							"classification" : true,
+							"item_x" : 50,
+							"item_y" : 80
+						}
+					],
+					"quad" : 
+					[
+						[ 304, 203 ],
+						[ 402, 203 ],
+						[ 402, 303 ],
+						[ 304, 303 ]
+					]
+				},
+				
+				{
+					"image_path" : "output/image_1/segments/square_checkboxes_image_3.jpg",
+					"items" : 
+					[
+						
+						{
+							"absolute_location" : [ 452, 222 ],
+							"classification" : true,
+							"item_x" : 50,
+							"item_y" : 20
+						},
+						
+						{
+							"absolute_location" : [ 452, 252 ],
+							"classification" : true,
+							"item_x" : 50,
+							"item_y" : 50
+						},
+						
+						{
+							"absolute_location" : [ 452, 282 ],
+							"classification" : true,
+							"item_x" : 50,
+							"item_y" : 80
+						}
+					],
+					"quad" : 
+					[
+						[ 404, 203 ],
+						[ 502, 203 ],
+						[ 502, 303 ],
+						[ 404, 303 ]
+					]
+				},
+				
+				{
+					"image_path" : "output/image_1/segments/square_checkboxes_image_4.jpg",
+					"items" : 
+					[
+						
+						{
+							"absolute_location" : [ 553, 223 ],
+							"classification" : false,
+							"item_x" : 50,
+							"item_y" : 20
+						},
+						
+						{
+							"absolute_location" : [ 553, 252 ],
+							"classification" : false,
+							"item_x" : 50,
+							"item_y" : 50
+						},
+						
+						{
+							"absolute_location" : [ 552, 282 ],
+							"classification" : false,
+							"item_x" : 50,
+							"item_y" : 80
+						}
+					],
+					"quad" : 
+					[
+						[ 504, 203 ],
+						[ 603, 203 ],
+						[ 602, 303 ],
+						[ 503, 303 ]
+					]
+				},
+				
+				{
+					"image_path" : "output/image_1/segments/square_checkboxes_image_5.jpg",
+					"items" : 
+					[
+						
+						{
+							"absolute_location" : [ 654, 222 ],
+							"classification" : false,
+							"item_x" : 50,
+							"item_y" : 20
+						},
+						
+						{
+							"absolute_location" : [ 653, 252 ],
+							"classification" : false,
+							"item_x" : 50,
+							"item_y" : 50
+						},
+						
+						{
+							"absolute_location" : [ 653, 282 ],
+							"classification" : false,
+							"item_x" : 50,
+							"item_y" : 80
+						}
+					],
+					"quad" : 
+					[
+						[ 605, 203 ],
+						[ 704, 203 ],
+						[ 702, 302 ],
+						[ 603, 303 ]
+					]
+				}
+			],
+			"type" : "input",
+			"value" : 10,
+			"width" : 827
+		},
+		
+		{
+			"fields" : 
+			[
+				
+				{
+					"classifier" : 
+					{
+						"classification_map" : 
+						{
+							"empty" : false
+						},
+						"classifier_height" : 24,
+						"classifier_width" : 24,
+						"default_classification" : true,
+						"training_data_uri" : "checkboxes"
+					},
+					"items" : 
+					[
+						
+						{
+							"item_x" : 50,
+							"item_y" : 20
+						},
+						
+						{
+							"item_x" : 50,
+							"item_y" : 50
+						},
+						
+						{
+							"item_x" : 50,
+							"item_y" : 80
+						}
+					],
+					"label" : "square checkboxes",
+					"name" : "square_checkboxes",
+					"segments" : 
+					[
+						
+						{
+							"segment_height" : 100,
+							"segment_width" : 100,
+							"segment_x" : 100,
+							"segment_y" : 200
+						},
+						
+						{
+							"segment_height" : 100,
+							"segment_width" : 100,
+							"segment_x" : 200,
+							"segment_y" : 200
+						},
+						
+						{
+							"segment_height" : 100,
+							"segment_width" : 100,
+							"segment_x" : 300,
+							"segment_y" : 200
+						},
+						
+						{
+							"segment_height" : 100,
+							"segment_width" : 100,
+							"segment_x" : 400,
+							"segment_y" : 200
+						},
+						
+						{
+							"segment_height" : 100,
+							"segment_width" : 100,
+							"segment_x" : 500,
+							"segment_y" : 200
+						},
+						
+						{
+							"segment_height" : 100,
+							"segment_width" : 100,
+							"segment_x" : 600,
+							"segment_y" : 200
+						}
+					]
+				},
+				
+				{
+					"classifier" : 
+					{
+						"classification_map" : 
+						{
+							"empty" : false
+						},
+						"classifier_height" : 14,
+						"classifier_width" : 16,
+						"default_classification" : true,
+						"training_data_uri" : "bubbles"
+					},
+					"items" : 
+					[
+						
+						{
+							"item_x" : 20,
+							"item_y" : 25,
+							"label" : "A",
+							"value" : "A"
+						},
+						
+						{
+							"item_x" : 60,
+							"item_y" : 25,
+							"label" : "B",
+							"value" : "B"
+						},
+						
+						{
+							"item_x" : 20,
+							"item_y" : 50,
+							"label" : "C",
+							"value" : "C"
+						},
+						
+						{
+							"item_x" : 60,
+							"item_y" : 50,
+							"label" : "D",
+							"value" : "D"
+						},
+						
+						{
+							"item_x" : 20,
+							"item_y" : 75,
+							"label" : "E",
+							"value" : "E"
+						},
+						
+						{
+							"item_x" : 60,
+							"item_y" : 75,
+							"label" : "F",
+							"value" : "F"
+						}
+					],
+					"label" : "bubbles",
+					"name" : "bubbles",
+					"segment_height" : 100,
+					"segment_width" : 80,
+					"segments" : 
+					[
+						
+						{
+							"segment_x" : 300,
+							"segment_y" : 900
+						}
+					],
+					"type" : "select"
+				}
+			],
+			"height" : 1169,
+			"imageFilename" : "example.jpg",
+			"label" : "bubbles",
+			"name" : "bubbles",
+			"output_path" : "output/image_1/",
+			"segment_height" : 100,
+			"segment_width" : 80,
+			"segments" : 
+			[
+				
+				{
+					"image_path" : "output/image_1/segments/bubbles_image_0.jpg",
+					"items" : 
+					[
+						
+						{
+							"absolute_location" : [ 320, 923 ],
+							"classification" : false,
+							"item_x" : 20,
+							"item_y" : 25,
+							"label" : "A",
+							"value" : "A"
+						},
+						
+						{
+							"absolute_location" : [ 360, 923 ],
+							"classification" : false,
+							"item_x" : 60,
+							"item_y" : 25,
+							"label" : "B",
+							"value" : "B"
+						},
+						
+						{
+							"absolute_location" : [ 320, 948 ],
+							"classification" : false,
+							"item_x" : 20,
+							"item_y" : 50,
+							"label" : "C",
+							"value" : "C"
+						},
+						
+						{
+							"absolute_location" : [ 359, 948 ],
+							"classification" : false,
+							"item_x" : 60,
+							"item_y" : 50,
+							"label" : "D",
+							"value" : "D"
+						},
+						
+						{
+							"absolute_location" : [ 320, 973 ],
+							"classification" : false,
+							"item_x" : 20,
+							"item_y" : 75,
+							"label" : "E",
+							"value" : "E"
+						},
+						
+						{
+							"absolute_location" : [ 359, 973 ],
+							"classification" : false,
+							"item_x" : 60,
+							"item_y" : 75,
+							"label" : "F",
+							"value" : "F"
+						}
+					],
+					"quad" : 
+					[
+						[ 301, 899 ],
+						[ 380, 899 ],
+						[ 379, 998 ],
+						[ 301, 998 ]
+					]
+				}
+			],
+			"type" : "select",
+			"value" : "",
+			"width" : 827
+		}
+	],
+	"form_scale" : 1.0
+}
