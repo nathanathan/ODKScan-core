@@ -365,7 +365,7 @@
                          "empty": false
                     },
                     "default_classification": true,
-                    "training_data_uri": "bubbles",
+                    "training_data_uri": "checkboxes",
                     "classifier_height": 17,
                     "classifier_width": 14
                }
@@ -397,7 +397,7 @@
                          "empty": false
                     },
                     "default_classification": true,
-                    "training_data_uri": "bubbles",
+                    "training_data_uri": "checkboxes",
                     "classifier_height": 17,
                     "classifier_width": 14
                }
@@ -429,7 +429,7 @@
                          "empty": false
                     },
                     "default_classification": true,
-                    "training_data_uri": "bubbles",
+                    "training_data_uri": "checkboxes",
                     "classifier_height": 17,
                     "classifier_width": 14
                }
@@ -461,7 +461,7 @@
                          "empty": false
                     },
                     "default_classification": true,
-                    "training_data_uri": "bubbles",
+                    "training_data_uri": "checkboxes",
                     "classifier_height": 17,
                     "classifier_width": 14
                }
@@ -493,7 +493,7 @@
                          "empty": false
                     },
                     "default_classification": true,
-                    "training_data_uri": "bubbles",
+                    "training_data_uri": "checkboxes",
                     "classifier_height": 17,
                     "classifier_width": 14
                }
@@ -525,7 +525,7 @@
                          "empty": false
                     },
                     "default_classification": true,
-                    "training_data_uri": "bubbles",
+                    "training_data_uri": "checkboxes",
                     "classifier_height": 17,
                     "classifier_width": 14
                }
@@ -557,7 +557,7 @@
                          "empty": false
                     },
                     "default_classification": true,
-                    "training_data_uri": "bubbles",
+                    "training_data_uri": "checkboxes",
                     "classifier_height": 17,
                     "classifier_width": 14
                }
@@ -589,7 +589,7 @@
                          "empty": false
                     },
                     "default_classification": true,
-                    "training_data_uri": "bubbles",
+                    "training_data_uri": "checkboxes",
                     "classifier_height": 17,
                     "classifier_width": 14
                }
@@ -621,7 +621,7 @@
                          "empty": false
                     },
                     "default_classification": true,
-                    "training_data_uri": "bubbles",
+                    "training_data_uri": "checkboxes",
                     "classifier_height": 17,
                     "classifier_width": 14
                }
@@ -653,7 +653,7 @@
                          "empty": false
                     },
                     "default_classification": true,
-                    "training_data_uri": "bubbles",
+                    "training_data_uri": "checkboxes",
                     "classifier_height": 17,
                     "classifier_width": 14
                }
@@ -685,7 +685,7 @@
                          "empty": false
                     },
                     "default_classification": true,
-                    "training_data_uri": "bubbles",
+                    "training_data_uri": "checkboxes",
                     "classifier_height": 17,
                     "classifier_width": 14
                }
