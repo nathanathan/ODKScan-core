@@ -222,6 +222,8 @@ public class MScan2CollectActivity extends Activity {
         Element instance = new Element();
         instance.setName(dataEl.getName());
         instance.setAttribute("", "id", jrFormId);
+        instance.addChild(Node.ELEMENT, instance.createElement("", "xformstarttime"));
+        instance.addChild(Node.ELEMENT, instance.createElement("", "xformendtime"));
         //////////////
         Log.i(LOG_TAG, "Parsing the JSON output:");
         //////////////
@@ -350,6 +352,8 @@ public class MScan2CollectActivity extends Activity {
         writer.write("<model>");
         writer.write("<instance>");
         writer.write("<data id=\"" + id + "\">");
+        writer.write("<xformstarttime/>");
+        writer.write("<xformendtime/>");
         for(int i = 0; i < fieldsLength; i++){
         	JSONObject field = fields.getJSONObject(i);
         	JSONArray segments = field.getJSONArray("segments");
@@ -369,6 +373,8 @@ public class MScan2CollectActivity extends Activity {
         }
         writer.write("</translation>");
         writer.write("</itext>");
+        writer.write("<bind nodeset=\"/data/xformstarttime\" type=\"dateTime\" jr:preload=\"timestamp\" jr:preloadParams=\"start\"/>");
+        writer.write("<bind nodeset=\"/data/xformendtime\" type=\"dateTime\" jr:preload=\"timestamp\" jr:preloadParams=\"end\"/>");
         for(int i = 0; i < fieldsLength; i++){
         	JSONObject field = fields.getJSONObject(i);
         	JSONArray segments = field.getJSONArray("segments");
@@ -388,7 +394,7 @@ public class MScan2CollectActivity extends Activity {
         	
         	writer.write("<group appearance=\"field-list\">");
         	
-        	String type = field.optString("type", "");
+        	String type = field.optString("type", "input");
         	writer.write("<" + type +" ref=\"/data/" + fieldNames[i] + "\">");
         	writer.write("<label ref=\"jr:itext('/data/" + fieldNames[i] + ":label')\"/>");
         	//TODO: Make a xform_body_tag field instead?
