@@ -105,13 +105,13 @@ Mat markupForm(const Json::Value& bvRoot, const Mat& inputImage, bool drawCounts
 			vector<Point> quad = orderCorners( jsonArrayToQuad(segment["quad"]) );
 			const Point* p = &quad[0];
 			int n = (int) quad.size();
-			polylines(markupImage, &p, &n, 1, true, boxColor, 2, CV_AA);
+			polylines(markupImage, &p, &n, 1, true, boxColor, 1, CV_AA);
 			
 			if( segment.get("notFound", false).asBool() ) {
-				polylines(markupImage, &p, &n, 1, true, .25 * boxColor, 2, CV_AA);
+				polylines(markupImage, &p, &n, 1, true, .25 * boxColor, 1, CV_AA);
 			}
 			else{
-				polylines(markupImage, &p, &n, 1, true, boxColor, 2, CV_AA);
+				polylines(markupImage, &p, &n, 1, true, boxColor, 1, CV_AA);
 			}
 			
 			//Compute some stuff to figure out where to draw output on the form

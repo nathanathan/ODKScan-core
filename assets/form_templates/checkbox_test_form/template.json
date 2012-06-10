@@ -140,9 +140,15 @@
                     "classifier_width": 24,
                     "training_data_uri": "checkboxes",
                     "classification_map": {
-                         "empty": false
+                         "empty": 0,
+                         "check": 1,
+                         "X": 2,
+                         "diagonal": 3,
+                         "oh": 4,
+                         "vertical": 5,
+                         "filled": 5
                     },
-                    "default_classification": true,
+                    "default_classification": 7,
                     "advanced": {
                          "flip_training_data": true
                     }
@@ -217,9 +223,15 @@
                     "classifier_width": 24,
                     "training_data_uri": "checkboxes",
                     "classification_map": {
-                         "empty": false
+                         "empty": 0,
+                         "check": 1,
+                         "X": 2,
+                         "diagonal": 3,
+                         "oh": 4,
+                         "vertical": 5,
+                         "filled": 5
                     },
-                    "default_classification": true,
+                    "default_classification": 7,
                     "advanced": {
                          "flip_training_data": true
                     }
@@ -330,9 +342,15 @@
                     "classifier_width": 24,
                     "training_data_uri": "checkboxes",
                     "classification_map": {
-                         "empty": false
+                         "empty": 0,
+                         "check": 1,
+                         "X": 2,
+                         "diagonal": 3,
+                         "oh": 4,
+                         "vertical": 5,
+                         "filled": 5
                     },
-                    "default_classification": true,
+                    "default_classification": 7,
                     "advanced": {
                          "flip_training_data": true
                     }
@@ -362,9 +380,15 @@
                ],
                "classifier": {
                     "classification_map": {
-                         "empty": false
+                         "empty": 0,
+                         "check": 1,
+                         "X": 2,
+                         "diagonal": 3,
+                         "oh": 4,
+                         "vertical": 5,
+                         "filled": 5
                     },
-                    "default_classification": true,
+                    "default_classification": 7,
                     "training_data_uri": "checkboxes",
                     "classifier_height": 17,
                     "classifier_width": 14
@@ -394,9 +418,15 @@
                ],
                "classifier": {
                     "classification_map": {
-                         "empty": false
+                         "empty": 0,
+                         "check": 1,
+                         "X": 2,
+                         "diagonal": 3,
+                         "oh": 4,
+                         "vertical": 5,
+                         "filled": 5
                     },
-                    "default_classification": true,
+                    "default_classification": 7,
                     "training_data_uri": "checkboxes",
                     "classifier_height": 17,
                     "classifier_width": 14
@@ -426,9 +456,15 @@
                ],
                "classifier": {
                     "classification_map": {
-                         "empty": false
+                         "empty": 0,
+                         "check": 1,
+                         "X": 2,
+                         "diagonal": 3,
+                         "oh": 4,
+                         "vertical": 5,
+                         "filled": 5
                     },
-                    "default_classification": true,
+                    "default_classification": 7,
                     "training_data_uri": "checkboxes",
                     "classifier_height": 17,
                     "classifier_width": 14
@@ -458,9 +494,15 @@
                ],
                "classifier": {
                     "classification_map": {
-                         "empty": false
+                         "empty": 0,
+                         "check": 1,
+                         "X": 2,
+                         "diagonal": 3,
+                         "oh": 4,
+                         "vertical": 5,
+                         "filled": 5
                     },
-                    "default_classification": true,
+                    "default_classification": 7,
                     "training_data_uri": "checkboxes",
                     "classifier_height": 17,
                     "classifier_width": 14
@@ -490,9 +532,15 @@
                ],
                "classifier": {
                     "classification_map": {
-                         "empty": false
+                         "empty": 0,
+                         "check": 1,
+                         "X": 2,
+                         "diagonal": 3,
+                         "oh": 4,
+                         "vertical": 5,
+                         "filled": 5
                     },
-                    "default_classification": true,
+                    "default_classification": 7,
                     "training_data_uri": "checkboxes",
                     "classifier_height": 17,
                     "classifier_width": 14
@@ -522,9 +570,15 @@
                ],
                "classifier": {
                     "classification_map": {
-                         "empty": false
+                         "empty": 0,
+                         "check": 1,
+                         "X": 2,
+                         "diagonal": 3,
+                         "oh": 4,
+                         "vertical": 5,
+                         "filled": 5
                     },
-                    "default_classification": true,
+                    "default_classification": 7,
                     "training_data_uri": "checkboxes",
                     "classifier_height": 17,
                     "classifier_width": 14
@@ -554,9 +608,15 @@
                ],
                "classifier": {
                     "classification_map": {
-                         "empty": false
+                         "empty": 0,
+                         "check": 1,
+                         "X": 2,
+                         "diagonal": 3,
+                         "oh": 4,
+                         "vertical": 5,
+                         "filled": 5
                     },
-                    "default_classification": true,
+                    "default_classification": 7,
                     "training_data_uri": "checkboxes",
                     "classifier_height": 17,
                     "classifier_width": 14
@@ -586,9 +646,15 @@
                ],
                "classifier": {
                     "classification_map": {
-                         "empty": false
+                         "empty": 0,
+                         "check": 1,
+                         "X": 2,
+                         "diagonal": 3,
+                         "oh": 4,
+                         "vertical": 5,
+                         "filled": 5
                     },
-                    "default_classification": true,
+                    "default_classification": 7,
                     "training_data_uri": "checkboxes",
                     "classifier_height": 17,
                     "classifier_width": 14
@@ -618,9 +684,15 @@
                ],
                "classifier": {
                     "classification_map": {
-                         "empty": false
+                         "empty": 0,
+                         "check": 1,
+                         "X": 2,
+                         "diagonal": 3,
+                         "oh": 4,
+                         "vertical": 5,
+                         "filled": 5
                     },
-                    "default_classification": true,
+                    "default_classification": 7,
                     "training_data_uri": "checkboxes",
                     "classifier_height": 17,
                     "classifier_width": 14
@@ -650,9 +722,15 @@
                ],
                "classifier": {
                     "classification_map": {
-                         "empty": false
+                         "empty": 0,
+                         "check": 1,
+                         "X": 2,
+                         "diagonal": 3,
+                         "oh": 4,
+                         "vertical": 5,
+                         "filled": 5
                     },
-                    "default_classification": true,
+                    "default_classification": 7,
                     "training_data_uri": "checkboxes",
                     "classifier_height": 17,
                     "classifier_width": 14
@@ -682,9 +760,15 @@
                ],
                "classifier": {
                     "classification_map": {
-                         "empty": false
+                         "empty": 0,
+                         "check": 1,
+                         "X": 2,
+                         "diagonal": 3,
+                         "oh": 4,
+                         "vertical": 5,
+                         "filled": 5
                     },
-                    "default_classification": true,
+                    "default_classification": 7,
                     "training_data_uri": "checkboxes",
                     "classifier_height": 17,
                     "classifier_width": 14
