@@ -27,7 +27,7 @@
                                    "item_y": 80
                               }
                          ],
-                         "align_segment": false
+                         "align_segment": true
                     },
                     {
                          "segment_height": 101,
@@ -48,7 +48,7 @@
                                    "item_y": 80
                               }
                          ],
-                         "align_segment": false
+                         "align_segment": true
                     },
                     {
                          "segment_height": 101,
@@ -69,7 +69,7 @@
                                    "item_y": 80
                               }
                          ],
-                         "align_segment": false
+                         "align_segment": true
                     },
                     {
                          "segment_height": 101,
@@ -90,7 +90,7 @@
                                    "item_y": 80
                               }
                          ],
-                         "align_segment": false
+                         "align_segment": true
                     },
                     {
                          "segment_height": 101,
@@ -111,7 +111,7 @@
                                    "item_y": 80
                               }
                          ],
-                         "align_segment": false
+                         "align_segment": true
                     },
                     {
                          "segment_height": 101,
@@ -132,7 +132,7 @@
                                    "item_y": 80
                               }
                          ],
-                         "align_segment": false
+                         "align_segment": true
                     }
                ],
                "classifier": {
@@ -189,32 +189,32 @@
                     {
                          "segment_height": 101,
                          "segment_x": 101,
-                         "align_segment": false
+                         "align_segment": true
                     },
                     {
                          "segment_height": 101,
                          "segment_x": 201,
-                         "align_segment": false
+                         "align_segment": true
                     },
                     {
                          "segment_height": 101,
                          "segment_x": 302,
-                         "align_segment": false
+                         "align_segment": true
                     },
                     {
                          "segment_height": 101,
                          "segment_x": 402,
-                         "align_segment": false
+                         "align_segment": true
                     },
                     {
                          "segment_height": 101,
                          "segment_x": 503,
-                         "align_segment": false
+                         "align_segment": true
                     },
                     {
                          "segment_height": 101,
                          "segment_x": 604,
-                         "align_segment": false
+                         "align_segment": true
                     }
                ],
                "classifier": {
@@ -307,32 +307,32 @@
                     {
                          "segment_height": 101,
                          "segment_x": 101,
-                         "align_segment": false
+                         "align_segment": true
                     },
                     {
                          "segment_height": 101,
                          "segment_x": 201,
-                         "align_segment": false
+                         "align_segment": true
                     },
                     {
                          "segment_height": 101,
                          "segment_x": 302,
-                         "align_segment": false
+                         "align_segment": true
                     },
                     {
                          "segment_height": 101,
                          "segment_x": 402,
-                         "align_segment": false
+                         "align_segment": true
                     },
                     {
                          "segment_height": 101,
                          "segment_x": 503,
-                         "align_segment": false
+                         "align_segment": true
                     },
                     {
                          "segment_height": 101,
                          "segment_x": 604,
-                         "align_segment": false
+                         "align_segment": true
                     }
                ],
                "classifier": {
