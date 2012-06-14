@@ -377,6 +377,13 @@ public class MScan2CollectActivity extends Activity {
         writer.write("<bind nodeset=\"/data/xformendtime\" type=\"dateTime\" jr:preload=\"timestamp\" jr:preloadParams=\"end\"/>");
         for(int i = 0; i < fieldsLength; i++){
         	JSONObject field = fields.getJSONObject(i);
+        	String type = field.optString("type", "string");
+        	if(type.equals("input")){
+        		//Deprecate input type?
+        		type = "string";
+        	}
+        	writer.write("<bind nodeset=\"/data/" + fieldNames[i] + "\" type=\"" + type + "\" />");
+        	
         	JSONArray segments = field.getJSONArray("segments");
         	for(int j = 0; j < segments.length(); j++){
 	            writer.write("<bind nodeset=\"/data/" + fieldNames[i] + "_image_" + j + "\" " +
@@ -392,14 +399,21 @@ public class MScan2CollectActivity extends Activity {
         	JSONObject field = fields.getJSONObject(i);
         	JSONArray segments = field.getJSONArray("segments");
         	
+        	String type = field.optString("type", "string");
+        	String tag = "";
+        	if( tag.equals("select") || tag.equals("select1") ){
+        		tag = type;
+        	} else {
+        		tag = "input";
+        	}
+        	
         	writer.write("<group appearance=\"field-list\">");
         	
-        	String type = field.optString("type", "input");
-        	writer.write("<" + type +" ref=\"/data/" + fieldNames[i] + "\">");
+        	writer.write("<" + tag +" ref=\"/data/" + fieldNames[i] + "\">");
         	writer.write("<label ref=\"jr:itext('/data/" + fieldNames[i] + ":label')\"/>");
         	//TODO: Make a xform_body_tag field instead?
         	//Advantage is simpler code and more flexibility for extending
-        	if( type.equals("select") || type.equals("select1") ){
+        	if( tag.equals("select") || tag.equals("select1") ){
         		//Get the items from the first segment.
         		JSONObject segment = segments.getJSONObject(0);
                 JSONArray items = segment.getJSONArray("items");
@@ -410,9 +424,8 @@ public class MScan2CollectActivity extends Activity {
 	                writer.write("<value>" + item.getString("value") + "</value>");
 	                writer.write("</item>");
                 }
-                
         	}
-            writer.write("</" + type + ">");
+            writer.write("</" + tag + ">");
             for(int j = 0; j < segments.length(); j++){
 	            writer.write("<upload ref=\"/data/" + fieldNames[i] + "_image_" + j  + "\" " +
 	    		             "mediatype=\"image/*\" />");

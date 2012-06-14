@@ -16,7 +16,7 @@ public class MScanUtils {
 
 	public static final boolean DebugMode = true;
 	
-	public static final String appFolder = "/sdcard/mScan/";
+	public static final String appFolder = "/sdcard/ODKScan/";
 	
 	public static String getOutputDirPath() {
 		return appFolder + "output/";
