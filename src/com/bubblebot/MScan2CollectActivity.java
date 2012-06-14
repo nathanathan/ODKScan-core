@@ -401,7 +401,7 @@ public class MScan2CollectActivity extends Activity {
         	
         	String type = field.optString("type", "string");
         	String tag = "";
-        	if( tag.equals("select") || tag.equals("select1") ){
+        	if( type.equals("select") || type.equals("select1") ){
         		tag = type;
         	} else {
         		tag = "input";
