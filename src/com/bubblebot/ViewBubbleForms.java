@@ -61,8 +61,8 @@ public class ViewBubbleForms extends ListActivity {
 				TextView nameView = (TextView) view.findViewById(R.id.photoname);
 				nameView.setText(photoName);
 
-				TextView type = (TextView) view.findViewById(R.id.createdTime);
-				type.setText(new Date(new File(MScanUtils.getPhotoPath(photoName)).lastModified()).toString());
+				//TextView type = (TextView) view.findViewById(R.id.createdTime);
+				//type.setText(new Date(new File(MScanUtils.getPhotoPath(photoName)).lastModified()).toString());
 
 				return view;
 			}

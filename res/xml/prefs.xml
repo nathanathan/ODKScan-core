@@ -6,5 +6,5 @@
     android:summary="Specify types of form you would like to scan"
     android:entries="@array/select_templates_default_entries"
     android:entryValues="@array/select_templates_default_values"/>
-    <CheckBoxPreference android:key="calibrate" android:title="@string/calibrate"></CheckBoxPreference>
+    <CheckBoxPreference android:key="calibrate" android:title="@string/calibrate" android:shouldDisableView="true" android:enabled="false" ></CheckBoxPreference>
 </PreferenceScreen>

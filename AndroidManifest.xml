@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-	package="com.bubblebot" android:versionCode="121" android:versionName="1.21">
+	package="com.bubblebot" android:versionCode="126" android:versionName="1.26">
 	<application android:debuggable="false" android:icon="@drawable/icon"
 	    android:theme="@android:style/Theme.Light"
 		android:label="ODK Scan">
@@ -35,12 +35,10 @@
 			android:screenOrientation="portrait"></activity>
 		<activity
 		    android:name="ViewBubbleForms"
-			android:screenOrientation="portrait"
 			android:label="@string/view_bubble_forms_activity">
 		</activity>
 		<activity
 		    android:name="BubbleInstructions"
-			android:screenOrientation="portrait"
 			android:label="@string/bubble_instructions_activity">
 		</activity>
 		<activity

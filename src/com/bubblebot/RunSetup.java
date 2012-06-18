@@ -16,8 +16,6 @@ import android.util.Log;
  */
 public class RunSetup implements Runnable {
 	
-	public static final boolean clearOldData = true;
-	
 	private SharedPreferences settings;
 	private AssetManager assets;
 	private Handler handler;
@@ -33,12 +31,6 @@ public class RunSetup implements Runnable {
 
 		SharedPreferences.Editor editor = settings.edit();
 		
-		if(clearOldData){
-			//TODO: Do this more selectively so collected data is backed up.
-			rmdir(new File(MScanUtils.appFolder));
-			editor.clear();
-		}
-		
 		// Create output dir if it doesn't exist
 		new File(MScanUtils.getOutputDirPath()).mkdirs();
 		
@@ -49,9 +41,11 @@ public class RunSetup implements Runnable {
 			File trainingExamplesDir =  new File(MScanUtils.getTrainingExampleDirPath());
 			File formTemplatesDir = new File(MScanUtils.getTemplateDirPath());
 			
-			//Note: If clearOldData is true these directories will be deleted twice.
-			rmdir(trainingExamplesDir);
-			rmdir(formTemplatesDir);
+			//TODO: When new examples/templates are added to the assets dir they should be added here as well.
+			//It would be nice to automatically delete examples/templates in the assets dir.
+			rmdir(new File(trainingExamplesDir, "bubbles"));
+			rmdir(new File(trainingExamplesDir, "checkboxes"));
+			rmdir(new File(formTemplatesDir, "example"));
 
 			extractAssets(new File(""), new File(MScanUtils.appFolder));
 			

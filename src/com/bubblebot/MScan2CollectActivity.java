@@ -114,8 +114,9 @@ public class MScan2CollectActivity extends Activity {
 			//////////////
 			int instanceId;
 		    String instanceName = templateName
-		    		+ '_' + photoName + '_'
-		    		+ COLLECT_INSTANCE_NAME_DATE_FORMAT.format(new Date(new File(templatePath).lastModified()));
+		    		+ '_' + photoName;
+		    		//+ '_'
+		    		//+ COLLECT_INSTANCE_NAME_DATE_FORMAT.format(new Date(new File(templatePath).lastModified()));
 		    String instancePath = "/sdcard/odk/instances/" + instanceName + "/";
 		    (new File(instancePath)).mkdirs();
 		    String instanceFilePath = instancePath + instanceName + ".xml";
@@ -382,7 +383,20 @@ public class MScan2CollectActivity extends Activity {
         		//Deprecate input type?
         		type = "string";
         	}
-        	writer.write("<bind nodeset=\"/data/" + fieldNames[i] + "\" type=\"" + type + "\" />");
+        	String requiredString = "";
+        	if(field.has("required")){
+        		requiredString = "required=\"";
+        		if(field.getBoolean("required")){
+        			requiredString += "true()";
+        		} else {
+        			requiredString += "false()";
+        		}
+        		requiredString += "\"";
+        	}
+        	writer.write("<bind nodeset=\"/data/" + fieldNames[i] +
+        			"\" type=\"" + type + "\"" +
+        			requiredString +
+        			" />");
         	
         	JSONArray segments = field.getJSONArray("segments");
         	for(int j = 0; j < segments.length(); j++){

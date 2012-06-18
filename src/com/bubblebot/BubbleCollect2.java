@@ -1,6 +1,10 @@
 package com.bubblebot;
 
 import java.io.File;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -12,17 +16,19 @@ import android.util.Log;
 /*
  * BubbleCollect2 launches the Android camera app and collects the picture taken.
  */
-//TODO: Add some kind of error handling for when the device doesn't have a camera app.
-//		It's an unlikely scenario so this isn't a priority.
+//TODO: Show error messages to the user rather than logging them.
 public class BubbleCollect2 extends Activity {
 
 	private static final int TAKE_PICTURE = 12346789;
 	private String photoName;
-
+    private static final DateFormat COLLECT_INSTANCE_NAME_DATE_FORMAT =
+            new SimpleDateFormat("yyyy-MM-dd_kk-mm-ss");
+    
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		photoName = getUniqueName("img");
+		//photoName = getUniqueName("img");
+		photoName = "taken_" + COLLECT_INSTANCE_NAME_DATE_FORMAT.format(new Date());
 		
 		File outputPath = new File(MScanUtils.getOutputPath(photoName));
 		
@@ -48,8 +54,7 @@ public class BubbleCollect2 extends Activity {
 	public void onActivityResult(int requestCode, int resultCode, Intent data) {
 		super.onActivityResult(requestCode, resultCode, data);
 		Log.i("mScan", "Camera activity result: " + requestCode);
-		switch (requestCode) {
-		case TAKE_PICTURE:
+		if (requestCode == TAKE_PICTURE) {
 			finishActivity(TAKE_PICTURE);
 			if (resultCode == Activity.RESULT_OK) {
 				Intent intent = new Intent(getApplication(), AfterPhotoTaken.class);
@@ -71,12 +76,13 @@ public class BubbleCollect2 extends Activity {
 			else if(resultCode == Activity.RESULT_CANCELED){
 				Log.i("mScan", "Canceled");
 			}
-			finish(); //maybe important... activities are complicated
+			finish(); //TODO: See if we can get rid of this.
 		}
 	}
 	//This method will generate a unique name with the given prefix by appending
 	//the current value of a counter, then incrementing the counter.
 	//Each prefix used has its own counter stored in the share preferences.
+	/*
 	protected String getUniqueName(String prefix) {
 		//SharedPreferences settings = getSharedPreferences(getResources().getString(R.string.prefs_name), 0);
 		SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
@@ -86,4 +92,5 @@ public class BubbleCollect2 extends Activity {
 		editor.commit();
 		return prefix + uid;
 	}
+	*/
 }
