@@ -18,6 +18,7 @@
 #include <iostream>
 #include <fstream>
 #include <map>
+#include <time.h>
 // This sets the resolution of the form at which to perform segment alignment and classification.
 // It is a percentage of the size specified in the template.
 #define SCALEPARAM 1.0
@@ -184,6 +185,19 @@ Json::Value minifyJsonOutput(const Json::Value& JsonOutput){
 	}
 	minifiedOutput["fields"] = minifiedOutputFields;
 	return minifiedOutput;
+}
+// Get current date/time, format is YYYY-MM-DD.HH:mm:ss
+// src: http://stackoverflow.com/questions/997946/c-get-current-time-and-date
+const std::string currentDateTime() {
+    time_t     now = time(0);
+    struct tm  tstruct;
+    char       buf[80];
+    tstruct = *localtime(&now);
+    // Visit http://www.cplusplus.com/reference/clibrary/ctime/strftime/
+    // for more information about date/time format
+    strftime(buf, sizeof(buf), "%Y-%m-%d.%X", &tstruct);
+
+    return buf;
 }
 class Processor::ProcessorImpl : public TemplateProcessor
 {
@@ -446,6 +460,7 @@ Json::Value fieldFunction(const Json::Value& field){
 Json::Value formFunction(const Json::Value& templateRoot){
 	Json::Value outForm = super::formFunction(templateRoot);
 	outForm["form_scale"] = SCALEPARAM;
+	outForm["timestamp"] = currentDateTime();
 	outForm.removeMember("items");
 	outForm.removeMember("classifier");
 	return outForm;
