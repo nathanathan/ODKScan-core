@@ -50,12 +50,12 @@ public class DisplayProcessedForm extends Activity {
 				return;
 			}
 		}
-		
+		/*
 		setTitle(getResources().getString(R.string.Health_Center) + ": " +
                  //getSharedPreferences(getResources().getString(R.string.prefs_name), 0)
                  PreferenceManager.getDefaultSharedPreferences(getApplicationContext())
                  .getString("healthCenter", "unspecifiedHC"));
-		
+		*/
 		MScanUtils.displayImageInWebView((WebView)findViewById(R.id.webview2),
 				MScanUtils.getMarkedupPhotoPath(photoName));
 	}

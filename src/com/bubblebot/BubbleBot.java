@@ -160,7 +160,7 @@ public class BubbleBot extends Activity {
 		} else {
 			errorMsg = "We can neither read nor write the media.";
 		}
-		if(errorMsg.isEmpty()){
+		if(errorMsg.equals("")){
 			return true;
 		}
 		AlertDialog alert = new AlertDialog.Builder(this).create();

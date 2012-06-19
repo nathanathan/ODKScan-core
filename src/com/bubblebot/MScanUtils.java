@@ -1,12 +1,11 @@
 package com.bubblebot;
 
-import java.io.File;
-import java.lang.reflect.Method;
 import java.util.Date;
 
 import android.view.View;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.os.StatFs;
 /**
  * MScanUtils contains methods and data shared across the mScan application.
  */
@@ -63,48 +62,36 @@ public class MScanUtils {
 		myWebView.loadDataWithBaseURL("file:///unnecessairy/",
 								 html, "text/html", "utf-8", "");
     }
-    /**
-     * Check if the given class has the given method.
-     * Useful for dealing with android comparability issues (see getUsableSpace)
-     * @param c
-     * @param method
-     * @return
-     */
-	public static <T> boolean hasMethod(Class<T> c, String method){
-		Method methods[] = c.getMethods();
-		for(int i = 0; i < methods.length; i++){
-			if(methods[i].getName().equals(method)){
-				return true;
-			}
-		}
-		return false;
-	}
+//    /**
+//     * Check if the given class has the given method.
+//     * Useful for dealing with android comparability issues (see getUsableSpace)
+//     * @param c
+//     * @param method
+//     * @return
+//     */
+//	public static <T> boolean hasMethod(Class<T> c, String method){
+//		Method methods[] = c.getMethods();
+//		for(int i = 0; i < methods.length; i++){
+//			if(methods[i].getName().equals(method)){
+//				return true;
+//			}
+//		}
+//		return false;
+//	}
+	/**
+	 * Returns the available space in bytes.
+	 * @param folder
+	 * @return
+	 */
 	public static long getUsableSpace(String folder) {
+		/*
 		if(MScanUtils.hasMethod(File.class, "getUsableSpace")){
 			return new File(folder).getUsableSpace();
+			return 999999999;
 		} 
 		return -1;
+		*/
+		StatFs sfs = new StatFs(folder);
+		return sfs.getAvailableBlocks() *  sfs.getBlockSize();
 	}
-//	/**
-//	 * Combine the elements in the array using the + operator
-//	 * @param array
-//	 */
-//	public static String sum(String[] stringArray){
-//		String sum = "";
-//		for(int i = 0; i < stringArray.length; i++){
-//			sum += stringArray[i];
-//		}
-//		return sum;
-//	}
-//	/**
-//	 * Combine the elements in the array using the + operator
-//	 * @param array
-//	 */
-//	public static Number sum(Number[] numberArray){
-//		Double sum = 0.0;
-//		for(int i = 0; i < numberArray.length; i++){
-//			sum += numberArray[i].doubleValue();
-//		}
-//		return sum;
-//	}
 }
