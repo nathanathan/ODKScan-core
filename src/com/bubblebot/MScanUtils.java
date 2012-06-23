@@ -44,6 +44,9 @@ public class MScanUtils {
 	public static String getCalibPath() {
 		return appFolder + "camera.yml";
 	}
+	public static String getFormViewHTMLDir() {
+		return appFolder + "transcription/";
+	}
     public static void displayImageInWebView(WebView myWebView, String imagePath){
 		myWebView.getSettings().setCacheMode(WebSettings.LOAD_NO_CACHE);
 		myWebView.getSettings().setBuiltInZoomControls(true);

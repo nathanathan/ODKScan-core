@@ -47,7 +47,7 @@ public class RunProcessor implements Runnable {
 		
 		try{
 			if(mode == Mode.PROCESS) {
-				if( mProcessor.processForm( MScanUtils.getOutputPath(photoName), true )) {
+				if( mProcessor.processForm( MScanUtils.getOutputPath(photoName), false )) {
 					msg.arg1 = 1;
 				}
 			}

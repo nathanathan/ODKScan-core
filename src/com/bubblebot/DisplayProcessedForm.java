@@ -4,22 +4,33 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.ProgressDialog;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.View;
+import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.widget.Toast;
 
 /**
  * 
@@ -31,8 +42,6 @@ public class DisplayProcessedForm extends Activity {
 	
 	private String photoName;
 	private String templatePath;
-	
-	private ProgressDialog pd;
     
 	// Set up the UI and load the processed image
 	@Override
@@ -56,8 +65,90 @@ public class DisplayProcessedForm extends Activity {
                  PreferenceManager.getDefaultSharedPreferences(getApplicationContext())
                  .getString("healthCenter", "unspecifiedHC"));
 		*/
+		/*
 		MScanUtils.displayImageInWebView((WebView)findViewById(R.id.webview2),
 				MScanUtils.getMarkedupPhotoPath(photoName));
+		*/
+		WebView myWebView = (WebView) findViewById(R.id.webview2);
+		WebSettings webSettings = myWebView.getSettings();
+		webSettings.setCacheMode(WebSettings.LOAD_NO_CACHE);
+		webSettings.setBuiltInZoomControls(true);
+		webSettings.setDefaultZoom(WebSettings.ZoomDensity.FAR);
+		webSettings.setJavaScriptEnabled(true);
+
+		myWebView.loadUrl("file://" + MScanUtils.getFormViewHTMLDir() + "formView.html" + "?" +
+				"imageUrl=" + MScanUtils.getAlignedPhotoPath(photoName) + "&" +
+				"jsonOutputUrl=" + MScanUtils.getJsonPath(photoName));
+		myWebView.addJavascriptInterface(new JavaScriptInterface(getApplicationContext()), "Android");
+	}
+	public class JavaScriptInterface {
+	    Context mContext;
+
+	    /** Instantiate the interface and set the context */
+	    JavaScriptInterface(Context c) {
+	        mContext = c;
+	    }
+	    public void launchCollect(String field, int segment_idx, int field_idx) {
+	    	//It would probably be better to launch collect directly if the form has already been exported.
+	    	Log.i("mScan", "args: " + field + ' ' + segment_idx + ' ' + field_idx);
+	    	Intent dataIntent = new Intent();
+			dataIntent.putExtra("goto", field_idx);
+			startCollect(dataIntent);
+	    }
+	}
+	public void startCollect(Intent data) {
+		if(data.getData() == null) {
+			//No instance specified, create or find one with new activity.
+			Intent intent = new Intent(getApplication(), MScan2CollectActivity.class);
+			intent.putExtras(data);
+			intent.putExtra("templatePath", templatePath);
+			intent.putExtra("photoName", photoName);
+			SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+			intent.putExtra("userName", settings.getString("userName", null));
+			startActivityForResult(intent, 1);
+			return;
+		}
+        //////////////
+        Log.i("mScan", "Starting Collect...");
+        //////////////
+		//Initialize the intent that will start collect and use it to see if collect is installed.
+	    Intent intent = new Intent();
+	    //intent.setFlags(Intent.);
+	    intent.setFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+	    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+	    intent.setComponent(new ComponentName("org.odk.collect.android",
+	            "org.odk.collect.android.activities.FormEntryActivity"));
+	    PackageManager packMan = getPackageManager();
+	    if(packMan.queryIntentActivities(intent, 0).size() == 0){
+	    	AlertDialog.Builder builder = new AlertDialog.Builder(this);
+			builder.setMessage("ODK Collect was not found on this device.")
+			       .setCancelable(false)
+			       .setNeutralButton("Ok", new DialogInterface.OnClickListener() {
+			           public void onClick(DialogInterface dialog, int id) {
+			                dialog.cancel();
+			                finish();
+			           }
+			       });
+			AlertDialog alert = builder.create();
+			alert.show();
+	    	return;
+	    }
+
+	    intent.setAction(Intent.ACTION_EDIT);
+	    intent.putExtras(data);
+	    intent.setData(data.getData());
+	    startActivityForResult(intent, 0);
+	}
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+		if(requestCode == 0){
+			
+		} else if(requestCode == 1){
+			if(resultCode == Activity.RESULT_OK) {
+				startCollect(data);
+			}
+		}
+		super.onActivityResult(requestCode, resultCode, data);
 	}
 	@Override
 	public void onAttachedToWindow() {
@@ -87,10 +178,9 @@ public class DisplayProcessedForm extends Activity {
 			return true;
 		case R.id.exportToODK:
 			Log.i("mScan", "Using template: " + templatePath);
-			intent = new Intent(getApplication(), MScan2CollectActivity.class);
-			intent.putExtra("templatePath", templatePath);
-			intent.putExtra("photoName", photoName);
-			startActivity(intent);
+	    	Intent dataIntent = new Intent();
+			dataIntent.putExtra("start", true);
+			startCollect(dataIntent);
 			return true;
 		case R.id.saveData:
 			//saveData();

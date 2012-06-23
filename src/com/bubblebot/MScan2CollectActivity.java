@@ -61,16 +61,7 @@ public class MScan2CollectActivity extends Activity {
 		super.onCreate(savedInstanceState);
 
 		try {
-			//Initialize the intent that will start collect and use it to see if collect is installed.
-		    Intent intent = new Intent();
-		    intent.setFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
-		    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-		    intent.setComponent(new ComponentName("org.odk.collect.android",
-		            "org.odk.collect.android.activities.FormEntryActivity"));
-		    PackageManager packMan = getPackageManager();
-		    if(packMan.queryIntentActivities(intent, 0).size() == 0){
-		    	throw new Exception("ODK Collect was not found on this device.");
-		    }
+
 			
 			//Read in parameters from the intent's extras.
 			Bundle extras = getIntent().getExtras();
@@ -80,6 +71,7 @@ public class MScan2CollectActivity extends Activity {
 			photoName = extras.getString("photoName");
 			String jsonOutPath = MScanUtils.getJsonPath(photoName);
 			String templatePath = extras.getString("templatePath");
+			String userName = extras.getString("userName");
 
 			if(jsonOutPath == null){ throw new Exception("jsonOutPath is null"); }
 			if(templatePath == null){ throw new Exception("Could not identify template."); }
@@ -113,8 +105,9 @@ public class MScan2CollectActivity extends Activity {
 			Log.i(LOG_TAG, "Checking if the form instance is already registered with collect.");
 			//////////////
 			int instanceId;
+			userName = (userName != null) ? ("_" + userName) : "";
 		    String instanceName = templateName
-		    		+ '_' + photoName;
+		    		+ '_' + photoName + userName;
 		    		//+ '_'
 		    		//+ COLLECT_INSTANCE_NAME_DATE_FORMAT.format(new Date(new File(templatePath).lastModified()));
 		    String instancePath = "/sdcard/odk/instances/" + instanceName + "/";
@@ -145,14 +138,12 @@ public class MScan2CollectActivity extends Activity {
 	    	}
 	    	c.close();
 			Log.i(LOG_TAG, "instanceId: " + instanceId);
-	        //////////////
-	        Log.i(LOG_TAG, "Starting Collect...");
-	        //////////////
-		    intent.setAction(Intent.ACTION_EDIT);
-		    intent.putExtra("start", true);
-		    intent.setData(Uri.parse(COLLECT_INSTANCES_URI_STRING + "/" + instanceId));
-		    startActivity(intent);
-		    finish();
+
+			Intent resultData = new Intent();
+			resultData.putExtras(extras);
+			resultData.setData(Uri.parse(COLLECT_INSTANCES_URI_STRING + "/" + instanceId));
+			setResult(RESULT_OK, resultData);
+			finish();
 		    
 		} catch (Exception e) {
 			//Display an error dialog if something goes wrong.

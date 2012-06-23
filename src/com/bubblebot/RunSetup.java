@@ -46,6 +46,7 @@ public class RunSetup implements Runnable {
 			rmdir(new File(trainingExamplesDir, "bubbles"));
 			rmdir(new File(trainingExamplesDir, "checkboxes"));
 			rmdir(new File(formTemplatesDir, "example"));
+			rmdir(new File(MScanUtils.getFormViewHTMLDir()));
 
 			extractAssets(new File(""), new File(MScanUtils.appFolder));
 			

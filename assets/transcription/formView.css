@@ -1,0 +1,14 @@
+canvas {
+    position: absolute;
+    z-index: 400;
+}
+.image-container {
+    margin-left: auto;
+    margin-right: auto;
+    padding: 0;
+    width: 832px;
+}
+body {
+    padding-top: 0;
+    min-width:832px;
+}
