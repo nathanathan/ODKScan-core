@@ -453,6 +453,7 @@ Json::Value fieldFunction(const Json::Value& field){
 	if(!value.isNull()){
 		fieldJsonOut["value"] = value;
 	}
+	fieldJsonOut.removeMember("fields");
 	fieldJsonOut.removeMember("items");
 	fieldJsonOut.removeMember("classifier");
 	return fieldJsonOut;
