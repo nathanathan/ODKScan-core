@@ -1,5 +1,11 @@
 package com.bubblebot;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.Date;
 
 import android.view.View;
@@ -96,5 +102,43 @@ public class MScanUtils {
 		*/
 		StatFs sfs = new StatFs(folder);
 		return sfs.getAvailableBlocks() *  sfs.getBlockSize();
+	}
+	//Replace this with code from parseFileToJSONObject
+    private static String readFileAsString(String filePath)
+    		throws java.io.IOException{
+        StringBuffer fileData = new StringBuffer(1000);
+        BufferedReader reader = new BufferedReader(
+                new FileReader(filePath));
+        char[] buf = new char[1024];
+        int numRead=0;
+        while((numRead=reader.read(buf)) != -1){
+            String readData = String.valueOf(buf, 0, numRead);
+            fileData.append(readData);
+            buf = new char[1024];
+        }
+        reader.close();
+        return fileData.toString();
+    }
+    
+	public static String getTemplatePath(String photoName) {
+		if(new File(getOutputPath(photoName)).exists()){
+			String templateValueFile = getOutputPath(photoName) + "template";
+			if(new File(templateValueFile).exists()){
+				try {
+					return readFileAsString(templateValueFile);
+				} catch (IOException e) {
+					return null;
+				}
+			}
+		}
+		return null;
+	}
+	public static void setTemplatePath(String photoName, String templatePath) throws IOException {
+		String templateValueFile = getOutputPath(photoName) + "template";
+		if(new File(templateValueFile).createNewFile()){
+			BufferedWriter out = new BufferedWriter(new FileWriter(templateValueFile));
+			out.write(templatePath);
+			out.close();
+		}
 	}
 }

@@ -8,4 +8,6 @@
     android:entryValues="@array/select_templates_default_values"/>
     <CheckBoxPreference android:key="calibrate" android:title="@string/calibrate" android:shouldDisableView="true" android:enabled="false" ></CheckBoxPreference>
     <EditTextPreference android:key="userName" android:title="User Name"></EditTextPreference>
+    <CheckBoxPreference android:key="collectShowSegs" android:title="Show segments in xform"></CheckBoxPreference>
+    <CheckBoxPreference android:key="collectAutofill" android:title="Autofill xform"></CheckBoxPreference>
 </PreferenceScreen>

@@ -28,14 +28,16 @@ import android.content.ComponentName;
 import android.content.ContentValues;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.util.Log;
 /**
- * This activity converts mScan JSON files into XML files
- * that can be used with ODK and launches ODK Collect
+ * This activity converts mScan JSON files into xforms that can be used with Collect
+ * and returns a path to the xform instance as a result.
  * @author nathan
  *
  */
@@ -71,8 +73,7 @@ public class MScan2CollectActivity extends Activity {
 			photoName = extras.getString("photoName");
 			String jsonOutPath = MScanUtils.getJsonPath(photoName);
 			String templatePath = extras.getString("templatePath");
-			String userName = extras.getString("userName");
-
+			
 			if(jsonOutPath == null){ throw new Exception("jsonOutPath is null"); }
 			if(templatePath == null){ throw new Exception("Could not identify template."); }
 			
@@ -80,6 +81,7 @@ public class MScan2CollectActivity extends Activity {
 			Log.i(LOG_TAG,"templatePath : " + templatePath);
 			
 			String templateName = new File(templatePath).getName();
+
 			String jsonPath = new File(templatePath, "template.json").getPath();
 			String xFormPath = new File(templatePath, templateName + ".xml").getPath();
 
@@ -105,11 +107,25 @@ public class MScan2CollectActivity extends Activity {
 			Log.i(LOG_TAG, "Checking if the form instance is already registered with collect.");
 			//////////////
 			int instanceId;
-			userName = (userName != null) ? ("_" + userName) : "";
 		    String instanceName = templateName
-		    		+ '_' + photoName + userName;
+		    		+ '_' + photoName;
 		    		//+ '_'
 		    		//+ COLLECT_INSTANCE_NAME_DATE_FORMAT.format(new Date(new File(templatePath).lastModified()));
+		    
+			SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+			String userName = settings.getString("userName", null);
+			boolean showSegs = settings.getBoolean("collectShowSegs", false);
+			boolean autofill = settings.getBoolean("collectAutofill", false);
+			if(userName != null){
+				instanceName += "_" + userName;
+			}
+			if(showSegs){
+				instanceName += "_showSegs";
+			}
+			if(autofill){
+				instanceName += "_autofill";
+			}
+			
 		    String instancePath = "/sdcard/odk/instances/" + instanceName + "/";
 		    (new File(instancePath)).mkdirs();
 		    String instanceFilePath = instancePath + instanceName + ".xml";
@@ -127,7 +143,7 @@ public class MScan2CollectActivity extends Activity {
 				//////////////
 				Log.i(LOG_TAG, "Registered odk instance not found, creating one...");
 				//////////////
-	    		jsonOut2XFormInstance(jsonOutPath, xFormPath, instancePath, instanceName);
+	    		jsonOut2XFormInstance(jsonOutPath, xFormPath, instancePath, instanceName, showSegs, autofill);
 	            ContentValues insertValues = new ContentValues();
 	            insertValues.put("displayName", instanceName);
 	            insertValues.put("instanceFilePath", instanceFilePath);
@@ -191,8 +207,10 @@ public class MScan2CollectActivity extends Activity {
     }
 	/**
 	 * Generates an instance of an xform at xFormPath from the JSON output file
+	 * @param autofill 
+	 * @param showSegs 
 	 */
-	private void jsonOut2XFormInstance(String jsonOutFile, String xFormPath, String instancePath, String instanceName)
+	private void jsonOut2XFormInstance(String jsonOutFile, String xFormPath, String instancePath, String instanceName, boolean showSegs, boolean autofill)
 			throws JSONException, IOException, XmlPullParserException {
 		//////////////
 	    Log.i(LOG_TAG, "Reading the xform...");
@@ -242,24 +260,28 @@ public class MScan2CollectActivity extends Activity {
 					instance.addChild(Node.ELEMENT, fieldImageElement);
 					continue;
 				}
-				String imagePath = segment.getString("image_path");
-				fieldImageElement.addChild(Node.TEXT, new File(imagePath).getName());
-				instance.addChild(Node.ELEMENT, fieldImageElement);
-				//Copy segment image
-				InputStream fis = new FileInputStream(imagePath);
-				FileOutputStream fos = new FileOutputStream(instancePath + new File(imagePath).getName());
-				// Transfer bytes from in to out
-				byte[] buf = new byte[1024];
-				int len;
-				while ((len = fis.read(buf)) > 0) {
-					fos.write(buf, 0, len);
+				if(showSegs){
+					String imagePath = segment.getString("image_path");
+					fieldImageElement.addChild(Node.TEXT, new File(imagePath).getName());
+					//Copy segment image
+					InputStream fis = new FileInputStream(imagePath);
+					FileOutputStream fos = new FileOutputStream(instancePath + new File(imagePath).getName());
+					// Transfer bytes from in to out
+					byte[] buf = new byte[1024];
+					int len;
+					while ((len = fis.read(buf)) > 0) {
+						fos.write(buf, 0, len);
+					}
+					fos.close();
+					fis.close();
 				}
-				fos.close();
-				fis.close();
+				instance.addChild(Node.ELEMENT, fieldImageElement);
 			}
 			//Create instance element for field value:
 			Element fieldElement = instance.createElement("", fieldName);
-			fieldElement.addChild(Node.TEXT, "" + field.optString("value"));
+			if(autofill){
+				fieldElement.addChild(Node.TEXT, "" + field.optString("value"));
+			}
 			instance.addChild(Node.ELEMENT, fieldElement);
 		}
         //////////////
@@ -424,8 +446,10 @@ public class MScan2CollectActivity extends Activity {
                 JSONArray items = segment.getJSONArray("items");
                 for(int j = 0; j < items.length(); j++){
                 	JSONObject item = items.getJSONObject(j);
+                	String label = item.optString("label");
+                	label = label == "" ? item.getString("value") : label;
 	                writer.write("<item>");
-	                writer.write("<label>" + item.getString("label") + "</label>");
+	                writer.write("<label>" + label + "</label>");
 	                writer.write("<value>" + item.getString("value") + "</value>");
 	                writer.write("</item>");
                 }

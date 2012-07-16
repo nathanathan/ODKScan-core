@@ -1,5 +1,6 @@
 package com.bubblebot;
 
+import java.io.IOException;
 import java.util.Date;
 import com.bubblebot.RunProcessor.Mode;
 import android.app.Activity;
@@ -192,8 +193,15 @@ public class AfterPhotoTaken extends Activity {
 	        		if ( success ) {
 	        			int templatePathIdx = msg.arg2;
 	                    //Tracking template in app settings for persistence:
-	                    SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-	            		settings.edit().putString(photoName, templatePaths[templatePathIdx]).commit();
+	                    //SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+	            		//settings.edit().putString(photoName, templatePaths[templatePathIdx]).commit();
+	        			
+	        			try {
+							MScanUtils.setTemplatePath(photoName, templatePaths[templatePathIdx]);
+						} catch (IOException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
 	        		}
 	        		updateUI(success, errorMessage);
         			break;

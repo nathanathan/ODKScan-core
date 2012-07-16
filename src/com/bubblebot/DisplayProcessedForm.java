@@ -30,6 +30,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.widget.EditText;
 import android.widget.Toast;
 
 /**
@@ -42,7 +43,7 @@ public class DisplayProcessedForm extends Activity {
 	
 	private String photoName;
 	private String templatePath;
-    
+	WebView myWebView;
 	// Set up the UI and load the processed image
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -53,13 +54,36 @@ public class DisplayProcessedForm extends Activity {
 		if (extras != null) {
 			photoName = extras.getString("photoName");
 			SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-			templatePath = settings.getString(photoName, "");
+			//templatePath = settings.getString(photoName, "");
+			templatePath = MScanUtils.getTemplatePath(photoName);
 			if(templatePath == ""){
 				Log.i("mScan", "Could not associate templatePath with photo.");
 				return;
+			} else if(extras.getBoolean("startCollect", false)){
+		    	Intent dataIntent = new Intent();
+				dataIntent.putExtra("start", true);
+				startCollect(dataIntent);
+				return;
 			}
+				
 		}
+		
+		String url = "file://" + MScanUtils.getFormViewHTMLDir() + "formView.html" + "?" +
+		"formLocation=" + MScanUtils.getOutputPath(photoName);
+		myWebView = (WebView) findViewById(R.id.webview2);
+		WebSettings webSettings = myWebView.getSettings();
+		webSettings.setCacheMode(WebSettings.LOAD_NO_CACHE);
+		webSettings.setBuiltInZoomControls(true);
+		webSettings.setDefaultZoom(WebSettings.ZoomDensity.FAR);
+		webSettings.setJavaScriptEnabled(true);
+
+		myWebView.loadUrl(url);
+		//myWebView.addJavascriptInterface(new JavaScriptInterface(getApplicationContext(), new File(MScanUtils.getOutputPath(photoName), "transcription.txt")), "Android");
 		/*
+		Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+        startActivity(browserIntent);
+		
+		
 		setTitle(getResources().getString(R.string.Health_Center) + ": " +
                  //getSharedPreferences(getResources().getString(R.string.prefs_name), 0)
                  PreferenceManager.getDefaultSharedPreferences(getApplicationContext())
@@ -69,24 +93,63 @@ public class DisplayProcessedForm extends Activity {
 		MScanUtils.displayImageInWebView((WebView)findViewById(R.id.webview2),
 				MScanUtils.getMarkedupPhotoPath(photoName));
 		*/
-		WebView myWebView = (WebView) findViewById(R.id.webview2);
-		WebSettings webSettings = myWebView.getSettings();
-		webSettings.setCacheMode(WebSettings.LOAD_NO_CACHE);
-		webSettings.setBuiltInZoomControls(true);
-		webSettings.setDefaultZoom(WebSettings.ZoomDensity.FAR);
-		webSettings.setJavaScriptEnabled(true);
+		 
+	}
+	public void makeAlert(final String field){
+ 	   AlertDialog.Builder alert = new AlertDialog.Builder(this);                 
+ 	   alert.setTitle("field");  
+ 	   alert.setMessage("field :" + field);                
 
-		myWebView.loadUrl("file://" + MScanUtils.getFormViewHTMLDir() + "formView.html" + "?" +
-				"imageUrl=" + MScanUtils.getAlignedPhotoPath(photoName) + "&" +
-				"jsonOutputUrl=" + MScanUtils.getJsonPath(photoName));
-		myWebView.addJavascriptInterface(new JavaScriptInterface(getApplicationContext()), "Android");
+ 	    // Set an EditText view to get user input   
+ 	    final EditText input = new EditText(this); 
+ 	    alert.setView(input);
+
+ 	       alert.setPositiveButton("Ok", new DialogInterface.OnClickListener() {  
+ 	       public void onClick(DialogInterface dialog, int whichButton) {  
+ 	           String value = input.getText().toString();
+ 	           myWebView.loadUrl("javascript:testEcho('" + field + "', '"+ value +"')");
+ 	           return;                  
+ 	          }  
+ 	        });  
+
+ 	       alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+
+ 	           public void onClick(DialogInterface dialog, int which) {
+ 	               // TODO Auto-generated method stub
+ 	               return;   
+ 	           }
+ 	       });
+            alert.show();
 	}
 	public class JavaScriptInterface {
 	    Context mContext;
-
+	    BufferedWriter bufferWritter;
+	    
 	    /** Instantiate the interface and set the context */
-	    JavaScriptInterface(Context c) {
+	    JavaScriptInterface(Context c, File file) {
 	        mContext = c;
+	        FileWriter fileWritter;
+			try {
+				fileWritter = new FileWriter(file.toString());
+				bufferWritter = new BufferedWriter(fileWritter);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+	    }
+	    public void saveData(String data){
+	    	try {
+				bufferWritter.write(data);
+				bufferWritter.flush();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+	    }
+	    public void makePopup(String field, int field_idx) {
+	    	Log.i("mScan", "makePopup args: " + field + ' ' + field_idx);
+	    	makeAlert(field);
+
 	    }
 	    public void launchCollect(String field, int segment_idx, int field_idx) {
 	    	//It would probably be better to launch collect directly if the form has already been exported.
@@ -103,8 +166,6 @@ public class DisplayProcessedForm extends Activity {
 			intent.putExtras(data);
 			intent.putExtra("templatePath", templatePath);
 			intent.putExtra("photoName", photoName);
-			SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-			intent.putExtra("userName", settings.getString("userName", null));
 			startActivityForResult(intent, 1);
 			return;
 		}
@@ -142,7 +203,7 @@ public class DisplayProcessedForm extends Activity {
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 		if(requestCode == 0){
-			
+			finish();
 		} else if(requestCode == 1){
 			if(resultCode == Activity.RESULT_OK) {
 				startCollect(data);
