@@ -391,8 +391,10 @@ Json::Value segmentFunction(const Json::Value& segmentTemplate) {
 	}
 	
 	//Output the segment image:
-	Mat segment_out;
+	Mat segment_out, tmp;
 	cvtColor(segmentImg, segment_out, CV_GRAY2RGB);
+    resize(segment_out, tmp, 2*segment_out.size());
+    segment_out = tmp;
 	/*
 	vector <Point> expectedBubbleLocs = getBubbleLocations(*classifier, segmentImg, segmentTemplate["items"], false);
 
