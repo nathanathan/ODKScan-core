@@ -7,10 +7,6 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Arrays;
-import java.util.Date;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -24,12 +20,10 @@ import org.xmlpull.v1.XmlPullParserException;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.ComponentName;
 import android.content.ContentValues;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
@@ -51,8 +45,6 @@ public class MScan2CollectActivity extends Activity {
             "content://org.odk.collect.android.provider.odk.instances/instances";
     private static final Uri COLLECT_INSTANCES_CONTENT_URI =
             Uri.parse(COLLECT_INSTANCES_URI_STRING);
-    private static final DateFormat COLLECT_INSTANCE_NAME_DATE_FORMAT =
-            new SimpleDateFormat("yyyy-MM-dd_kk-mm-ss");
 
 	private static final String LOG_TAG = "mScan";
 	
@@ -109,21 +101,14 @@ public class MScan2CollectActivity extends Activity {
 			int instanceId;
 		    String instanceName = templateName
 		    		+ '_' + photoName;
-		    		//+ '_'
-		    		//+ COLLECT_INSTANCE_NAME_DATE_FORMAT.format(new Date(new File(templatePath).lastModified()));
 		    
 			SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+			
+			//TODO: Perhaps username (and other meta data specified in settings) should be added to the instance itself.
+			//		Not sure this would be an useful feature though.
 			String userName = settings.getString("userName", null);
-			boolean showSegs = settings.getBoolean("collectShowSegs", false);
-			boolean autofill = settings.getBoolean("collectAutofill", false);
 			if(userName != null){
 				instanceName += "_" + userName;
-			}
-			if(showSegs){
-				instanceName += "_showSegs";
-			}
-			if(autofill){
-				instanceName += "_autofill";
 			}
 			
 		    String instancePath = "/sdcard/odk/instances/" + instanceName + "/";
@@ -143,7 +128,7 @@ public class MScan2CollectActivity extends Activity {
 				//////////////
 				Log.i(LOG_TAG, "Registered odk instance not found, creating one...");
 				//////////////
-	    		jsonOut2XFormInstance(jsonOutPath, xFormPath, instancePath, instanceName, showSegs, autofill);
+	    		jsonOut2XFormInstance(jsonOutPath, xFormPath, instancePath, instanceName);
 	            ContentValues insertValues = new ContentValues();
 	            insertValues.put("displayName", instanceName);
 	            insertValues.put("instanceFilePath", instanceFilePath);
@@ -210,7 +195,7 @@ public class MScan2CollectActivity extends Activity {
 	 * @param autofill 
 	 * @param showSegs 
 	 */
-	private void jsonOut2XFormInstance(String jsonOutFile, String xFormPath, String instancePath, String instanceName, boolean showSegs, boolean autofill)
+	private void jsonOut2XFormInstance(String jsonOutFile, String xFormPath, String instancePath, String instanceName)
 			throws JSONException, IOException, XmlPullParserException {
 		//////////////
 	    Log.i(LOG_TAG, "Reading the xform...");
@@ -260,28 +245,26 @@ public class MScan2CollectActivity extends Activity {
 					instance.addChild(Node.ELEMENT, fieldImageElement);
 					continue;
 				}
-				if(showSegs){
-					String imagePath = segment.getString("image_path");
-					fieldImageElement.addChild(Node.TEXT, new File(imagePath).getName());
-					//Copy segment image
-					InputStream fis = new FileInputStream(imagePath);
-					FileOutputStream fos = new FileOutputStream(instancePath + new File(imagePath).getName());
-					// Transfer bytes from in to out
-					byte[] buf = new byte[1024];
-					int len;
-					while ((len = fis.read(buf)) > 0) {
-						fos.write(buf, 0, len);
-					}
-					fos.close();
-					fis.close();
+				String imagePath = segment.getString("image_path");
+				fieldImageElement.addChild(Node.TEXT, new File(imagePath).getName());
+				//Copy segment image
+				InputStream fis = new FileInputStream(imagePath);
+				FileOutputStream fos = new FileOutputStream(instancePath + new File(imagePath).getName());
+				// Transfer bytes from in to out
+				byte[] buf = new byte[1024];
+				int len;
+				while ((len = fis.read(buf)) > 0) {
+					fos.write(buf, 0, len);
 				}
+				fos.close();
+				fis.close();
+
 				instance.addChild(Node.ELEMENT, fieldImageElement);
 			}
 			//Create instance element for field value:
 			Element fieldElement = instance.createElement("", fieldName);
-			if(autofill){
-				fieldElement.addChild(Node.TEXT, "" + field.optString("value"));
-			}
+			fieldElement.addChild(Node.TEXT, "" + field.optString("value"));
+
 			instance.addChild(Node.ELEMENT, fieldElement);
 		}
         //////////////

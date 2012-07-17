@@ -87,7 +87,6 @@ public class ViewBubbleForms extends ListActivity {
 				if (new File(MScanUtils.getJsonPath(photoName)).exists()) {
 					Intent intent = new Intent(getApplication(), DisplayProcessedForm.class);
 					intent.putExtra("photoName", photoName);
-					intent.putExtra("startCollect", true);
 					startActivity(intent); 
 				}
 				else if(new File(MScanUtils.getAlignedPhotoPath(photoName)).exists()){

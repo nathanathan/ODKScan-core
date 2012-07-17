@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-	package="com.bubblebot" android:versionCode="140" android:versionName="1.40 (Transcription)">
+	package="com.bubblebot" android:versionCode="141" android:versionName="1.41">
 	<application android:debuggable="false" android:icon="@drawable/icon"
 	    android:theme="@android:style/Theme.Light"
 		android:label="ODK Scan">
@@ -50,9 +50,6 @@
 		    android:name="DisplayProcessedForm"
 			android:screenOrientation="portrait"
 			android:label="@string/display_processed_form_activity">
-			<intent-filter>
-				<action android:name="android.intent.action.VIEW" />
-			</intent-filter>
 		</activity>
 		<activity
 		    android:name="DisplayProcessedData"
