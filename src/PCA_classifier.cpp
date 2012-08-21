@@ -240,7 +240,8 @@ bool PCA_classifier::train_PCA_classifier(const vector<string>& examplePaths, Si
 
 	return true;
 }
-//Rates a range of pixels in det_img_gray on how likely it is to be a bubble.
+//Rates a region of pixels in det_img_gray on how similar it is to the classifier's training examples.
+//A lower rating means it is more similar.
 //The rating is the  sum of squard difference of the queried pixels and their PCA back projection.
 //Back projection tries to reconstruct a image/vector just using components of the PCA set (generated from the training data).
 //The theory is that if there is little difference between the reconstructed image and the original image
@@ -281,26 +282,29 @@ inline double PCA_classifier::rate_item(const Mat& det_img_gray, const Point& it
 	Mat out = my_PCA.backProject(pca_components) - query_pixels;
 	return sum(out.mul(out)).val[0];
 }
-
-//This using a hillclimbing algorithm to find the location that minimizes the value of the rate bubble function.
+//This using a hill descending algorithm to find the location that minimizes the value of the rate bubble function.
 //It might only find a local instead of global minimum but it is much faster than a global search.
-Point PCA_classifier::align_item(const Mat& det_img_gray, const Point& seed_location) const {
+Point PCA_classifier::align_item(const Mat& det_img_gray, const Point& seed_location, double alignment_radius) const {
 	int iterations = 10;
+	#define CHECKED 123
 
 	Mat sofar = Mat::zeros(Size(2*iterations+1, 2*iterations+1), CV_8UC1);
-	Point offset = Point(seed_location.x - iterations, seed_location.y - iterations);
-	Point loc = Point(iterations, iterations);
+	Point sofarCenter = Point(iterations, iterations);
+	//This is the offset of the element in deg_img_gray corresponding to the top-left element of sofar.
+	Point offset = Point(seed_location.x, seed_location.y) - sofarCenter;
+	Point loc = Point(sofarCenter);
 	
 	double minDirVal = 100.;
 	while( iterations > 0 ){
 		Point minDir(0,0);
 		for(int i = loc.x-1; i <= loc.x+1; i++) {
 			for(int j = loc.y-1; j <= loc.y+1; j++) {
-				if(sofar.at<uchar>(j,i) != 123) {
-					sofar.at<uchar>(j,i) = 123;
+				if(sofar.at<uchar>(j,i) != CHECKED) {
+					sofar.at<uchar>(j,i) = CHECKED;
 					
 					double rating = rate_item(det_img_gray, Point(i,j) + offset);
-					rating *= MAX(1, norm(loc - Point(iterations, iterations)));
+					//This weights ratings to be higher the further they get from the seed location.
+					rating *= MAX(1, norm(loc - sofarCenter));
 					
 					if(rating <= minDirVal){
 						minDirVal = rating;
@@ -314,9 +318,12 @@ Point PCA_classifier::align_item(const Mat& det_img_gray, const Point& seed_loca
 			break;
 		}
 		loc += minDir;
+		if(norm(loc) > alignment_radius){
+			break;
+		}
 		iterations--;
 	}
-	#if 0
+	#if 1
 	//This shows the examined pixels if it is on.
 	namedWindow("outliers", CV_WINDOW_NORMAL);
 	imshow( "outliers", sofar );

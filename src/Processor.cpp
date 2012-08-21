@@ -39,10 +39,15 @@
 using namespace std;
 using namespace cv;
 
-//TODO: Make this function better
 Json::Value getFieldValue(const Json::Value& field){
 	Json::Value output;
 	const Json::Value segments = field["segments"];
+	//Add a delimiter for select type fields
+	string selectDelimiter("");
+	string select("select");
+	if (field.get("type", "none").asString().compare(0, select.length(), select) == 0) {
+		selectDelimiter = " ";
+	}
 	for ( size_t i = 0; i < segments.size(); i++ ) {
 		const Json::Value segment = segments[i];
 		const Json::Value items = segment["items"];
@@ -61,7 +66,7 @@ Json::Value getFieldValue(const Json::Value& field){
 				case Json::booleanValue:
 					if(!itemValue.isNull()){
 						if(classification.asBool()){
-							output = Json::Value(output.asString() +
+							output = Json::Value(output.asString() + selectDelimiter +
 									     itemValue.asString());
 						}
 						else{
@@ -196,7 +201,6 @@ const std::string currentDateTime() {
     // Visit http://www.cplusplus.com/reference/clibrary/ctime/strftime/
     // for more information about date/time format
     strftime(buf, sizeof(buf), "%Y-%m-%d.%X", &tstruct);
-
     return buf;
 }
 class Processor::ProcessorImpl : public TemplateProcessor
@@ -364,7 +368,7 @@ Json::Value segmentFunction(const Json::Value& segmentTemplate) {
 	if(!items.isNull()){
 		Json::Value itemsJsonOut;
 		Json::Value classifierJson = segmentTemplate["classifier"];
-		bool alignItems = classifierJson.isMember("alignment_radius");
+		double alignment_radius = classifierJson.get("alignment_radius", 0.0).asDouble();
 		Ptr<PCA_classifier> classifier = getClassifier(classifierJson);
 		
 		for (size_t i = 0; i < items.size(); i++) {
@@ -372,8 +376,8 @@ Json::Value segmentFunction(const Json::Value& segmentTemplate) {
 
 			//Classify the item
 			Point itemLocation = SCALEPARAM * Point(items[i]["item_x"].asDouble(), items[i]["item_y"].asDouble());
-			if(alignItems){
-				itemLocation = classifier->align_item(segmentImg, itemLocation);
+			if(alignment_radius > .1){
+				itemLocation = classifier->align_item(segmentImg, itemLocation, alignment_radius);
 			}
 			itemJsonOut["classification"] = classifier->classify_item(segmentImg, itemLocation);
 			
@@ -393,8 +397,8 @@ Json::Value segmentFunction(const Json::Value& segmentTemplate) {
 	//Output the segment image:
 	Mat segment_out, tmp;
 	cvtColor(segmentImg, segment_out, CV_GRAY2RGB);
-    resize(segment_out, tmp, 2*segment_out.size());
-    segment_out = tmp;
+	resize(segment_out, tmp, 2*segment_out.size());
+	segment_out = tmp;
 	/*
 	vector <Point> expectedBubbleLocs = getBubbleLocations(*classifier, segmentImg, segmentTemplate["items"], false);
 

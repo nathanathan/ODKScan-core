@@ -60,7 +60,7 @@ class PCA_classifier
 		double rate_item(const cv::Mat& det_img_gray, const cv::Point& item_location) const;
 		//Returns a refined location for the object being classified
 		//(currently by doing a hill climbing search with rateBubble as the objective function)
-		cv::Point align_item(const cv::Mat& det_img_gray, const cv::Point& seed_location) const;
+		cv::Point align_item(const cv::Mat& det_img_gray, const cv::Point& seed_location, double alignment_radius) const;
 
 		Json::Value classify_item(const cv::Mat& det_img_gray, const cv::Point& item_location) const;
 		
