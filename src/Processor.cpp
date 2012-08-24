@@ -307,11 +307,12 @@ Json::Value segmentFunction(const Json::Value& segmentTemplate) {
 	                                     SCALEPARAM * Size(segmentTemplate.get("segment_width", INT_MIN).asInt(),
 	                                                       segmentTemplate.get("segment_height", INT_MIN).asInt()));
 	//Transfromation and offest are used to get absolute bubble locations.
-	Mat transformation = (Mat_<double>(3,3) << 1, 0, 0, 0, 1, 0, 0, 0, 1);
+	Mat transformation = (Mat_<double>(3,3) << 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0);
 	Point offset = segmentRect.tl();
 
 	//Get the cropped segment image:
-	if(segmentTemplate.get("align_segment", true).asBool()) {
+	if(segmentTemplate.get("align_segment", false).asBool()) {
+		//Segment alignment is off by default because it seems to perform worse.
 		Rect expandedRect = resizeRect(segmentRect, 1 + SEGMENT_BUFFER);
 	
 		//Reduce the segment buffer if it goes over the image edge.
@@ -345,7 +346,6 @@ Json::Value segmentFunction(const Json::Value& segmentTemplate) {
 			Mat alignedSegment(0, 0, CV_8U);
 			warpPerspective(segmentImg, alignedSegment, transformation, segmentRect.size());
 			segmentImg = alignedSegment;
-			
 			segmentJsonOut["quad"] = quadToJsonArray( quad, offset );
 		}
 		else{
@@ -380,13 +380,13 @@ Json::Value segmentFunction(const Json::Value& segmentTemplate) {
 				itemLocation = classifier->align_item(segmentImg, itemLocation, alignment_radius);
 			}
 			itemJsonOut["classification"] = classifier->classify_item(segmentImg, itemLocation);
-			
+
 			//Create JSON output
 			Mat absoluteLocation = transformation.inv() * Mat(Point3d( itemLocation.x,
-		                                                                   itemLocation.y, 1.f));
+		                                                                   itemLocation.y, 1.0));
 			itemJsonOut["absolute_location"] = pointToJson(
-				Point( absoluteLocation.at<double>(0,0) / absoluteLocation.at<double>(2, 0),
-				       absoluteLocation.at<double>(1,0) / absoluteLocation.at<double>(2, 0)) +
+				Point( absoluteLocation.at<double>(0.0,0.0) / absoluteLocation.at<double>(2.0, 0.0),
+				       absoluteLocation.at<double>(1.0,0.0) / absoluteLocation.at<double>(2.0, 0.0)) +
 				offset);
 
 			itemsJsonOut.append(itemJsonOut);

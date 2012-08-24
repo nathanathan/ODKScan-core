@@ -313,11 +313,11 @@ void findSegmentImpl(const Mat& img, const Rect& roi, vector< Point_<T> >& outQu
 	//It seems to work better on messy segments, however,
 	//on segments with multiple min energy lines we are more likely
 	//to choose the wrong line than with the contour method.
-	#define QUAD_FIND_CONTOURS 0
-	#define QUAD_FIND_INTERSECTION 1
-	#define QUAD_FIND_CORNERS 2
+	#define QUAD_FIND_INTERSECTION 0
+	#define QUAD_FIND_CONTOURS 1
+	#define QUAD_FIND_CORNERS 2 //Broken
 	
-	#define QUAD_FIND_MODE 0
+	#define QUAD_FIND_MODE QUAD_FIND_INTERSECTION
 	
 	Mat imgThresh, temp_img, temp_img2;
 	
@@ -357,7 +357,6 @@ void findSegmentImpl(const Mat& img, const Rect& roi, vector< Point_<T> >& outQu
 		//      if there is a height/width discrepancy move the weighting
 		//      line to the averate of the expected lines.
 	#elif QUAD_FIND_MODE == QUAD_FIND_CONTOURS
-		#define EXPANSION_PERCENTAGE .05
 		line( imgThresh, A1, B1, Scalar::all(0), 1, 4);
 		line( imgThresh, A2, B2, Scalar::all(0), 1, 4);
 		line( imgThresh, A3, B3, Scalar::all(0), 1, 4);
@@ -365,7 +364,9 @@ void findSegmentImpl(const Mat& img, const Rect& roi, vector< Point_<T> >& outQu
 		Mat imgThresh2;
 		imgThresh.copyTo(imgThresh2);
 		vector< Point > quad = findMaxQuad(imgThresh2, 0);
-		quad = expandCorners(quad, EXPANSION_PERCENTAGE);
+		//This works poorly on large rectangles
+		//#define EXPANSION_PERCENTAGE .01
+		//quad = expandCorners(quad, EXPANSION_PERCENTAGE);
 		quad = orderCorners(quad);
 		convertQuad(quad, outQuad);
 	#elif QUAD_FIND_MODE == QUAD_FIND_CORNERS
@@ -399,7 +400,6 @@ void findSegmentImpl(const Mat& img, const Rect& roi, vector< Point_<T> >& outQu
 	#endif
 	
 	//refineCorners(img, quad);
-
 	#ifdef OUTPUT_DEBUG_IMAGES
 		Mat dbg_out, dbg_out2;
 		imgThresh.copyTo(dbg_out);

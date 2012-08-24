@@ -279,7 +279,9 @@ inline double PCA_classifier::rate_item(const Mat& det_img_gray, const Point& it
 		               out, CV_TM_SQDIFF_NORMED);
 		return out.at<float>(0,0);
 	#endif
+
 	Mat out = my_PCA.backProject(pca_components) - query_pixels;
+
 	return sum(out.mul(out)).val[0];
 }
 //This using a hill descending algorithm to find the location that minimizes the value of the rate bubble function.
@@ -291,7 +293,8 @@ Point PCA_classifier::align_item(const Mat& det_img_gray, const Point& seed_loca
 	Mat sofar = Mat::zeros(Size(2*iterations+1, 2*iterations+1), CV_8UC1);
 	Point sofarCenter = Point(iterations, iterations);
 	//This is the offset of the element in deg_img_gray corresponding to the top-left element of sofar.
-	Point offset = Point(seed_location.x, seed_location.y) - sofarCenter;
+	Point offset = seed_location - sofarCenter;
+
 	Point loc = Point(sofarCenter);
 	
 	double minDirVal = 100.;
@@ -301,10 +304,10 @@ Point PCA_classifier::align_item(const Mat& det_img_gray, const Point& seed_loca
 			for(int j = loc.y-1; j <= loc.y+1; j++) {
 				if(sofar.at<uchar>(j,i) != CHECKED) {
 					sofar.at<uchar>(j,i) = CHECKED;
-					
+					double initLocDistance = norm(loc - sofarCenter);
 					double rating = rate_item(det_img_gray, Point(i,j) + offset);
 					//This weights ratings to be higher the further they get from the seed location.
-					rating *= MAX(1, norm(loc - sofarCenter));
+					rating *= MAX(1, initLocDistance);
 					
 					if(rating <= minDirVal){
 						minDirVal = rating;
@@ -318,12 +321,12 @@ Point PCA_classifier::align_item(const Mat& det_img_gray, const Point& seed_loca
 			break;
 		}
 		loc += minDir;
-		if(norm(loc) > alignment_radius){
+		if(norm(loc - sofarCenter) > alignment_radius){
 			break;
 		}
 		iterations--;
 	}
-	#if 1
+	#if 0
 	//This shows the examined pixels if it is on.
 	namedWindow("outliers", CV_WINDOW_NORMAL);
 	imshow( "outliers", sofar );
