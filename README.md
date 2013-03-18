@@ -18,17 +18,38 @@ Setup
 
 2. Set OPENCV_INCLUDES in the makefile. If you're using ubuntu you just need to do this:
 
-==
-	#install pkg-config:
-	apt-get install pkg-config
-	#add this to your .bashrc:
-	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
+```
+#install pkg-config:
+apt-get install pkg-config
+#add this to your .bashrc:
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
+```
 
-Usage
-=====
+Command Line Usage:
+===================
 
-	make
-	./ODKScan.run assets/form_templates/example example_input/img0.jpg output/img0
+```
+make
+./ODKScan.run assets/form_templates/example example_input/img0.jpg output/img0
+```
+
+How to modify the form alignment code:
+======================================
+
+Aligner.cpp does image alignment using the OpenCV 2D features framework.
+This framework consistes of modular components for detecting, describing and matching features respectively.
+(The OpenCV Docs have some tutorials on it available [here](http://docs.opencv.org/doc/tutorials/features2d/table_of_content_features2d/table_of_content_features2d.html#table-of-content-feature2d).)
+These compontents are set and configured in the Aliger class's initialization function.
+
+OpenCV provides a number of different classes to choose between for each feature module,
+in addition to a number of different ways to parameterize them.
+Figuring out which works the best has involved a lot trial and error for me.
+Although, certain types of features are designed to make trade-offs (e.g. speed vs. scale/rotation invariance).
+Defining the SHOW_MATCHES_WINDOW constant will display a window that makes it possible
+to see how various detector/descriptor/matcher settings fare.
+
+Finally, Aligner.cpp also globally transforms the image by computing a homography from the matched features.
+Using region based alignment instead may be been better for dealing with deformations.
 
 Source file information
 =======================
