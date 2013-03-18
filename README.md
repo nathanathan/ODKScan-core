@@ -39,17 +39,26 @@ How to modify the form alignment code:
 Aligner.cpp does image alignment using the OpenCV 2D features framework.
 This framework consistes of modular components for detecting, describing and matching features respectively.
 (The OpenCV Docs have some tutorials on it available [here](http://docs.opencv.org/doc/tutorials/features2d/table_of_content_features2d/table_of_content_features2d.html#table-of-content-feature2d).)
-These compontents are set and configured in the Aliger class's initialization function.
+These compontents are set and configured in the Aligner class's initialization function.
 
-OpenCV provides a number of different classes to choose between for each feature module,
+OpenCV provides a number of different classes to choose between for each module,
 in addition to a number of different ways to parameterize them.
 Figuring out which works the best has involved a lot trial and error for me.
-Although, certain types of features are designed to make trade-offs (e.g. speed vs. scale/rotation invariance).
-Defining the SHOW_MATCHES_WINDOW constant will display a window that makes it possible
-to see how various detector/descriptor/matcher settings fare.
+(Many of the feature modules are designed with some goal or trade-off in mind
+(e.g. speed vs. scale/rotation invariance).)
+Setting the SHOW_MATCHES_WINDOW constant will display a debug window during alignments that shows
+how various detector/descriptor/matcher settings are perfoming.
 
-Finally, Aligner.cpp also globally transforms the image by computing a homography from the matched features.
+Aligner.cpp also transforms the entire input image by computing a homography from the matched features.
 Using region based alignment instead may be been better for dealing with deformations.
+
+Adding new field types:
+=======================
+
+The field type property is passed though into the output JSON, so most names can be used.
+All segments are output into the `segments` folder of the output directory regardless of the type,
+so it should be easy to add a stage to the processing pipeline that handles a new type like barcode.
+Segment objects in the output JSON have an `image_path` field that could help with this.
 
 Source file information
 =======================
