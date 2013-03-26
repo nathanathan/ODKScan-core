@@ -33,8 +33,9 @@ make
 ./ODKScan.run assets/form_templates/example example_input/img0.jpg output/img0
 ```
 
-How to modify the form alignment code:
-======================================
+# Info for further development:
+
+## How to modify the form alignment code:
 
 Aligner.cpp does image alignment using the OpenCV 2D features framework.
 This framework consistes of modular components for detecting, describing and matching features respectively.
@@ -52,8 +53,7 @@ how various detector/descriptor/matcher settings are perfoming.
 Aligner.cpp also transforms the entire input image by computing a homography from the matched features.
 Using region based alignment instead may be been better for dealing with deformations.
 
-Adding new field types:
-=======================
+## Adding new field types:
 
 The field type property is passed though into the output JSON, so most names can be used.
 All segments are output into the `segments` folder of the output directory regardless of the type,
