@@ -301,7 +301,8 @@ Ptr<PCA_classifier>& getClassifier(const Json::Value& classifier){
 	return classifiers[key];
 }
 Json::Value segmentFunction(const Json::Value& segmentTemplate, const Json::Value& parentProperties) {
-	const Json::Value extendedSegment = extend(Json::Value(parentProperties), segmentTemplate);
+	Json::Value extendedSegment = Json::Value(parentProperties);
+	extend(extendedSegment, segmentTemplate);
 	Json::Value segmentJsonOut;
 	Mat segmentImg;
 	vector <Point> segBubbleLocs;
@@ -434,8 +435,9 @@ Json::Value segmentFunction(const Json::Value& segmentTemplate, const Json::Valu
 	return segmentJsonOut;
 }
 Json::Value fieldFunction(const Json::Value& field, const Json::Value& parentProperties){
-	const Json::Value segments = field["segments"];
-	const Json::Value extendedField = extend(Json::Value(parentProperties), field);
+	Json::Value extendedField = Json::Value(parentProperties);
+	extend(extendedField, field);
+	const Json::Value segments = extendedField["segments"];
 	Json::Value outField = Json::Value(field);
 	Json::Value outSegments;
 
@@ -449,8 +451,6 @@ Json::Value fieldFunction(const Json::Value& field, const Json::Value& parentPro
 		namer.setPrefix(field.get("label", "unlabeled").asString());
 	#endif
 
-	const Json::Value segments = extendedField["segments"];
-	Json::Value outSegments;
 	for ( size_t j = 0; j < segments.size(); j++ ) {
 		const Json::Value segment = segments[j];
 		Json::Value outSegment = segmentFunction(segment, extendedField);
@@ -461,14 +461,14 @@ Json::Value fieldFunction(const Json::Value& field, const Json::Value& parentPro
 	}
 	outField["segments"] = outSegments;
 
-	Json::Value value = computeFieldValue(fieldJsonOut);
+	Json::Value value = computeFieldValue(outField);
 	if(!value.isNull()){
-		fieldJsonOut["value"] = value;
+		outField["value"] = value;
 	}
-	fieldJsonOut.removeMember("fields");
-	fieldJsonOut.removeMember("items");
-	fieldJsonOut.removeMember("classifier");
-	return fieldJsonOut;
+	outField.removeMember("fields");
+	outField.removeMember("items");
+	outField.removeMember("classifier");
+	return outField;
 }
 Json::Value formFunction(const Json::Value& templateRoot){
 	const Json::Value fields = templateRoot["fields"];
