@@ -17,6 +17,7 @@ extern "C" {
 }
 #include <fstream>
 #include "FileUtils.h"
+#include <json/json.h>
 
 using namespace std;
 
