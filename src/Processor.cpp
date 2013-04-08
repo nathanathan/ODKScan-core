@@ -38,15 +38,10 @@
 using namespace std;
 using namespace cv;
 
-Json::Value getFieldValue(const Json::Value& field){
+//Iterates over a field's segments and items to determine it's value.
+Json::Value computeFieldValue(const Json::Value& field){
 	Json::Value output;
 	const Json::Value segments = field["segments"];
-	//Add a delimiter for select type fields
-	string selectDelimiter("");
-	string select("select");
-	if (field.get("type", "none").asString().compare(0, select.length(), select) == 0) {
-		selectDelimiter = " ";
-	}
 	for ( size_t i = 0; i < segments.size(); i++ ) {
 		const Json::Value segment = segments[i];
 		const Json::Value items = segment["items"];
@@ -59,21 +54,33 @@ Json::Value getFieldValue(const Json::Value& field){
 			switch ( classification.type() )
 			{
 				case Json::stringValue:
+					//This case isn't used right now.
+					//It's for classifiers that picks up letters.
+					//The idea is to concatenate all the letters into a word.
 					output = Json::Value(output.asString() +
 						             classification.asString());
 				break;
 				case Json::booleanValue:
 					if(!itemValue.isNull()){
+						//This case is for selects.
+						//The values of the filled (i.e. true) items
+						//are stored in a space delimited string.
 						if(classification.asBool()){
-							output = Json::Value(output.asString() + selectDelimiter +
+							if( output.isNull() ) {
+								output = Json::Value(itemValue.asString());
+							}
+							else{
+								output = Json::Value(output.asString() + " " +
 									     itemValue.asString());
+							}
 						}
 						else{
 							output = Json::Value(output.asString());
 						}
 						break;
 					}
-					//Fall through and be counted as a 1 or 0
+					//Fall through and count the boolean as a 1 or 0
+					//for a tally.
 				case Json::intValue:
 				case Json::uintValue:
 					output = Json::Value(output.asInt() + classification.asInt());
@@ -454,7 +461,7 @@ Json::Value fieldFunction(const Json::Value& field, const Json::Value& parentPro
 	}
 	outField["segments"] = outSegments;
 
-	Json::Value value = getFieldValue(fieldJsonOut);
+	Json::Value value = computeFieldValue(fieldJsonOut);
 	if(!value.isNull()){
 		fieldJsonOut["value"] = value;
 	}
