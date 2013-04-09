@@ -33,7 +33,7 @@ void mkdirs(const string& filepath){
 	if(stat(filepath.c_str(), &buf) != 0){
 		mkdirs(removeLastComponent(filepath))
 	}
-	mkdir(outputPath.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+	mkdir(filepath.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 	return;
 }
 int main(int argc, char *argv[]) {
