@@ -1,4 +1,5 @@
 #include "TemplateProcessor.h"
+#include "FileUtils.h"
 #include <json/json.h>
 #include <iostream>
 #include <fstream>
