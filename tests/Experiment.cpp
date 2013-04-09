@@ -31,7 +31,7 @@ void mkdirs(const string& filepath){
 	int start = filepath.find_last_of("/");
 	struct stat buf;
 	if(stat(filepath.c_str(), &buf) != 0){
-		mkdirs(removeLastComponent(filepath))
+		mkdirs(removeLastComponent(filepath));
 	}
 	mkdir(filepath.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 	return;
