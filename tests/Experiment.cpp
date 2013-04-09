@@ -20,6 +20,22 @@ string getLabel(const string& filepath){
 	int start = filepath.find_last_of("/") + 1;
 	return	filepath.substr(start, filepath.find_last_of("_") - start);
 }
+string removeLastComponent(const string& filepath){
+	if(filepath.find_last_of("/") == filepath.length() - 1){
+		return removeLastComponent(filepath.substr(0, filepath.length() - 2));
+	}
+	return filepath.substr(0, filepath.find_last_of("/"));
+}
+//Create all the missing directorys on the specified path.
+void mkdirs(const string& filepath){
+	int start = filepath.find_last_of("/");
+	struct stat buf;
+	if(stat(filepath.c_str(), &buf) != 0){
+		mkdirs(removeLastComponent(filepath))
+	}
+	mkdir(outputPath.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+	return;
+}
 int main(int argc, char *argv[]) {
 
 	clock_t init, final;	
@@ -51,7 +67,7 @@ int main(int argc, char *argv[]) {
 		init = clock();
 
 		cout << "Creating output directory: " << outputPath << endl;
-		mkdir(outputPath.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+		mkdirs(outputPath);
 		mkdir((outputPath + "segments").c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
 		cout << "Processing image: " << inputImage << endl;
