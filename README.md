@@ -28,6 +28,9 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
 Command Line Usage:
 ===================
 
+The image processing code does not create directories.
+It is necessairy to create the output folder and the segments folder inside of it in advance.
+
 ```
 make
 ./ODKScan.run assets/form_templates/example example_input/img0.jpg output/img0
