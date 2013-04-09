@@ -5,22 +5,6 @@
 
 using namespace std;
 
-bool parseJsonFromFile(const string& filePath, Json::Value& myRoot) {
-	ifstream JSONin;
-	Json::Reader reader;
-	
-	JSONin.open(filePath.c_str(), ifstream::in);
-	bool parse_successful = reader.parse( JSONin, myRoot );
-	
-	JSONin.close();
-	if(parse_successful){
-		return true;
-	}
-	else{
-		cout << reader.getFormatedErrorMessages() << endl;
-	}
-	return false;
-}
 //inheritMembers makes the child value inherit the members that it does not override from the specified parent json value.
 //The parent is copied so it can be written over, while the child is passed in by reference and returned with added members.
 Json::Value& TemplateProcessor::inheritMembers(Json::Value& child, Json::Value parent) const {
