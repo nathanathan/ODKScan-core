@@ -50,8 +50,7 @@ int main(int argc, char *argv[]) {
 
 		init = clock();
 
-		//Make a directory with the name of the form
-		//TODO: Move?
+		cout << "Creating output directory: " << outputPath << endl;
 		mkdir(outputPath.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 		mkdir((outputPath + "segments").c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 
