@@ -163,7 +163,7 @@ Mat markupForm(const Json::Value& bvRoot, const Mat& inputImage, bool drawCounts
 				textBoxTL = Point(field["markup_location"]["x"].asInt(), field["markup_location"]["y"].asInt());
 			}
 			stringstream ss;
-			FastWriter writer;
+			Json::FastWriter writer;
 			ss << writer.write( field.get("value", "") );
 			putText(markupImage, ss.str(), textBoxTL,
 			        FONT_HERSHEY_SIMPLEX, 1., Scalar::all(0), 3, CV_AA);
