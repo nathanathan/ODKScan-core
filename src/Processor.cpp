@@ -40,7 +40,7 @@ using namespace cv;
 
 //Iterates over a field's segments and items to determine it's value.
 Json::Value computeFieldValue(const Json::Value& field){
-	Json::Value output();
+	Json::Value output;
 	const Json::Value segments = field["segments"];
 	for ( size_t i = 0; i < segments.size(); i++ ) {
 		const Json::Value segment = segments[i];
@@ -66,7 +66,7 @@ Json::Value computeFieldValue(const Json::Value& field){
 						//The values of the filled (i.e. true) items
 						//are stored in a space delimited string.
 						if(classification.asBool()){
-							if( output.isNull() ) {
+							if( output.asString().length() == 0 ){
 								output = Json::Value(itemValue.asString());
 							}
 							else{
