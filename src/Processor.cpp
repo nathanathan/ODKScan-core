@@ -40,7 +40,7 @@ using namespace cv;
 
 //Iterates over a field's segments and items to determine it's value.
 Json::Value computeFieldValue(const Json::Value& field){
-	Json::Value output;
+	Json::Value output();
 	const Json::Value segments = field["segments"];
 	for ( size_t i = 0; i < segments.size(); i++ ) {
 		const Json::Value segment = segments[i];
@@ -163,11 +163,12 @@ Mat markupForm(const Json::Value& bvRoot, const Mat& inputImage, bool drawCounts
 				textBoxTL = Point(field["markup_location"]["x"].asInt(), field["markup_location"]["y"].asInt());
 			}
 			stringstream ss;
-			Json::FastWriter writer;
-			ss << writer.write( field.get("value", "") );
-			putText(markupImage, ss.str(), textBoxTL,
+			ss << field.get("value", "");
+			string markupString(ss.str());
+			markupString = str.substr(0, markupString.length() - 2);
+			putText(markupImage, markupString, textBoxTL,
 			        FONT_HERSHEY_SIMPLEX, 1., Scalar::all(0), 3, CV_AA);
-			putText(markupImage, ss.str(), textBoxTL,
+			putText(markupImage, markupString, textBoxTL,
 			        FONT_HERSHEY_SIMPLEX, 1., boxColor, 2, CV_AA);
 		}
 	}
