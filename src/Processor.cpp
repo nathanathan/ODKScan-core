@@ -165,7 +165,7 @@ Mat markupForm(const Json::Value& bvRoot, const Mat& inputImage, bool drawCounts
 			stringstream ss;
 			ss << field.get("value", "");
 			string markupString(ss.str());
-			markupString = markupString.substr(0, markupString.length() - 2);
+			markupString = markupString.substr(0, markupString.length() - 1);
 			putText(markupImage, markupString, textBoxTL,
 			        FONT_HERSHEY_SIMPLEX, 1., Scalar::all(0), 3, CV_AA);
 			putText(markupImage, markupString, textBoxTL,
