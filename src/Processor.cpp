@@ -302,10 +302,7 @@ Ptr<PCA_classifier>& getClassifier(const Json::Value& classifier){
 	}
 	return classifiers[key];
 }
-Json::Value segmentFunction(const Json::Value& segmentTemplate, const Json::Value& parentProperties) {
-	Json::Value extendedSegment = Json::Value(parentProperties);
-	extend(extendedSegment, segmentTemplate);
-	Json::Value segmentJsonOut;
+Json::Value segmentFunction(Json::Value& segmentJsonOut, const Json::Value& extendedSegment) {
 	Mat segmentImg;
 	vector <Point> segBubbleLocs;
 	vector <int> bubbleVals;
@@ -431,9 +428,6 @@ Json::Value segmentFunction(const Json::Value& segmentTemplate, const Json::Valu
 	catch(...){
 		LOGI(("Could not output segment to: " + segmentOutPath+segmentName).c_str());
 	}
-	segmentJsonOut.removeMember("classifier");
-	segmentJsonOut.removeMember("index");
-	segmentJsonOut.removeMember("output_path");
 	return segmentJsonOut;
 }
 Json::Value fieldFunction(const Json::Value& field, const Json::Value& parentProperties){
@@ -455,10 +449,16 @@ Json::Value fieldFunction(const Json::Value& field, const Json::Value& parentPro
 
 	for ( size_t j = 0; j < segments.size(); j++ ) {
 		const Json::Value segment = segments[j];
-		Json::Value outSegment = segmentFunction(segment, extendedField);
-		outSegment["index"] = (int)j;
-		if(!outSegment.isNull()){
-			outSegments.append(outSegment);
+		Json::Value segmentJsonOut(segment);
+		segmentJsonOut["index"] = (int)j;
+
+		Json::Value extendedSegment = Json::Value(extendedField);
+		extend(extendedSegment, segmentJsonOut);
+
+		segmentJsonOut = segmentFunction(segmentJsonOut, extendedSegment);
+
+		if(!segmentJsonOut.isNull()){
+			outSegments.append(segmentJsonOut);
 		}
 	}
 	outField["segments"] = outSegments;
