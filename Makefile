@@ -45,7 +45,7 @@ Experiment: tests/Experiment.run
 	./$< $(TEMPLATE) $(INPUT_FOLDER) $(OUTPUT_FOLDER) $(EXPECTED_JSON)
 
 Experiment2: tests/Experiment2.run
-	./$< assets/form_templates/marracuene tests/marracuene tests/marracuene_out
+	./$< assets/form_templates/marracuene tests/MozExperiment tests/MozExperiment_out
 
 #does linking
 %.run: %.cpp $(ALL_SRCS) $(ALL_OBJS) $(ALL_HEADERS)

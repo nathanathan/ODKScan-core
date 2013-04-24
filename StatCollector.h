@@ -10,6 +10,7 @@ enum ComparisonMode{COMP_BUBBLE_VALS, COMP_BUBBLE_OFFSETS};
 class StatCollector
 {
 int tp, fp, tn, fn;
+int correctFields, incorrectFields;
 int missedSegments, numSegments;
 std::vector<double> times;
 std::vector<cv::Point> offsets;
@@ -22,19 +23,11 @@ public:
 
 	StatCollector():
 		tp(0), fp(0), tn(0), fn(0),
+		correctFields(0), incorrectFields(0),
 		errors(0), numImages(0),
 		missedSegments(0), numSegments(0)
 	{}
-	
-	StatCollector(  int tp, int fp, int tn, int fn,
-					int errors, int numImages,
-					int missedSegments, int numSegments, std::vector<double> times, std::vector<cv::Point> offsets):
-		tp(tp), fp(fp), tn(tn), fn(fn),
-		errors(errors), numImages(numImages),
-		missedSegments(missedSegments), numSegments(numSegments),
-		times(times), offsets(offsets)
-	{}
-	
+
 	void incrErrors(){ errors++; }
 	void incrImages(){ numImages++; }
 	void addTime(double t){ times.push_back(t); }
@@ -52,6 +45,8 @@ public:
 		this->fp += sc.fp;
 		this->tn += sc.tn;
 		this->fn += sc.fn;
+		this->correctFields += sc.correctFields;
+		this->incorrectFields += sc.incorrectFields;
 		this->errors += sc.errors;
 		this->numImages += sc.numImages;
 		this->missedSegments += sc.missedSegments;
@@ -68,17 +63,7 @@ public:
 		std::vector <cv::Point> newOffsets;
 		newOffsets.insert(newOffsets.end(), offsets.begin(), offsets.end());
 		newOffsets.insert(newOffsets.end(), sc.offsets.begin(), sc.offsets.end());
-		return StatCollector(
-					tp + sc.tp,
-					fp + sc.fp,
-					tn + sc.tn,
-					fn + sc.fn,
-					errors + sc.errors,
-					numImages + sc.numImages,
-					missedSegments + sc.missedSegments,
-					numSegments + sc.numSegments,
-					newTimes,
-					newOffsets );
+		return StatCollector() + sc;
 	}
 };
 

@@ -12,6 +12,63 @@
 using namespace std;
 using namespace cv;
 
+
+//Iterates over a field's segments and items to determine it's value.
+//This is a copy of the function in processor.cpp
+Json::Value computeFieldValueCopy(const Json::Value& field){
+	Json::Value output;
+	const Json::Value segments = field["segments"];
+	for ( size_t i = 0; i < segments.size(); i++ ) {
+		const Json::Value segment = segments[i];
+		const Json::Value items = segment["items"];
+		if( items.isNull() ){
+			return Json::Value();
+		}
+		for ( size_t j = 0; j < items.size(); j++ ) {
+			const Json::Value classification = items[j].get("classification", false);
+			const Json::Value itemValue = items[j]["value"];
+			switch ( classification.type() )
+			{
+				case Json::stringValue:
+					//This case isn't used right now.
+					//It's for classifiers that picks up letters.
+					//The idea is to concatenate all the letters into a word.
+					output = Json::Value(output.asString() +
+						             classification.asString());
+				break;
+				case Json::booleanValue:
+					if(!itemValue.isNull()){
+						//This case is for selects.
+						//The values of the filled (i.e. true) items
+						//are stored in a space delimited string.
+						if(classification.asBool()){
+							if( output.asString().length() == 0 ){
+								output = Json::Value(itemValue.asString());
+							}
+							else{
+								output = Json::Value(output.asString() + " " +
+									     itemValue.asString());
+							}
+						}
+						break;
+					}
+					//Fall through and count the boolean as a 1 or 0
+					//for a tally.
+				case Json::intValue:
+				case Json::uintValue:
+					output = Json::Value(output.asInt() + classification.asInt());
+				break;
+				case Json::realValue:
+					output = Json::Value(output.asDouble() + classification.asDouble());
+				break;
+				default:
+				break;
+			}
+		}
+	}
+	return output;
+}
+
 //Compares 2 segments
 //returns false if the found segment wasn't found
 void StatCollector::compareItems(const Json::Value& foundSeg, const Json::Value& actualSeg){
@@ -28,7 +85,11 @@ void StatCollector::compareItems(const Json::Value& foundSeg, const Json::Value&
 	const Json::Value foundItems = foundSeg["items"];
 	const Json::Value actualItems = actualSeg["items"];
 
-	assert( foundItems.size() == actualItems.size());
+	if( foundItems.size() != actualItems.size()) {
+		cout << "found" << foundItems << endl;
+		cout << "actual" << actualItems << endl;
+		throw new Exception();
+	}
 
 	for( size_t i = 0; i < foundItems.size(); i++){
 		bool found = foundItems[i]["classification"].asBool();
@@ -80,6 +141,21 @@ void StatCollector::compareFields(const Json::Value& foundField, const Json::Val
 		}
 
 	}
+
+	const Json::Value fValue = computeFieldValueCopy(foundField);
+	const Json::Value aValue = computeFieldValueCopy(actualField);
+	if(aValue.isNull()){
+		//cout << "null field: " << aValue << endl;
+		return;
+	}
+	if(fValue == aValue){
+		//cout << "correctFields: " << fValue << aValue << endl;
+		correctFields++;
+	} else {
+		//cout << "incorrectFields: " << fValue << aValue << endl;
+		incorrectFields++;
+	}
+
 }
 void StatCollector::compareFiles(const string& foundPath, const string& actualPath, ComparisonMode mode){
 	Json::Value foundRoot, actualRoot;
@@ -97,6 +173,15 @@ void StatCollector::compareFiles(const string& foundPath, const string& actualPa
 	*/
 	for( size_t i = 0; i < fFields.size(); i++){
 		const Json::Value fFieldLabel = fFields[i].get("name", "unlabeled0");
+
+		
+		if(fFieldLabel == "provincia") continue;
+		if(fFieldLabel == "distrito") continue;
+		if(fFieldLabel == "communidade") continue;
+		if(fFieldLabel == "APE_name") continue;
+		if(fFieldLabel == "mes") continue;
+		if(fFieldLabel == "ano") continue;
+
 		for( size_t j = 0; j < aFields.size(); j++){
 			const Json::Value aFieldLabel = aFields[j].get("name", "unlabeled1");
 			//unlabeled0 does not match unlabeled1, thus those fields are ignored.
@@ -146,6 +231,10 @@ void StatCollector::print(ostream& myOut) const{
 	myOut << "\t\tFalse negatives: " << fn << endl;
 	myOut << "\t\tPercent Correct: " << 100.f * correctClassificationRatio() << "%" << endl;
 	
+	myOut << "Correct fields: " << correctFields << endl;
+	myOut << "Incorrect fields: " << incorrectFields << endl;
+	myOut << "Percent correct fields: " << (100.f * correctFields) / (correctFields + incorrectFields) << endl;
+
 	if(numImages > 0){
 		myOut << endl << "Total success rate: " << 100.f *
 		                                           (numImages > 0 ? formAlignmentRatio() : 1.0) *

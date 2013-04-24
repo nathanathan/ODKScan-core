@@ -74,9 +74,6 @@ Json::Value computeFieldValue(const Json::Value& field){
 									     itemValue.asString());
 							}
 						}
-						else{
-							output = Json::Value(output.asString());
-						}
 						break;
 					}
 					//Fall through and count the boolean as a 1 or 0
@@ -147,7 +144,7 @@ Mat markupForm(const Json::Value& bvRoot, const Mat& inputImage, bool drawCounts
 					circle(markupImage, ItemLocation, 2, 	getColor(classification.asInt()), 1, CV_AA);
 				}
 				else{
-					cout << "Don't know what this is" << endl;
+					cout << "Don't know what this is: " << classification << endl;
 				}
 				
 			}
@@ -339,7 +336,7 @@ Json::Value segmentFunction(Json::Value& segmentJsonOut, const Json::Value& exte
 		vector<Point2f> quad;
 		findSegment(segmentImg, segmentRect - expandedRect.tl(), quad);
 
-		if(testQuad(quad, segmentRect, .15)){
+		if(testQuad(quad, segmentRect, .2)){
 			#ifdef DEBUG_PROCESSOR
 				//This makes a stream of dots so we can see how fast things are going.
 				//we get a ! when things go wrong.
@@ -357,9 +354,12 @@ Json::Value segmentFunction(Json::Value& segmentJsonOut, const Json::Value& exte
 				//Bad quad alignment detected
 				cout << "!" << flush;
 			#endif
-			segmentJsonOut["quad"] = quadToJsonArray(quad, expandedRect.tl());
+			//segmentJsonOut["quad"] = quadToJsonArray(quad, expandedRect.tl());
 			segmentJsonOut["notFound"] = true;
-			return segmentJsonOut;
+			//If the quad is not found we don't do segment alignment and go with whats
+			//in the template even though there's a good chance it's wrong.
+			segmentImg = formImage(segmentRect);
+			segmentJsonOut["quad"] = quadToJsonArray(rectToQuad( segmentRect ));
 		}
 	}
 	else {
@@ -372,7 +372,7 @@ Json::Value segmentFunction(Json::Value& segmentJsonOut, const Json::Value& exte
 	if(!items.isNull()){
 		Json::Value itemsJsonOut;
 		Json::Value classifierJson = extendedSegment["classifier"];
-		double alignment_radius = classifierJson.get("alignment_radius", 0.0).asDouble();
+		double alignment_radius = classifierJson.get("alignment_radius", 2.0).asDouble();
 		Ptr<PCA_classifier> classifier = getClassifier(classifierJson);
 		
 		for (size_t i = 0; i < items.size(); i++) {
