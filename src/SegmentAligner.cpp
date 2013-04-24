@@ -9,7 +9,7 @@
 #include <iostream>
 
 //#define OUTPUT_DEBUG_IMAGES
-
+#ifdef OUTPUT_DEBUG_IMAGES
 #include "NameGenerator.h"
 NameGenerator alignmentNamer("debug_segment_images/", false);
 #endif
