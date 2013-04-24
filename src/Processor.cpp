@@ -74,6 +74,11 @@ Json::Value computeFieldValue(const Json::Value& field){
 									     itemValue.asString());
 							}
 						}
+						else {
+							//Set the output to be a string.
+							//If this is not done, we get a null when no bubbles are selected.
+							output = Json::Value(output.asString());
+						}
 						break;
 					}
 					//Fall through and count the boolean as a 1 or 0
@@ -444,7 +449,8 @@ Json::Value fieldFunction(const Json::Value& field, const Json::Value& parentPro
 	}
 
 	#ifdef OUTPUT_BUBBLE_IMAGES
-		namer.setPrefix(field.get("label", "unlabeled").asString());
+		namer.setPrefix(field.get("classifier", Json::Value()).get("training_data_uri", "na").asString());
+		//namer.setPrefix(field.get("label", "unlabeled").asString());
 	#endif
 
 	for ( size_t j = 0; j < segments.size(); j++ ) {

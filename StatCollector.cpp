@@ -50,6 +50,11 @@ Json::Value computeFieldValueCopy(const Json::Value& field){
 									     itemValue.asString());
 							}
 						}
+						else {
+							//Set the output to be a string.
+							//If this is not done, we get a null when no bubbles are selected.
+							output = Json::Value(output.asString());
+						}
 						break;
 					}
 					//Fall through and count the boolean as a 1 or 0
@@ -145,7 +150,9 @@ void StatCollector::compareFields(const Json::Value& foundField, const Json::Val
 	const Json::Value fValue = computeFieldValueCopy(foundField);
 	const Json::Value aValue = computeFieldValueCopy(actualField);
 	if(aValue.isNull()){
-		//cout << "null field: " << aValue << endl;
+		assert(!aSegments[size_t(0)].isMember("items"));
+		assert(!fSegments[size_t(0)].isMember("items"));
+		//cout << "null field: " << actualField << endl;
 		return;
 	}
 	if(fValue == aValue){

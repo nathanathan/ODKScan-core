@@ -63,6 +63,8 @@ int main(int argc, char *argv[]) {
 		}
 		string label = outer_itr->path().filename().string();
 		
+		//if(label != "manhica") continue;
+		
 		fs::directory_iterator end_itr; // default construction yields past-the-end
 		for (fs::directory_iterator itr(outer_itr->path()); itr != end_itr; ++itr) {
 			if (!fs::is_directory(itr->status())) {
