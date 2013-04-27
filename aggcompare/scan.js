@@ -39,6 +39,15 @@ var walk = function(dir, done) {
           });
 
           JSON.parse(data).fields.forEach(function(field){
+            if(!("value" in field)) return;
+            var flabel = field.name;
+            if(flabel == "provincia") return;
+            if(flabel == "distrito") return;
+            if(flabel == "communidade") return;
+            if(flabel == "APE_name") return;
+            if(flabel == "mes") return;
+            if(flabel == "ano") return;
+
             formObject[field.name] = field.value;
           });
           results.push(formObject);
@@ -216,11 +225,14 @@ walk('../tests/MozExperiment_out', function(err, pages) {
       });
 
 
+
     });
 
-    //NAN in numeric field?
-
     console.log({
+      totalCorrectCheckboxFields: totalCorrectCheckboxFields,
+      totalIncorrectCheckboxFields: totalCheckboxFields - totalCorrectCheckboxFields,
+      totalCorrectNumericFields: totalCorrectNumericFields,
+      totalIncorrectNumericFields: totalNumericFields - totalCorrectNumericFields,
       "% checkbox fields correct": totalCorrectCheckboxFields / totalCheckboxFields,
       "% bubble tally fields correct" : totalCorrectNumericFields / totalNumericFields
     });

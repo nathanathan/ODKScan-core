@@ -184,7 +184,7 @@ void StatCollector::compareFiles(const string& foundPath, const string& actualPa
 	for( size_t i = 0; i < fFields.size(); i++){
 		const Json::Value fFieldLabel = fFields[i].get("name", "unlabeled0");
 
-		
+		//Omit select fields that are only meant to be select field in Collect.
 		if(fFieldLabel == "provincia") continue;
 		if(fFieldLabel == "distrito") continue;
 		if(fFieldLabel == "communidade") continue;
@@ -278,6 +278,21 @@ void StatCollector::print(ostream& myOut) const{
 	
 	myOut << "Correct fields: " << correctFields << endl;
 	myOut << "Incorrect fields: " << incorrectFields << endl;
+
+	int incorrectNumericFields = 0;
+	int correctNumericFields = 0;
+	std::map<int, int>::const_iterator mapita;
+	for ( mapita=histogram.begin() ; mapita != histogram.end(); mapita++ ){
+		if((*mapita).first == 0) {
+			correctNumericFields = (*mapita).second;
+		} else {
+			incorrectNumericFields += (*mapita).second;
+		}
+	}
+
+	myOut << "Correct numeric fields: " << correctNumericFields << endl;
+	myOut << "Incorrect numeric fields: " << incorrectNumericFields << endl;
+
 	myOut << "Percent correct fields: " << (100.f * correctFields) / (correctFields + incorrectFields) << endl;
 /*
 	if(numImages > 0){

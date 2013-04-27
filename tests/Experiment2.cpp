@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
 			}
 		
 			//omit single page images:
-			if(itr->path().filename().string() == "taken_2013-04-03_10-52-11") continue;
+			if(itr->path().filename().string() == "taken_2013-04-03_10-52-11(page2)") continue;
 			if(itr->path().filename().string() == "taken_2013-04-02_12-46-49") continue;
 			if(itr->path().filename().string() == "taken_2013-04-03_11-22-41") continue;
 			
