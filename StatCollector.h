@@ -14,7 +14,7 @@ int correctFields, incorrectFields;
 int missedSegments, numSegments;
 std::vector<double> times;
 std::vector<cv::Point> offsets;
-
+std::map<int, int> histogram;
 private:
 	void compareItems(const Json::Value& foundSeg, const Json::Value& actualSeg);
 	void compareFields(const Json::Value& foundField, const Json::Value& actualField, ComparisonMode mode);
@@ -32,12 +32,14 @@ public:
 	void incrImages(){ numImages++; }
 	void addTime(double t){ times.push_back(t); }
 	void compareFiles(const std::string& foundPath, const std::string& actualPath, ComparisonMode mode);
+	void recomputeFieldValues(const std::string& inPath, const std::string& outPath) const;
 
 	float formAlignmentRatio() const { return 1.f * (numImages - errors) / numImages; }
 	float segmentAlignmentRatio() const { return 1.f * (numSegments - missedSegments) / numSegments; }
 	float correctClassificationRatio() const { return 1.f * (tp + tn) / (tp+fp+tn+fn); }
 	
 	void printAsRow(std::ostream& myOut) const;
+	void printHistRows(const std::string& condition, std::ostream& myOut) const;
 	void print(std::ostream& myOut) const;
 	
 	StatCollector& operator+=(const StatCollector& sc){
@@ -53,6 +55,12 @@ public:
 		this->numSegments += sc.numSegments;
 		this->times.insert(this->times.end(), sc.times.begin(), sc.times.end());
 		this->offsets.insert(this->offsets.end(), sc.offsets.begin(), sc.offsets.end());
+
+		std::map<int, int>::const_iterator mapit;
+		for (mapit=sc.histogram.begin() ; mapit != sc.histogram.end(); mapit++ ){
+			this->histogram[(*mapit).first]+= (*mapit).second;
+		}
+
 		return *this;
 	}
 

@@ -16,7 +16,6 @@ then prints out stats breaking down the results by image label and pipeline stag
 
 
 #include "boost/filesystem.hpp"   // includes all needed Boost.Filesystem declarations
-#include <iostream>               // for std::cout
 namespace fs = boost::filesystem;
 
 using namespace std;
@@ -70,6 +69,12 @@ int main(int argc, char *argv[]) {
 			if (!fs::is_directory(itr->status())) {
 				continue;
 			}
+		
+			//omit single page images:
+			if(itr->path().filename().string() == "taken_2013-04-03_10-52-11") continue;
+			if(itr->path().filename().string() == "taken_2013-04-02_12-46-49") continue;
+			if(itr->path().filename().string() == "taken_2013-04-03_11-22-41") continue;
+			
 			/*
 			fs::path retakePath()
 			if (fs::exists(retakePath)) {
@@ -84,7 +89,14 @@ int main(int argc, char *argv[]) {
 			if(itr->path().filename().string().find("(page2)") != std::string::npos){
 				templatePath = (baseTemplatePath / "nextPage").string();
 			}
-					
+			string jsonOutfile(outputPath + "output.json");
+			
+			#if 0
+				//This is here because of lazyness.
+				collectors[label].recomputeFieldValues(expectedJsonFile, jsonOutfile);
+				continue; 
+			#endif
+			
 			collectors[label].incrImages();
 	
 			init = clock();
@@ -132,7 +144,6 @@ int main(int argc, char *argv[]) {
 			
 			collectors[label].addTime( (double)final / ((double)CLOCKS_PER_SEC) );
 			
-			string jsonOutfile(outputPath + "output.json");
 			if(fileExists(jsonOutfile) && fileExists(expectedJsonFile)){
 				collectors[label].compareFiles(jsonOutfile, expectedJsonFile, COMP_BUBBLE_VALS);
 				//collectors[label].compareFiles(jsonOutfile, templatePath + ".json", COMP_BUBBLE_OFFSETS);
@@ -152,4 +163,10 @@ int main(int argc, char *argv[]) {
 		overall += (*mapit).second;
 	}
 	cout << "overall" << endl << overall;
+	
+	ofstream myfile;
+	myfile.open("histogram.csv", std::ios_base::app);
+	overall.printHistRows(baseTemplatePath.filename().string(), myfile);
+	myfile.close();
+	
 }

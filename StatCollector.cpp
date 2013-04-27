@@ -3,6 +3,7 @@
 #include "FileUtils.h"
 
 #include <iostream>
+#include <fstream>
 
 #include <opencv2/core/core.hpp>
 
@@ -84,7 +85,7 @@ void StatCollector::compareItems(const Json::Value& foundSeg, const Json::Value&
 	numSegments++;
 	if( foundSeg.get("notFound", false).asBool() ) {
 		missedSegments++;
-		return;
+		//return;
 	}
 	
 	const Json::Value foundItems = foundSeg["items"];
@@ -162,7 +163,9 @@ void StatCollector::compareFields(const Json::Value& foundField, const Json::Val
 		//cout << "incorrectFields: " << fValue << aValue << endl;
 		incorrectFields++;
 	}
-
+	if(aValue.type() == Json::intValue){
+		histogram[abs(fValue.asInt() - aValue.asInt())]++;
+	}
 }
 void StatCollector::compareFiles(const string& foundPath, const string& actualPath, ComparisonMode mode){
 	Json::Value foundRoot, actualRoot;
@@ -198,6 +201,41 @@ void StatCollector::compareFiles(const string& foundPath, const string& actualPa
 		}
 	}
 }
+void StatCollector::recomputeFieldValues(const string& inpath, const string& outpath) const{
+	Json::Value foundRoot;
+	parseJsonFromFile(inpath.c_str(), foundRoot);
+
+	Json::Value fFields = foundRoot["fields"];
+	Json::Value outFields;
+
+	for( size_t i = 0; i < fFields.size(); i++){
+		Json::Value field = fFields[i];
+		Json::Value fFieldLabel = fFields[i].get("name", "unlabeled0");
+
+		if(fFieldLabel == "provincia") continue;
+		if(fFieldLabel == "distrito") continue;
+		if(fFieldLabel == "communidade") continue;
+		if(fFieldLabel == "APE_name") continue;
+		if(fFieldLabel == "mes") continue;
+		if(fFieldLabel == "ano") continue;
+
+		Json::Value computedValue = computeFieldValueCopy(field);
+
+		if(computedValue.isNull()) continue;
+
+
+		field["value"] = computedValue;
+
+		fFields[i] = field;
+	}
+
+	foundRoot["fields"] = fFields;
+
+	//Create the json output file
+	ofstream outfile(outpath.c_str(), ios::out | ios::binary);
+	outfile << foundRoot << endl;
+	outfile.close();
+}
 double vecSum(vector <double> v){
 	double sum = 0;
 	for(size_t i = 0; i < v.size(); i++){
@@ -215,7 +253,7 @@ void StatCollector::print(ostream& myOut) const{
 		myOut << "Images Tested: " << numImages << endl;
 		myOut << "Percent Success: " << 100.f * formAlignmentRatio() << "%" << endl;
 		if(!offsets.empty()){
-			myOut << "Accuracy\n(Differences of found bubble positions from expected bubble postions): " << endl;
+			myOut << "Accuracy\n(Differences of found bubble positions from expected bubble positions): " << endl;
 			Scalar mean, stddev;
 			meanStdDev(Mat(offsets), mean, stddev);
 			myOut << "Mean:" << norm(mean) << "\t\t" << "Std. Deviation:" << norm(stddev) << endl;
@@ -225,7 +263,7 @@ void StatCollector::print(ostream& myOut) const{
 			myOut << "\tMissed Segments: " << missedSegments << endl;
 			myOut << "\tSegments Attempted: " << numSegments << endl;
 			myOut << "\tPercent Success: " << 100.f * segmentAlignmentRatio() << "%" << endl;
-			myOut << "\t\tBubble classification stats for successful segment alignments: "<< endl;
+			myOut << "\t\tBubble classification stats for successful form alignments: "<< endl;
 		}
 	}
 	else{
@@ -241,22 +279,40 @@ void StatCollector::print(ostream& myOut) const{
 	myOut << "Correct fields: " << correctFields << endl;
 	myOut << "Incorrect fields: " << incorrectFields << endl;
 	myOut << "Percent correct fields: " << (100.f * correctFields) / (correctFields + incorrectFields) << endl;
-
+/*
 	if(numImages > 0){
 		myOut << endl << "Total success rate: " << 100.f *
 		                                           (numImages > 0 ? formAlignmentRatio() : 1.0) *
 		                                           (numSegments > 0 ? segmentAlignmentRatio() : 1.0) *
 		                                           correctClassificationRatio() << "%" << endl;
 	}
+*/
 	myOut << "Average image processing time: "<< vecSum(times) / times.size() << " seconds" << endl;
+
+	myOut << "Numeric field error histogram:" << endl;
+	std::map<int, int>::const_iterator mapit;
+	for ( mapit=histogram.begin() ; mapit != histogram.end(); mapit++ ){
+		myOut << (*mapit).first << ", " << (*mapit).second << endl;
+	}
+
+
 	myOut << linebreak << endl;
 }
+void StatCollector::printHistRows(const string& condition, ostream& myOut) const{
+	//header: myOut << "countDifference, numberOfFields, condition" << endl;
+	std::map<int, int>::const_iterator mapit;
+	for ( mapit=histogram.begin() ; mapit != histogram.end(); mapit++ ){
+		myOut << (*mapit).first << ", " << (*mapit).second << ", " << condition << endl;
+	}
+}
+
 void StatCollector::printAsRow(ostream& myOut) const{
 
 	if(numImages <= 0 || offsets.empty() || numSegments <= 0){
 		myOut << "error" << endl;
 		return;
 	}
+
 	//Form Alignment
 	myOut << numImages - errors << ", " << errors << ", " << formAlignmentRatio() << ", ";
 	
@@ -267,6 +323,7 @@ void StatCollector::printAsRow(ostream& myOut) const{
 	myOut << fn << ", " << fp << ", " << tn << ", " << tp << ", " << correctClassificationRatio();
 	myOut << endl;
 }
+
 ostream& operator<<(ostream& os, const StatCollector& sc){
 	sc.print(os);
 	return os;
