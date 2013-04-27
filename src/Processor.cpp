@@ -22,7 +22,7 @@
 // It is a percentage of the size specified in the template.
 #define SCALEPARAM 1.0
 
-// Creates a buffer around segments porpotional to their size.
+// Creates a buffer around segments proportional to their size.
 // I think .5 is the largest value that won't cause ambiguous cases.
 #define SEGMENT_BUFFER .25
 
@@ -361,7 +361,7 @@ Json::Value segmentFunction(Json::Value& segmentJsonOut, const Json::Value& exte
 			#endif
 			//segmentJsonOut["quad"] = quadToJsonArray(quad, expandedRect.tl());
 			segmentJsonOut["notFound"] = true;
-			//If the quad is not found we don't do segment alignment and go with whats
+			//If the quad is not found we don't do segment alignment and go with what's
 			//in the template even though there's a good chance it's wrong.
 			segmentImg = formImage(segmentRect);
 			segmentJsonOut["quad"] = quadToJsonArray(rectToQuad( segmentRect ));
@@ -379,20 +379,39 @@ Json::Value segmentFunction(Json::Value& segmentJsonOut, const Json::Value& exte
 		Json::Value classifierJson = extendedSegment["classifier"];
 		double alignment_radius = classifierJson.get("alignment_radius", 2.0).asDouble();
 		Ptr<PCA_classifier> classifier = getClassifier(classifierJson);
-		
+		vector<Point> locations;
+		vector<Point> deltas;
+		//Align items:
+		for (size_t i = 0; i < items.size(); i++) {
+			Point initLocation = SCALEPARAM * Point(items[i]["item_x"].asDouble(), items[i]["item_y"].asDouble());
+			Point itemLocation = initLocation;
+			if(alignment_radius > .1){
+				itemLocation = classifier->align_item(segmentImg, initLocation, alignment_radius);
+			}
+			locations.push_back(itemLocation);
+			deltas.push_back(itemLocation - initLocation);
+
+		}
+
+		//Catch runaway items:
+		Point avgDelta = Point(0,0);
+		for (size_t i = 0; i < deltas.size(); i++) {
+			avgDelta += deltas[i];
+		}
+		avgDelta *= 1.0 / items.size();
+
+		for (size_t i = 0; i < locations.size(); i++) {
+			if(norm(deltas[i] - avgDelta) > norm(deltas[i])){
+				locations[i] = locations[i] - deltas[i] + avgDelta;
+			}
+		}
+
+		//Classify items
 		for (size_t i = 0; i < items.size(); i++) {
 			Json::Value itemJsonOut = items[i];
-
-			//Classify the item
-			Point itemLocation = SCALEPARAM * Point(items[i]["item_x"].asDouble(), items[i]["item_y"].asDouble());
-			if(alignment_radius > .1){
-				itemLocation = classifier->align_item(segmentImg, itemLocation, alignment_radius);
-			}
-			itemJsonOut["classification"] = classifier->classify_item(segmentImg, itemLocation);
-
-			//Create JSON output
-			Mat absoluteLocation = transformation.inv() * Mat(Point3d( itemLocation.x,
-		                                                                   itemLocation.y, 1.0));
+			itemJsonOut["classification"] = classifier->classify_item(segmentImg, locations[i]);
+			Mat absoluteLocation = transformation.inv() * Mat(Point3d( locations[i].x,
+					locations[i].y, 1.0));
 			itemJsonOut["absolute_location"] = pointToJson(
 				Point( absoluteLocation.at<double>(0.0,0.0) / absoluteLocation.at<double>(2.0, 0.0),
 				       absoluteLocation.at<double>(1.0,0.0) / absoluteLocation.at<double>(2.0, 0.0)) +
@@ -408,25 +427,22 @@ Json::Value segmentFunction(Json::Value& segmentJsonOut, const Json::Value& exte
 	cvtColor(segmentImg, segment_out, CV_GRAY2RGB);
 	resize(segment_out, tmp, 2*segment_out.size());
 	segment_out = tmp;
-	/*
-	vector <Point> expectedBubbleLocs = getBubbleLocations(*classifier, segmentImg, segmentTemplate["items"], false);
 
-	Point classifier_size = jsonToPoint( segmentTemplate["classifier_size"] );
-
-	for(size_t i = 0; i < expectedBubbleLocs.size(); i++){
-		rectangle(segment_out, expectedBubbleLocs[i] - .5 * classifier_size,
-		          expectedBubbleLocs[i] + .5 * classifier_size,
-		          colors[bubbleVals[i]]);
-						   
-		circle(segment_out, segBubbleLocs[i], 1, Scalar(255, 2555, 255), -1);
-	}
-	*/
 	string segmentOutPath;
 	string segmentName;
 	try{
 		segmentOutPath = extendedSegment.get("output_path", 0).asString() + "segments/";
 		segmentName = extendedSegment["name"].asString() + "_image_" +
 		              intToStr(extendedSegment.get("index", 0).asInt()) + ".jpg";
+
+		/*
+		rectangle(segment_out, expectedBubbleLocs[i] - .5 * classifier_size,
+		          expectedBubbleLocs[i] + .5 * classifier_size,
+		          colors[bubbleVals[i]]);
+
+		circle(segment_out, segBubbleLocs[i], 1, Scalar(255, 2555, 255), -1);
+		 */
+
 		imwrite(segmentOutPath + segmentName, segment_out);
 		segmentJsonOut["image_path"] = segmentOutPath + segmentName;
 	}
