@@ -1,18 +1,13 @@
 'use strict';
-//To compare gt would require regenerating values from expected bubbles.
-
-//Using mongo to jsonfiy the csv:
+//Using mongo to jsonifiy csv data:
 //mongoimport -d mydb -c aggdata --type csv --file aggdata.csv --headerline
 //mongoexport --db mydb --collection aggdata --jsonArray --out aggdata.json
 
 var fs = require('fs');
 var path = require('path');
-//Database:
-var mongo = require('mongoskin');
 var _ = require('underscore');
-var db;
 
-
+//Walk the given directory and collect all the ODK Scan output.
 var walk = function(dir, done) {
   var results = [];
   fs.readdir(dir, function(err, list) {
@@ -39,6 +34,7 @@ var walk = function(dir, done) {
           });
 
           JSON.parse(data).fields.forEach(function(field){
+            //Skip fields that are not processed by ODK Scan:
             if(!("value" in field)) return;
             var flabel = field.name;
             if(flabel == "provincia") return;
@@ -71,10 +67,11 @@ var walk = function(dir, done) {
     });
   });
 };
-walk('../tests/MozExperiment_out', function(err, pages) {
+
+walk('../MozExperiment_out', function(err, pages) {
   if (err) console.log(err);
 
-  //Combine the pages into a single json objects.
+  //Combine both pages of each form into single json objects.
   var scanForms = _.values(_(pages).groupBy('__name__')).map(function(pages){
     if(pages.length == 2) {
       pages[1].__bothPages__ = true;
@@ -84,7 +81,7 @@ walk('../tests/MozExperiment_out', function(err, pages) {
     return _.extend(pages[0]);
   });
 
-  //Skip single page forms...
+  //Filter out single page forms...
   scanForms = _.where(scanForms, {__bothPages__: true});
 
   fs.readFile('aggdata.json', 'utf8', function (err, data) {
@@ -95,15 +92,18 @@ walk('../tests/MozExperiment_out', function(err, pages) {
     var totalCorrectCheckboxFields = 0;
     var totalNumericFields = 0;
     var totalCorrectNumericFields = 0;
+    var combinedDiffs = {};
 
-    scanForms.slice(0).forEach(function(scanForm){
+    //Iterate though all the forms and try to correlate
+    //ODK Scan outputs with the data from ODK Aggregate.
+    scanForms.forEach(function(scanForm){
       var minTimeDiff = Infinity;
+      //Time match doesn't work because many correlated forms have large time differences.
       var timeMatch;
       var mostMatchingFields = 0;
       var fieldMatch;
       aggData.forEach(function(aggForm){
 
-        //distrito?
         var matchingFields = _.reduce(_.pairs(scanForm), function(sum, field){
           if(_.isUndefined(field[1])) {
             return sum;
@@ -137,12 +137,15 @@ walk('../tests/MozExperiment_out', function(err, pages) {
 
       });
 
-      //Check if the matches changed.
-      //Use this after running with gt data so we don't mismatch on bad data.
+      //Check if the correlations changed since the last time this script ran.
+      //Correlations are tracked by modifying the aggData.json file at the end of this script.
+      //By default the previous correlation is used if the correlations changed,
+      //but you can modify the branch condition below to generate new correlations.
+      //I ran this script initially with the GT data to ensure the best possible correlations.
       var prevMatch = _.where(aggData, {__previousMatch__: scanForm.__name__})[0];
       if(prevMatch !== fieldMatch) {
         if(true){
-          console.log("Previous match is bad.");
+          console.log("Current match differs from the previous match. Using previous match...");
           fieldMatch = prevMatch;
         } else {
           //Remove the previous previous match
@@ -185,26 +188,12 @@ walk('../tests/MozExperiment_out', function(err, pages) {
         }
       });
 
-      //Write to path:
-      /*
-      fs.writeFile(path.join(path.dirname(scanForm.__path__), "aggData.json"),
-        JSON.stringify(_.extend(fieldMatch, {
-          "xformFinishTimeDelta": xformFinishTimeDelta,
-          "checkboxErrors": checkboxErrors,
-          "numericFieldDiffs": numericFieldDiffs
-        }), 0, 2),
-        function(err) {
-          if(err) {
-              console.log(err);
-          }
-      });
-      */
 /*
-      if(xformFinishTimeDelta > 550 || xformFinishTimeDelta < -1){
+      if(xformFinishTimeDelta > 550 || xformFinishTimeDelta < 0){
         //There is one form with a slightly negative time
         //It's text fields check out though so I'm not sure what the deal is...
         //Everything seems to spot
-        console.log(fieldMatch);
+        console.log("strange time", xformFinishTimeDelta, fieldMatch);
         console.log(scanForm.__name__);
       }
 
@@ -215,7 +204,7 @@ walk('../tests/MozExperiment_out', function(err, pages) {
         //fieldMatch: fieldMatch,
         //scanForm: scanForm.__name__
       });
-*/
+*/ 
       totalCheckboxFields += checkboxFields;
       totalCorrectCheckboxFields += checkboxFields - checkboxErrors;
 
@@ -224,10 +213,21 @@ walk('../tests/MozExperiment_out', function(err, pages) {
           return a + b;
       });
 
-
+      _.pairs(numericFieldDiffs).forEach(function(diff){
+        var amnt = Math.abs(diff[0]);
+        if(!(amnt in combinedDiffs)) {
+          combinedDiffs[amnt] = diff[1];
+        } else {
+          combinedDiffs[amnt] += diff[1];
+        }
+      });
 
     });
-
+/*
+    _.pairs(combinedDiffs).forEach(function(diff){
+      console.log("revised", ",", diff[0],",", diff[1]);
+    });
+*/
     console.log({
       totalCorrectCheckboxFields: totalCorrectCheckboxFields,
       totalIncorrectCheckboxFields: totalCheckboxFields - totalCorrectCheckboxFields,
@@ -237,12 +237,12 @@ walk('../tests/MozExperiment_out', function(err, pages) {
       "% bubble tally fields correct" : totalCorrectNumericFields / totalNumericFields
     });
 
+
     fs.writeFile('aggdata.json', JSON.stringify(aggData), function(err) {
         if(err) {
             console.log(err);
         }
     });
-
 
   });
 });

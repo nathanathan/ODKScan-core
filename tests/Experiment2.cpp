@@ -91,12 +91,6 @@ int main(int argc, char *argv[]) {
 			}
 			string jsonOutfile(outputPath + "output.json");
 			
-			#if 0
-				//This is here because of lazyness.
-				collectors[label].recomputeFieldValues(expectedJsonFile, jsonOutfile);
-				continue; 
-			#endif
-			
 			collectors[label].incrImages();
 	
 			init = clock();

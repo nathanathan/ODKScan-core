@@ -15,7 +15,7 @@ ALL_OBJS := $(CORE_OBJS) StatCollector.o $(JSON_PARSER_OBJS)
 #export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
 OPENCV_INCLUDES := `pkg-config opencv --cflags --libs`
 
-#Simplify?
+#Boost is only needed for tests
 INCLUDES := $(OPENCV_INCLUDES) -I./jsoncpp-src-0.5.0/include -I./src -I./ -lboost_filesystem -lboost_system
 
 ODKScan: ODKScan.run
@@ -45,7 +45,7 @@ Experiment: tests/Experiment.run
 	./$< $(TEMPLATE) $(INPUT_FOLDER) $(OUTPUT_FOLDER) $(EXPECTED_JSON)
 
 Experiment2: tests/Experiment2.run
-	./$< assets/form_templates/moz_original tests/MozExperiment tests/MozExperiment_out
+	./$< assets/form_templates/moz_revised tests/MozExperiment tests/MozExperiment_out
 
 #does linking
 %.run: %.cpp $(ALL_SRCS) $(ALL_OBJS) $(ALL_HEADERS)

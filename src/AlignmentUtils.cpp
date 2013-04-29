@@ -163,7 +163,7 @@ bool testQuad(const vector<Point>& quad, const Size& sz, float sizeThresh) {
 	/*
 	see this test:
 	if( testQuad(rectToQuad(segmentRect), segmentRect, .01) ){
-		cout << "hi" << endl;
+		cout << "Quad area differs by more than the threshold" << endl;
 	}
 	*/
 	#ifdef DEBUG_MODE
