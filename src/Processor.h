@@ -22,6 +22,7 @@ class Processor{
 		bool setTemplate(const char* templatePath);
 		bool alignForm(const char* alignedImageOutputPath, int templateIdx = 0);
 		bool processForm(const char* outputPath, bool minifyJson = false);
+		const char* processViaJSON(const char* jsonString);
 		bool writeFormImage(const char* outputPath) const;
 
 	private:

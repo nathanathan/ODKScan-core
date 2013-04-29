@@ -215,6 +215,8 @@ const std::string currentDateTime() {
 }
 class Processor::ProcessorImpl
 {
+public:
+	string trainingDataPath;
 private:
 	Mat formImage;
 
@@ -227,7 +229,6 @@ private:
 	ClassiferMap classifiers;
 
 	string templPath;
-	string appRootDir;
 	//string imageDir;
 
 	#ifdef TIME_IT
@@ -236,7 +237,7 @@ private:
 
 
 //NOTE: training_data_uri must be a directory with no leading or trailing slashes.
-Ptr<PCA_classifier>& getClassifier(const Json::Value& classifier){
+Ptr<PCA_classifier>& getClassifier(const Json::Value& classifier) {
 
 	const string& training_data_uri = classifier["training_data_uri"].asString();
 
@@ -258,7 +259,7 @@ Ptr<PCA_classifier>& getClassifier(const Json::Value& classifier){
 		//PCA_classifier classifier = classifiers[key];
 		classifiers[key] = Ptr<PCA_classifier>(new PCA_classifier);
 		
-		string dataPath = appRootDir + "training_examples/" + training_data_uri;
+		string dataPath = trainingDataPath + training_data_uri;
 		string cachedDataPath = dataPath + "/cached_classifier_data_" + ss.str() + ".yml";
 
 		classifiers[key]->set_classifier_params(classifier);
@@ -274,6 +275,9 @@ Ptr<PCA_classifier>& getClassifier(const Json::Value& classifier){
 				cout << "training new classifier..." << endl;
 			#endif
 			vector<string> filepaths;
+			if(!fileExists(dataPath)){
+				CV_Error( -1, "Could not find classifier data: " + dataPath);
+			}
 			CrawlFileTree(dataPath, filepaths);//TODO: Check if this dir exists and show a log message if not.
 			
 			/*
@@ -515,7 +519,7 @@ Json::Value formFunction(const Json::Value& templateRoot){
 
 public:
 
-ProcessorImpl(const string& appRootDir) : appRootDir(string(appRootDir)) {}
+ProcessorImpl()  {}
 
 bool setTemplate(const char* templatePathArg) {
 	#ifdef DEBUG_PROCESSOR
@@ -593,21 +597,17 @@ bool alignForm(const char* alignedImageOutputPath, size_t formIdx) {
 		init = clock();
 	#endif
 	Mat straightenedImage;
-	try{
-		Size form_sz(root.get("width", 0).asInt(), root.get("height", 0).asInt());
-		
-		if( form_sz.width <= 0 || form_sz.height <= 0)
-			CV_Error(CV_StsError, "Invalid form dimension in template.");
-		
-		//If the image was not set (because form detection didn't happen) set it.
-		if( aligner.currentImg.empty() ) aligner.setImage(formImage);
 
-		aligner.alignFormImage( straightenedImage, SCALEPARAM * form_sz, formIdx );
-	}
-	catch(cv::Exception& e){
-		LOGI(e.what());
-		return false;
-	}
+	Size form_sz(root.get("width", 0).asInt(), root.get("height", 0).asInt());
+
+	if( form_sz.width <= 0 || form_sz.height <= 0)
+		CV_Error(CV_StsError, "Invalid form dimension in template.");
+
+	//If the image was not set (because form detection didn't happen) set it.
+	if( aligner.currentImg.empty() ) aligner.setImage(formImage);
+
+	aligner.alignFormImage( straightenedImage, SCALEPARAM * form_sz, formIdx );
+
 	
 	if(straightenedImage.empty()) {
 		cout << "does this ever happen?" << endl;
@@ -679,16 +679,11 @@ bool writeFormImage(const char* outputPath) {
 	return imwrite(outputPath, formImage);
 }
 bool loadFeatureData(const char* templatePathArg) {
-	try{
-		string templatePath = addSlashIfNeeded(templatePathArg);
-		aligner.loadFeatureData(templatePath + "form.jpg",
-		                        templatePath + "template.json",
-		                        templatePath + "cached_features.yml");
-	}
-	catch(cv::Exception& e){
-		LOGI(e.what());
-		return false;
-	}
+	string templatePath = addSlashIfNeeded(templatePathArg);
+	aligner.loadFeatureData(templatePath + "form.jpg",
+							templatePath + "template.json",
+							templatePath + "cached_features.yml");
+
 	return true;
 }
 int detectForm(){
@@ -707,17 +702,25 @@ int detectForm(){
 };
 
 /* This stuff hooks the Processor class up to the implementation class: */
-Processor::Processor() : processorImpl(new ProcessorImpl("")){
+Processor::Processor() : processorImpl(new ProcessorImpl()){
+	processorImpl->trainingDataPath = "training_examples/";
 	LOGI("Processor successfully constructed.");
 }
-Processor::Processor(const char* appRootDir) : processorImpl(new ProcessorImpl(addSlashIfNeeded(appRootDir))){
+Processor::Processor(const char* appRootDir) : processorImpl(new ProcessorImpl()){
+	processorImpl->trainingDataPath = addSlashIfNeeded(appRootDir) + "training_examples/";
 	LOGI("Processor successfully constructed.");
 }
 bool Processor::loadFormImage(const char* imagePath, const char* calibrationFilePath){
 	return processorImpl->loadFormImage(imagePath, calibrationFilePath);
 }
 bool Processor::loadFeatureData(const char* templatePath){
-	return processorImpl->loadFeatureData(templatePath);
+	try{
+		return processorImpl->loadFeatureData(templatePath);
+	}
+	catch(cv::Exception& e){
+		LOGI(e.what());
+		return false;
+	}
 }
 int Processor::detectForm(){
 	return processorImpl->detectForm();
@@ -727,10 +730,100 @@ bool Processor::setTemplate(const char* templatePath){
 }
 bool Processor::alignForm(const char* alignedImageOutputPath, int formIdx){
 	if(formIdx < 0) return false;
-	return processorImpl->alignForm(alignedImageOutputPath, (size_t)formIdx);
+	try{
+		return processorImpl->alignForm(alignedImageOutputPath, (size_t)formIdx);
+	}
+	catch(cv::Exception& e){
+		LOGI(e.what());
+		return false;
+	}
 }
 bool Processor::processForm(const char* outputPath, bool minifyJson) {
 	return processorImpl->processForm(addSlashIfNeeded(outputPath), minifyJson);
+}
+/**
+processViaJSON expects a JSON string like this:
+{
+	"inputImage" : "",
+	"outputDirectory" : "",
+	"alignForm" : true,
+	"processForm" : true,
+	"templatePath" : "",
+	"templatePaths" : [],
+	"calibrationFilePath" : "",
+	"trainingDataDirectory" : "training_examples/"
+}
+It will return a error string if there is an error, or an empty string if everything is OK.
+You only need to specify the inputImage, outputDirectory and templatePath(s).
+The JSON above contains all the default values.
+
+The benefits are as follows:
+- Only a single call is required to use the whole processing pipeline.
+- Keyword arguments make it clearer what the args do,
+  and allow for more flexible default behavior when they are not specified.
+- Extra data can be passed in by the caller that is not yet supported here in the core without needing by modify the interface.
+ */
+const char* Processor::processViaJSON(const char* jsonString) {
+	try {
+		Json::Value config;// will contain the root value after parsing.
+		Json::Reader reader;
+		bool parsingSuccessful = reader.parse( jsonString, config );
+		if(!parsingSuccessful){
+			return "Could not parse JSON configuration string.";
+		}
+		if(!config.isMember("inputImage")){
+			return "Missing input image path.";
+		}
+		if(!config.isMember("outputDirectory")){
+			return "Missing output image path.";
+		}
+		string outputDirectory = config["outputDirectory"].asString();
+		processorImpl->loadFormImage(config["inputImage"].asString().c_str(), config.get("calibrationFilePath", "").asString().c_str());
+
+		int formIdx = 0;
+
+		if(config.isMember("templatePath")){
+			if(!processorImpl->loadFeatureData(config["templatePath"].asString().c_str())) {
+				return "Could not load feature data.";
+			}
+			if(!processorImpl->setTemplate(config["templatePath"].asString().c_str())) {
+				return "Could not set template.";
+			}
+		} else if(config.isMember("templatePaths")) {
+			Json::Value templatePaths = config["templatePaths"];
+			for ( size_t j = 0; j < templatePaths.size(); j++ ) {
+				const Json::Value templatePath = templatePaths[j];
+				if(!processorImpl->loadFeatureData(templatePath.asString().c_str())) {
+					return "Could not load feature data.";
+				}
+			}
+			formIdx = processorImpl->detectForm();
+			if(formIdx < 0) {
+				return "Could not detect form.";
+			}
+			if(!processorImpl->setTemplate(templatePaths[formIdx].asString().c_str())) {
+				return "Could not set template.";
+			}
+		} else {
+			return "One or more template paths are required.";
+		}
+
+		if(config.get("alignForm", true).asBool()){
+			if(!processorImpl->alignForm((addSlashIfNeeded(outputDirectory) + "aligned.jpg").c_str(), (size_t)formIdx)){
+				return "Could not align form.";
+			}
+		}
+		if(config.get("processForm", true).asBool()){
+			processorImpl->trainingDataPath = config.get("trainingDataDirectory", "training_examples/").asString();
+			if(!processorImpl->processForm(addSlashIfNeeded(outputDirectory), false)){
+				return "Could not process form.";
+			}
+		}
+		return "";//Success
+	}
+	catch(cv::Exception& e){
+		return e.what();
+	}
 }
 bool Processor::writeFormImage(const char* outputPath) const{
 	return processorImpl->writeFormImage(outputPath);
