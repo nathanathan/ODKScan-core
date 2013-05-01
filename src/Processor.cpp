@@ -628,7 +628,7 @@ bool alignForm(const char* alignedImageOutputPath, size_t formIdx) {
 	#endif
 	return writeFormImage(alignedImageOutputPath);
 }
-bool processForm(const string& outputPath, bool minifyJson) {
+bool processForm(const string& outputPath, const string& jsonOutputPath, const string& markedupImagePath, bool minifyJson) {
 	#ifdef  DEBUG_PROCESSOR
 		cout << "Processing form" << endl;
 	#endif
@@ -653,10 +653,10 @@ bool processForm(const string& outputPath, bool minifyJson) {
 	#endif
 	
 	//Create the marked up image:
-	imwrite(outputPath + "markedup.jpg", markupForm(JsonOutput, formImage, true));
+	imwrite(markedupImagePath, markupForm(JsonOutput, formImage, true));
 	
 	//Create the json output file
-	ofstream outfile((outputPath + "output.json").c_str(), ios::out | ios::binary);
+	ofstream outfile(jsonOutputPath.c_str(), ios::out | ios::binary);
 	if(minifyJson){
 		Json::FastWriter writer;
 		outfile << writer.write( minifyJsonOutput(JsonOutput) );
@@ -739,13 +739,38 @@ bool Processor::alignForm(const char* alignedImageOutputPath, int formIdx){
 	}
 }
 bool Processor::processForm(const char* outputPath, bool minifyJson) {
-	return processorImpl->processForm(addSlashIfNeeded(outputPath), minifyJson);
+	try{
+		string normalizedOutDir = addSlashIfNeeded(outputPath);
+		return processorImpl->processForm(normalizedOutDir, normalizedOutDir + "output.json",
+				normalizedOutDir + "markedup.jpg", minifyJson);
+	}
+	catch(cv::Exception& e){
+		LOGI(e.what());
+		return false;
+	}
+}
+const char* Processor::scanAndMarkup(const char* outputPath) {
+	try{
+		string normalizedOutDir = addSlashIfNeeded(outputPath);
+		if(processorImpl->processForm(normalizedOutDir, normalizedOutDir + "output.json",
+				normalizedOutDir + "markedup.jpg", false)) {
+			return "";//success
+		} else {
+			return "Could not process form.";
+		}
+	}
+	catch(cv::Exception& e){
+		return e.what();
+	}
 }
 /**
 processViaJSON expects a JSON string like this:
 {
 	"inputImage" : "",
 	"outputDirectory" : "",
+	"alignedFormOutputPath" : outputDirectory + "aligned.jpg",
+	"markedupFormOutputPath" : outputDirectory + "markedup.jpg",
+	"jsonOutputPath" : outputDirectory + "output.json",
 	"alignForm" : true,
 	"processForm" : true,
 	"templatePath" : "",
@@ -762,7 +787,7 @@ The benefits are as follows:
 - Keyword arguments make it clearer what the args do,
   and allow for more flexible default behavior when they are not specified.
 - Extra data can be passed in by the caller that is not yet supported here in the core without needing by modify the interface.
- */
+*/
 const char* Processor::processViaJSON(const char* jsonString) {
 	try {
 		Json::Value config;// will contain the root value after parsing.
@@ -809,13 +834,20 @@ const char* Processor::processViaJSON(const char* jsonString) {
 		}
 
 		if(config.get("alignForm", true).asBool()){
-			if(!processorImpl->alignForm((addSlashIfNeeded(outputDirectory) + "aligned.jpg").c_str(), (size_t)formIdx)){
+			string alignedFormOutputPath = config.get("alignedFormOutputPath",
+					addSlashIfNeeded(outputDirectory) + "aligned.jpg").asString();
+			if(!processorImpl->alignForm(alignedFormOutputPath.c_str(), (size_t)formIdx)){
 				return "Could not align form.";
 			}
 		}
 		if(config.get("processForm", true).asBool()){
 			processorImpl->trainingDataPath = config.get("trainingDataDirectory", "training_examples/").asString();
-			if(!processorImpl->processForm(addSlashIfNeeded(outputDirectory), false)){
+			string normalizedOutDir = addSlashIfNeeded(outputDirectory);
+			string jsonOutputPath = config.get("jsonOutputPath",
+					normalizedOutDir + "output.json").asString();
+			string markedupFormOutputPath = config.get("markedupFormOutputPath",
+					normalizedOutDir + "markedup.jpg").asString();
+			if(!processorImpl->processForm(normalizedOutDir, jsonOutputPath, markedupFormOutputPath, false)){
 				return "Could not process form.";
 			}
 		}
