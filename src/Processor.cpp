@@ -424,6 +424,8 @@ Json::Value segmentFunction(Json::Value& segmentJsonOut, const Json::Value& exte
 			itemsJsonOut.append(itemJsonOut);
 		}
 		segmentJsonOut["items"] = itemsJsonOut;
+	} else if(extendedSegment.get("imageType", NULL) == "qrcode"){
+		//TODO
 	}
 	
 	//Output the segment image:
