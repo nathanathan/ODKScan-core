@@ -18,7 +18,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+#include "configuration.h"
 #include <zxing/aztec/decoder/Decoder.h>
 #ifndef NO_ICONV
 #include <iconv.h>

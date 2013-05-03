@@ -18,7 +18,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+#include "configuration.h"
 #include <zxing/qrcode/decoder/DecodedBitStreamParser.h>
 #include <zxing/common/CharacterSetECI.h>
 #include <zxing/FormatException.h>

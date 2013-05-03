@@ -52,9 +52,18 @@ inline float nan() {return std::numeric_limits<float>::quiet_NaN();}
 #include <cmath>
 
 namespace zxing {
-inline bool isnan(float v) {return std::isnan(v);}
-inline bool isnan(double v) {return std::isnan(v);}
+
+//I added two hacks here to make this work with the android NDK.
+//1. I undefine the isnan macro so it doesn't substitute the isnan
+//   function name.
+//2. I replaced the std::isnan function with (v != v).
+//   I'm not entirely sure how it works,
+//   but it doesn't just return false.
+#undef isnan
+inline bool isnan(float v) { return (v != v);}
+inline bool isnan(double v) { return (v != v);}
 inline float nan() {return std::numeric_limits<float>::quiet_NaN();}
+
 }
 
 #endif

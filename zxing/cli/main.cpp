@@ -257,12 +257,12 @@ int main(int argc, char** argv) {
     if (test_mode) {
       cerr << "Testing: " << filename << endl;
     }
-//Interesting stuff starts here:
+
     Ref<LuminanceSource> source;
 
     try {
       cv::Mat cvImage = cv::imread(filename, 0);
-      source = ImageReaderSource::create(filename);
+      source = ImageReaderSource::create(cvImage);
     } catch (const zxing::IllegalArgumentException &e) {
       cerr << e.what() << " (ignoring)" << endl;
       continue;
