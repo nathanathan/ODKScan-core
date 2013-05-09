@@ -76,7 +76,7 @@ Json::Value computeFieldValue(const Json::Value& field){
 		}
 		for ( size_t j = 0; j < items.size(); j++ ) {
 			const Json::Value classification = items[j].get("classification", false);
-			const Json::Value itemValue = items[j]["value"];
+			Json::Value itemValue = items[j]["value"];
 			switch ( classification.type() )
 			{
 				case Json::stringValue:
@@ -88,6 +88,11 @@ Json::Value computeFieldValue(const Json::Value& field){
 				break;
 				case Json::booleanValue:
 					if(!itemValue.isNull()){
+						if(!itemValue.isString()) {
+							//Hack to convert ints to strings.
+							string s = itemValue.toStyledString();
+							itemValue = Json::Value(s.substr(0, s.length() - 1));
+						}
 						//This case is for selects.
 						//The values of the filled (i.e. true) items
 						//are stored in a space delimited string.
@@ -96,7 +101,8 @@ Json::Value computeFieldValue(const Json::Value& field){
 								output = Json::Value(itemValue.asString());
 							}
 							else{
-								output = Json::Value(output.asString() + " " +
+								output = Json::Value(output.asString() +
+									     field.get("delimiter", " ").asString() +
 									     itemValue.asString());
 							}
 						}
@@ -453,13 +459,19 @@ Json::Value segmentFunction(Json::Value& segmentJsonOut, const Json::Value& exte
 		segmentJsonOut["items"] = itemsJsonOut;
 	}  else if(extendedSegment.get("type", 0) == "qrcode"){
 		LOGI("scanning qr code...");
+		
 		Mat tmp;
-		//Blowing up the image makes decoding more accurate.
-		//It seems like there should be a better way...
-		resize(segmentImg, tmp, 4*segmentImg.size());
+		//Add a border because detection doesn't work unless
+		//there is enough of a margin around the QR code.
+		//No idea why.
+		copyMakeBorder( segmentImg, tmp, 20, 20, 20, 20, BORDER_CONSTANT, 0 );
+
+		//Blowing up the image can make decoding more accurate.
+		//resize(segmentImg, tmp, 4*segmentImg.size());
+		
 		//I modifieid this zxing class to take OpenCV mats
 		Ref<LuminanceSource> source = ImageReaderSource::create(tmp);
-		//LOGI("source created..");
+
 		string result;
 		try {
 			Ref < Binarizer > binarizer;
@@ -793,9 +805,8 @@ bool Processor::alignForm(const char* alignedImageOutputPath, int formIdx){
 	try{
 		return processorImpl->alignForm(alignedImageOutputPath, (size_t)formIdx);
 	}
-	catch(cv::Exception& e){
-		LOGI(e.what());
-		return false;
+	catch (...) {
+	    return false;
 	}
 }
 bool Processor::processForm(const char* outputPath, bool minifyJson) {
@@ -804,9 +815,8 @@ bool Processor::processForm(const char* outputPath, bool minifyJson) {
 		return processorImpl->processForm(normalizedOutDir, normalizedOutDir + "output.json",
 				normalizedOutDir + "markedup.jpg", minifyJson);
 	}
-	catch(cv::Exception& e){
-		LOGI(e.what());
-		return false;
+	catch (...) {
+	    return false;
 	}
 }
 const char* Processor::scanAndMarkup(const char* outputPath) {
@@ -821,6 +831,12 @@ const char* Processor::scanAndMarkup(const char* outputPath) {
 	}
 	catch(cv::Exception& e){
 		return e.what();
+	}
+	catch(std::exception& e){
+		return e.what();
+	}
+	catch (...) {
+	    return "Unknown expection.";
 	}
 }
 /**
@@ -915,6 +931,12 @@ const char* Processor::processViaJSON(const char* jsonString) {
 	}
 	catch(cv::Exception& e){
 		return e.what();
+	}
+	catch(std::exception& e){
+		return e.what();
+	}
+	catch (...) {
+	    return "Unknown expection.";
 	}
 }
 bool Processor::writeFormImage(const char* outputPath) const{
