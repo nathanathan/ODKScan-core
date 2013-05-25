@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2012 University of Washington
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+
 #include "configuration.h"
 #include "Addons.h"
 #include "AlignmentUtils.h"
@@ -20,7 +36,6 @@ using namespace cv;
 
 // Try to distil the maximum quad (4 point contour) from a convex contour of many points.
 // if none is found maxQuad will not be altered.
-// TODO: Find out what happens when you try to simplify a contour that already has just 4 points.
 float maxQuadSimplify(vector <Point>& contour, vector<Point>& maxQuad, float current_approx_p){
 	
 	float area = 0;
@@ -60,130 +75,17 @@ vector<Point> findMaxQuad(Mat& img, float approx_p_seed = 0){
 	}
 	return maxRect;
 }
-/*
-//Sum the pixels that lie on a line starting and ending in the specified rows.
-//The image can be transposed to sum pixels on vertical lines.
-int lineSum(const Mat& img, int start, int end, bool transpose) {
-
-	int hSpan;
-	int vSpan;
-	if(transpose){
-		hSpan = img.rows;
-		vSpan = img.cols;
-	}
-	else{
-		hSpan = img.cols;
-		vSpan = img.rows;
-	}
-	
-	int sum = 0;
-	double slope = (double)(end - start) / hSpan;
-	
-	for(int i = 0; i<hSpan; i++) {
-		int j = start + slope * i;
-		if(j < 0 || j >= vSpan){
-			//Treats pixels outside of image as gray so
-			//they are neither particularly good or bad to cross.
-			sum += 127;
-		}
-		else{
-			if(transpose){
-				sum += img.at<uchar>(i, j);
-			}
-			else{
-				sum += img.at<uchar>(j, i);
-			}
-		}
-	}
-
-	if(start < 0 && end < 0) {
-		assert(hSpan * 127 == sum);
-	}
-
-	return sum;
-}
-void findLinesHelper(const Mat& img, int& start, int& end, const Rect& roi, bool flip, bool transpose) {
-	int vSpan, hSpan;
-	int range, midpoint;
-	float maxSlope = .15;
-
-	if(transpose){
-		vSpan = img.cols;
-		hSpan = img.rows;
-		midpoint = roi.x;
-		if(flip) midpoint += roi.width;
-		range = roi.x;
-	}
-	else{
-		vSpan = img.rows;
-		hSpan = img.cols;
-		midpoint = roi.y;
-		if(flip) midpoint += roi.height;
-		range = roi.y;
-	}
-	//This is the maximum sum of a line crossing the image.
-	int maxSum = 255 * hSpan;
-	//The param limits the weighting to a certain magnitude.
-	double param = 0.5;
-
-	float maxSsdFromMidpoint = 2*range*range;
-	
-	int minLs = INT_MAX;
-	for(int i = midpoint - range; i <= midpoint + range; i++) {
-		for(int j = MAX(i-hSpan*maxSlope, midpoint - range); j <= MIN(i+hSpan*maxSlope, midpoint + range); j++) {
-
-			float ssdFromMidpoint = (i - midpoint)*(i - midpoint) + (j - midpoint)*(j - midpoint);
-			int ls = param * maxSum * ssdFromMidpoint / maxSsdFromMidpoint;
-			//ls += lineSum(img, i, j, transpose);
-			Point startPt;
-			Point end;
-			if(transpose){
-				startPt = Point(i, roi.y);
-				endPt = Point(j, roi.y + roi.height);
-			}
-			else{
-				startPt = Point(roi.x, i);
-				endPt = Point(roi.x + roi.width, j);
-			}
-
-			ls += lineSum(img, startPt, endPt);
-			if( ls < minLs ){
-				start = i;
-				end = j;
-				minLs = ls;
-			}
-		}
-	}
-}
+//Sum the pixels along the line defined by the start and end points.
 template <class T>
-void findLines(const Mat& img, Point_<T>& A, Point_<T>& B, const Rect& roi, bool flip, bool transpose) {
-	int start, end;
-	
-	findLinesHelper(img, start, end, roi, flip, transpose);
-	
-	//Reverse the transposition:
-	if(transpose){
-		A = Point_<T>(start, 0);
-		B = Point_<T>(end, img.rows);
-	}
-	else {
-		A = Point_<T>(0, start);
-		B = Point_<T>(img.cols, end);
-	}
-	
-}
-*/
-
-template <class T>
-int lineSum(const Mat& img, Point_<T>& start, Point_<T>& end, int step=1) {
+int lineSum(const Mat& img, Point_<T>& start, Point_<T>& end) {
 	
 	int sum = 0;
 	
 	Point_<T> vector = (end - start);
 	int length = norm(vector);
-	float portion = step * 1.0 / length;
+	float portion = 1.0 / length;
 
-	for(int i = 0; i< length; i++) {
+	for(int i = 0; i < length; i++) {
 		Point_<T> point = start + vector * (portion * i);
 		sum += img.at<uchar>(point);
 	}
@@ -217,11 +119,14 @@ void findLines(const Mat& img, Point_<T>& start, Point_<T>& end, const Rect& roi
 	int maxSum = 255 * hSpan;
 	//The greater param is the more results are weighted towards the orginal position.
 	//When decreasing this watch out for prompts with lines close to the borders (e.g. bub_* prompts).
-	//There is a bit of a trade-off because lowering the param yield better alignments when it doesn't pick up the wrong line.
+	//There is a trade-off because lowering the param yield better alignments when it doesn't pick up the wrong line.
 	double param = 0.2;
 
 	float maxSsdFromMidpoint = 2*range*range;
 	
+	//Contracting the roi can make it less likely we choose the wrong line when the segment is narrow.
+	int roiInset = 1;
+
 	int minLs = INT_MAX;
 	for(int i = midpoint - range; i <= midpoint + range; i++) {
 		for(int j = MAX(i-hSpan*maxSlope, midpoint - range); j <= MIN(i+hSpan*maxSlope, midpoint + range); j++) {
@@ -230,12 +135,12 @@ void findLines(const Mat& img, Point_<T>& start, Point_<T>& end, const Rect& roi
 			int ls = param * maxSum * ssdFromMidpoint / maxSsdFromMidpoint;
 			Point_<T> startPt, endPt;
 			if(transpose){
-				startPt = Point_<T>(i, roi.y);
-				endPt = Point_<T>(j, roi.y + roi.height);
+				startPt = Point_<T>(i, roi.y + roiInset);
+				endPt = Point_<T>(j, roi.y + roi.height - roiInset);
 			}
 			else{
-				startPt = Point_<T>(roi.x, i);
-				endPt = Point_<T>(roi.x + roi.width, j);
+				startPt = Point_<T>(roi.x  + roiInset, i);
+				endPt = Point_<T>(roi.x + roi.width - roiInset, j);
 			}
 
 			ls += lineSum(img, startPt, endPt);
@@ -247,15 +152,15 @@ void findLines(const Mat& img, Point_<T>& start, Point_<T>& end, const Rect& roi
 		}
 	}
 }
-
-
+//Finds the intersection of the lines defined by (P1,P2) and (P3,P4)
 template <class T>
 inline Point_<T> findIntersection(const Point_<T>& P1, const Point_<T>& P2,
 						const Point_<T>& P3, const Point_<T>& P4){
 	// From determinant formula here:
 	// http://en.wikipedia.org/wiki/Line_intersection
 	// "Note that the intersection point is for the infinitely long lines defined by the points,
-	// rather than the line segments between the points, and can produce an intersection point beyond the lengths of the line segments."
+	// rather than the line segments between the points, 
+	// and can produce an intersection point beyond the lengths of the line segments."
 	double denom = (P1.x - P2.x) * (P3.y - P4.y) - (P1.y - P2.y) * (P3.x - P4.x);
 	return Point_<T>(
 		( (P1.x * P2.y - P1.y * P2.x) * (P3.x - P4.x) -
@@ -263,11 +168,7 @@ inline Point_<T> findIntersection(const Point_<T>& P1, const Point_<T>& P2,
 		( (P1.x * P2.y - P1.y * P2.x) * (P3.y - P4.y) -
 		  (P1.y - P2.y) * (P3.x * P4.y - P3.y * P4.x) ) / denom);
 }
-template <class T>
-void refineCorners(const Mat& img, vector< Point_<T> >& quad){
-	return;
-}
-//TODO: could possibly improve this using harris detector w/ hillclimbing instead.
+//Deprecated
 void refineCorners(const Mat& img, vector< Point2f >& quad){
 	TermCriteria termcrit(CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, 20, 0.03);
 	cornerSubPix(img, quad, Size(1,1), Size(-1, -1), termcrit);
@@ -279,49 +180,13 @@ void convertQuad(const vector< Point_<T> >& quad, vector< Point_<U> >& outQuad){
 		outQuad.push_back( Point_<U>(quad[i].x, quad[i].y) );
 	}
 }
-template <class T>
-Point_<T> getCorner(const Mat& img, const Rect&roi, const Mat& templ, const Point& offset){
-	#if 0
-		vector<Point2f> cornerVec;
-		goodFeaturesToTrack(img(roi), cornerVec, 1, .01, 0, Mat(), 3);
-		return Point_<T>(cornerVec[0].x + roi.x, cornerVec[0].y + roi.y);
-	#endif
-	Mat result(img.size(), CV_8U);
-	int method = 3962;//CV_TM_SQDIFF;
-	if(method == 3962){
-		createLinearFilter(templ.type(), templ.type(), 255 - templ)->apply(img, result);
-	}
-	else{
-		matchTemplate(img, templ, result, method);
-	}
-	
-	Point minLoc, maxLoc;
-	minMaxLoc(result, 0, 0, &minLoc, &maxLoc);
-	Point corner;
-	if(method == CV_TM_SQDIFF || method == CV_TM_SQDIFF_NORMED || method == 3962){
-		corner = minLoc;
-	}
-	else{
-		corner = maxLoc;
-	}
-	
-	return Point_<T>(corner.x + offset.x, corner.y + offset.y);
-}
 /*
 Pseudo-code description of findSegment:
 1.	Find lines along the edges of the bounding box
-	a.	Using difference of means and thresholding about 0 generate a binary images that should have highly pronounced black edges.
-		There are many alternatives that might also work here, for example an inverted canny filter.
-	b.	For every pair of rows in the top half of the image sum the white pixels in a line that starts at the left side of the image in the first row,
-		and ends at the right side of the image in the second. The row pair with the minimum number of white pixels is the minimum energy line.
-	c.	Repeat step 2 while flipping and/or transposing the image to find 4 such lines corresponding to the edges of the segment.
 2.	Find their intersections
 3.	Find the trasformation from the 4 intersection points to the rectangle defined in the template,
 	then use it to transform the segment into the rectangle.
-Note, this leaves out some tweaks and implementation details.
 */
-
-//TODO: reimplement scaling to 128 px
 template <class T>
 void findSegmentImpl(const Mat& img, const Rect& roi, vector< Point_<T> >& outQuad){
 
@@ -332,7 +197,6 @@ void findSegmentImpl(const Mat& img, const Rect& roi, vector< Point_<T> >& outQu
 	//to choose the wrong line than with the contour method.
 	#define QUAD_FIND_INTERSECTION 0
 	#define QUAD_FIND_CONTOURS 1
-	#define QUAD_FIND_CORNERS 2 //Broken
 	
 	#define QUAD_FIND_MODE QUAD_FIND_INTERSECTION
 	
@@ -344,16 +208,7 @@ void findSegmentImpl(const Mat& img, const Rect& roi, vector< Point_<T> >& outQu
 	//However, it may lead to a loss in percision.
 	//i.e. you're more likely to find the right line, but the coords will be slightly off.
 	int blurSize = 40;
-	#if 1
-		blur(img, temp_img, Size(blurSize, blurSize));
-	#else
-		//Not sure if this had advantages or not...
-		//My theory is that it is slower but more accurate,
-		//but I don't know if either difference is significant enough to notice.
-		//Will need to test.
-		GaussianBlur(img, temp_img, Size(9, 9), 3, 3);
-	#endif
-
+	blur(img, temp_img, Size(blurSize, blurSize));
 	imgThresh = (img - temp_img) > 0;
 	//White out the middle of the segment to prevent it from interfering.
 	Rect contractedRoi = resizeRect(roi, .7);
@@ -385,34 +240,6 @@ void findSegmentImpl(const Mat& img, const Rect& roi, vector< Point_<T> >& outQu
 		//quad = expandCorners(quad, EXPANSION_PERCENTAGE);
 		quad = orderCorners(quad);
 		convertQuad(quad, outQuad);
-	#elif QUAD_FIND_MODE == QUAD_FIND_CORNERS
-		vector< Point_<T> > quad;
-
-		Size quadrantSize = .5 * img.size();
-		Rect quadrant;
-		
-		Mat templ(Size(13,13), CV_8U, Scalar::all(255));
-		Size templSize = templ.size();
-		line( templ, Point(0, 0), Point(templSize.width, 0), Scalar::all(0), 2, 4);
-		line( templ, Point(0, 0), Point(0, templSize.height), Scalar::all(0), 2, 4);
-		quadrant = Rect(Point(0,0), quadrantSize);
-		quad.push_back(getCorner<T>(img(quadrant), roi, templ, quadrant.tl()));
-		Mat temp;
-		flip(templ, temp,0);
-		transpose(temp, templ);
-		quadrant = Rect(Point(img.cols/2,0), quadrantSize);
-		quad.push_back(getCorner<T>(img(quadrant), roi, templ,
-		                            quadrant.tl() + Point(templSize.width,0)));
-		flip(templ, temp,0);
-		transpose(temp, templ);
-		quadrant = Rect(Point(img.cols/2,img.rows/2), quadrantSize);
-		quad.push_back(getCorner<T>(img(quadrant), roi, templ,
-		                            quadrant.tl() + Point(templSize.width,templSize.height)));
-		flip(templ, temp,0);
-		transpose(temp, templ);
-		quadrant = Rect(Point(0,img.rows/2), quadrantSize);
-		quad.push_back(getCorner<T>(img(quadrant), roi, templ, quadrant.tl() + Point(0,templSize.height)));
-		outQuad = quad;
 	#endif
 	
 	//refineCorners(img, quad);

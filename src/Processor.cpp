@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2012 University of Washington
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 #include "configuration.h"
 #include "Processor.h"
 #include "FileUtils.h"
@@ -42,6 +57,7 @@ using namespace zxing::qrcode;
 #include <fstream>
 #include <map>
 #include <time.h>
+
 // This sets the resolution of the form at which to perform segment alignment and classification.
 // It is a percentage of the size specified in the template.
 #define SCALEPARAM 1.0
@@ -55,20 +71,17 @@ using namespace zxing::qrcode;
 	NameGenerator namer;
 #endif
 
-//#define TIME_IT
-
-#define REFINE_ALL_BUBBLE_LOCATIONS true
-
 using namespace std;
 using namespace cv;
 
-const char* stringify(const Json::Value& theJson){
+//Serialize the JSON into an unstyled string.
+//See also: Json::Value::toStyledString
+const string stringify(const Json::Value& theJson){
 	stringstream ss;
 	Json::FastWriter writer;
 	ss << writer.write( theJson );
-	return ss.str().c_str();
+	return ss.str();
 }
-
 //Iterates over a field's segments and items to determine it's value.
 Json::Value computeFieldValue(const Json::Value& field){
 	Json::Value output;
@@ -83,15 +96,21 @@ Json::Value computeFieldValue(const Json::Value& field){
 		}
 		for ( size_t j = 0; j < items.size(); j++ ) {
 			const Json::Value classification = items[j].get("classification", false);
+			Json::Value cValue;
+			if(classification.isObject()){
+				cValue = classification.get("value", false);
+			} else {
+				cValue = classification;
+			}
 			Json::Value itemValue = items[j]["value"];
-			switch ( classification.type() )
+			switch ( cValue.type() )
 			{
 				case Json::stringValue:
 					//This case isn't used right now.
 					//It's for classifiers that picks up letters.
 					//The idea is to concatenate all the letters into a word.
 					output = Json::Value(output.asString() +
-						             classification.asString());
+						             cValue.asString());
 				break;
 				case Json::booleanValue:
 					if(!itemValue.isNull()){
@@ -103,7 +122,7 @@ Json::Value computeFieldValue(const Json::Value& field){
 						//This case is for selects.
 						//The values of the filled (i.e. true) items
 						//are stored in a space delimited string.
-						if(classification.asBool()){
+						if(cValue.asBool()){
 							if( output.asString().length() == 0 ){
 								output = Json::Value(itemValue.asString());
 							}
@@ -124,10 +143,10 @@ Json::Value computeFieldValue(const Json::Value& field){
 					//for a tally.
 				case Json::intValue:
 				case Json::uintValue:
-					output = Json::Value(output.asInt() + classification.asInt());
+					output = Json::Value(output.asInt() + cValue.asInt());
 				break;
 				case Json::realValue:
-					output = Json::Value(output.asDouble() + classification.asDouble());
+					output = Json::Value(output.asDouble() + cValue.asDouble());
 				break;
 				default:
 				break;
@@ -136,6 +155,7 @@ Json::Value computeFieldValue(const Json::Value& field){
 	}
 	return output;
 }
+//Generate a marked up version of the form image that shows classifications and values.
 Mat markupForm(const Json::Value& bvRoot, const Mat& inputImage, bool drawCounts) {
 	Mat markupImage;
 	cvtColor(inputImage, markupImage, CV_GRAY2RGB);
@@ -180,17 +200,25 @@ Mat markupForm(const Json::Value& bvRoot, const Mat& inputImage, bool drawCounts
 				const Json::Value Item = items[k];
 				Point ItemLocation(jsonToPoint(Item["absolute_location"]));
 				Json::Value classification = Item["classification"];
-
-				if(classification.isBool()){
-					circle(markupImage, ItemLocation, 2, 	getColor(classification.asBool()), 1, CV_AA);
+				Json::Value cValue = classification["value"];
+				double confidence = abs(classification.get("confidence", 1.0).asDouble()) / 2.0;
+				
+				if(cValue.isBool()){
+					circle(markupImage, ItemLocation, 2, 	getColor(cValue.asBool()) * confidence, 1, CV_AA);
 				}
-				else if(classification.isInt()){
-					circle(markupImage, ItemLocation, 2, 	getColor(classification.asInt()), 1, CV_AA);
+				else if(cValue.isInt()){
+					circle(markupImage, ItemLocation, 2, 	getColor(cValue.asInt()) * confidence, 1, CV_AA);
+				}
+				else if(cValue.isString()){
+
+					putText(markupImage, cValue.asString(), ItemLocation + Point(0, -10),
+						FONT_HERSHEY_SIMPLEX, 0.8, Scalar::all(0), 3, CV_AA);
+					putText(markupImage, cValue.asString(), ItemLocation + Point(0, -10),
+						FONT_HERSHEY_SIMPLEX, 0.8, boxColor, 2, CV_AA);
 				}
 				else{
-					cout << "Don't know what this is: " << classification << endl;
+					cout << "Don't know what this is: " << cValue << endl;
 				}
-				
 			}
 		}
 		if(field.isMember("value")){
@@ -215,6 +243,7 @@ Mat markupForm(const Json::Value& bvRoot, const Mat& inputImage, bool drawCounts
 	}
 	return markupImage;
 }
+//deprecated
 Json::Value minifyJsonOutput(const Json::Value& JsonOutput){
 	Json::Value minifiedOutput;
 	Json::Value minifiedOutputFields;
@@ -268,32 +297,28 @@ private:
 	ClassiferMap classifiers;
 
 	string templPath;
-	//string imageDir;
 
 	#ifdef TIME_IT
 		clock_t init;
 	#endif
 
-
-//NOTE: training_data_uri must be a directory with no leading or trailing slashes.
+//Creates a classifier based on the given JSON classifier specification.
+//Classifiers are cached in memory via the "classifiers" map. 
+//Trained classifier parameters are cached on the file system.
+//Cached data is keyed by the classifier's training_data_uri and dimensions.
 Ptr<PCA_classifier>& getClassifier(const Json::Value& classifier) {
-
+	//NOTE: training_data_uri must be a directory with no leading or trailing slashes.
 	const string& training_data_uri = classifier["training_data_uri"].asString();
 
-	Size acutal_classifier_size = SCALEPARAM * Size(classifier["classifier_width"].asInt(),
+	Size scaled_classifier_size = SCALEPARAM * Size(classifier["classifier_width"].asInt(),
 	                                                classifier["classifier_height"].asInt());
 	ostringstream ss;
-	ss << acutal_classifier_size.height << 'x' << acutal_classifier_size.width;
+	ss << scaled_classifier_size.height << 'x' << scaled_classifier_size.width;
 	string key(training_data_uri + ss.str());
 
 	ClassiferMap::iterator it = classifiers.find(key);
-/*
-	#ifdef DEBUG_PROCESSOR
-		cout << "erasing old classifier (if it exisits)" << endl;
-		if( it != classifiers.end() ) cout << "erased: " << classifiers.erase(key) << endl;
-		cout << "erased" << endl;
-	#endif
-*/
+
+	//If the classifier is not loaded into memory...
 	if( it == classifiers.end() ) {
 		//PCA_classifier classifier = classifiers[key];
 		classifiers[key] = Ptr<PCA_classifier>(new PCA_classifier);
@@ -304,6 +329,8 @@ Ptr<PCA_classifier>& getClassifier(const Json::Value& classifier) {
 		classifiers[key]->set_classifier_params(classifier);
 
 		try{
+			//Uncomment this to always retrain.
+			//throw new exception();
 			classifiers[key]->load(cachedDataPath);
 			#ifdef DEBUG_PROCESSOR
 				cout << "found cached classifier..." << endl;
@@ -328,13 +355,13 @@ Ptr<PCA_classifier>& getClassifier(const Json::Value& classifier) {
 			#endif
 			*/
 
+			//TODO: Move more of this code into the PCA classifier class.
 			const Json::Value advanced = classifier.get("advanced", Json::Value());
 			bool success = classifiers[key]->train_PCA_classifier( filepaths,
-				                                               acutal_classifier_size,
+				                                               scaled_classifier_size,
 				                                               advanced.get("eigenvalues", 9).asInt(),
 			                                                       advanced.get("flip_training_data", true).asBool());
 			if( !success ) {
-				//TODO: A better error message here when the training data isn't found would be a big help.
 				LOGI("\n\nCould not train classifier.\n\n");
 				return classifiers[key];
 			}
@@ -393,7 +420,8 @@ Json::Value segmentFunction(Json::Value& segmentJsonOut, const Json::Value& exte
 		vector<Point2f> quad;
 		findSegment(segmentImg, segmentRect - expandedRect.tl(), quad);
 
-		if(testQuad(quad, segmentRect, .2)){
+		#define MAX_SIZE_VARIATION 0.4
+		if(testQuad(quad, segmentRect, MAX_SIZE_VARIATION)){
 			#ifdef DEBUG_PROCESSOR
 				//This makes a stream of dots so we can see how fast things are going.
 				//we get a ! when things go wrong.
@@ -550,7 +578,7 @@ Json::Value segmentFunction(Json::Value& segmentJsonOut, const Json::Value& exte
 		segmentJsonOut["image_path"] = segmentOutPath + segmentName;
 	}
 	catch(...){
-		LOGI(("Could not output segment to: " + segmentOutPath+segmentName).c_str());
+		LOGI(("Could not output segment to: " + segmentOutPath + segmentName).c_str());
 	}
 	return segmentJsonOut;
 }
@@ -568,8 +596,8 @@ Json::Value fieldFunction(const Json::Value& field, const Json::Value& parentPro
 	}
 
 	#ifdef OUTPUT_BUBBLE_IMAGES
-		namer.setPrefix(field.get("classifier", Json::Value()).get("training_data_uri", "na").asString());
-		//namer.setPrefix(field.get("label", "unlabeled").asString());
+		//namer.setPrefix(field.get("classifier", Json::Value()).get("training_data_uri", "na").asString());
+		namer.setPrefix(field.get("label", "unlabeled").asString());
 	#endif
 
 	for ( size_t j = 0; j < segments.size(); j++ ) {
@@ -632,7 +660,8 @@ bool setTemplate(const char* templatePathArg) {
 }
 bool loadFormImage(const char* imagePath, const char* calibrationFilePath) {
 	#ifdef DEBUG_PROCESSOR
-		cout << "loading form image..." << flush;
+		LOGI("loading form image...");
+		cout << flush;
 	#endif
 	#ifdef TIME_IT	
 		init = clock();
@@ -690,7 +719,8 @@ bool loadFormImage(const char* imagePath, const char* calibrationFilePath) {
 }
 bool alignForm(const char* alignedImageOutputPath, size_t formIdx) {
 	#ifdef DEBUG_PROCESSOR
-		cout << "aligning form..." << endl;
+		LOGI("aligning form...");
+		cout << endl;
 	#endif
 	#ifdef TIME_IT	
 		init = clock();
@@ -699,17 +729,17 @@ bool alignForm(const char* alignedImageOutputPath, size_t formIdx) {
 
 	Size form_sz(root.get("width", 0).asInt(), root.get("height", 0).asInt());
 
-	if( form_sz.width <= 0 || form_sz.height <= 0)
+	if( form_sz.width <= 0 || form_sz.height <= 0) {
 		CV_Error(CV_StsError, "Invalid form dimension in template.");
+	}
 
 	//If the image was not set (because form detection didn't happen) set it.
 	if( aligner.currentImg.empty() ) aligner.setImage(formImage);
 
-	aligner.alignFormImage( straightenedImage, SCALEPARAM * form_sz, formIdx );
-
-	
-	if(straightenedImage.empty()) {
-		cout << "does this ever happen?" << endl;
+	//TODO: Move this try/catch into alignFormImage perhaps?
+	try {
+		aligner.alignFormImage( straightenedImage, SCALEPARAM * form_sz, formIdx );
+	} catch(cv::Exception& e){
 		return false;
 	}
 
@@ -729,7 +759,8 @@ bool alignForm(const char* alignedImageOutputPath, size_t formIdx) {
 }
 bool processForm(const string& outputPath, const string& jsonOutputPath, const string& markedupImagePath, bool minifyJson) {
 	#ifdef  DEBUG_PROCESSOR
-		cout << "Processing form" << endl;
+		LOGI("Processing form");
+		cout << endl;
 	#endif
 	#ifdef TIME_IT	
 		init = clock();
@@ -777,14 +808,18 @@ bool processForm(const string& outputPath, const string& jsonOutputPath, const s
 bool writeFormImage(const char* outputPath) {
 	return imwrite(outputPath, formImage);
 }
+//Loads feature data for the given template into memory.
+//This can be called multiple times, so multiple templates are loaded into memeory for detection.
 bool loadFeatureData(const char* templatePathArg) {
 	string templatePath = addSlashIfNeeded(templatePathArg);
 	aligner.loadFeatureData(templatePath + "form.jpg",
-							templatePath + "template.json",
-							templatePath + "cached_features.yml");
+	                        templatePath + "template.json",
+	                        templatePath + "cached_features.yml");
 
 	return true;
 }
+//Detect which form we are using from among the loaded feature data sets.
+//A return value of 0 indicates the first data loaded, 1 indicates the second, etc..
 int detectForm(){
 	int formIdx;
 	try{
@@ -846,7 +881,7 @@ bool Processor::processForm(const char* outputPath, bool minifyJson) {
 	    return false;
 	}
 }
-const char* Processor::scanAndMarkup(const char* outputPath) {
+const string Processor::scanAndMarkup(const char* outputPath) {
 	try{
 		string normalizedOutDir = addSlashIfNeeded(outputPath);
 		if(processorImpl->processForm(normalizedOutDir, normalizedOutDir + "output.json",
@@ -867,7 +902,8 @@ const char* Processor::scanAndMarkup(const char* outputPath) {
 	}
 }
 /**
-processViaJSON expects a JSON string like this:
+processViaJSON tries to  mimic a restful client-server interface.
+It expects a JSON string like this:
 {
 	"inputImage" : "",
 	"outputDirectory" : "",
@@ -881,23 +917,24 @@ processViaJSON expects a JSON string like this:
 	"calibrationFilePath" : "",
 	"trainingDataDirectory" : "training_examples/"
 }
+You only need to specify the inputImage, outputDirectory and templatePath(s).
+The JSON above contains all the default values.
+
 It returns a JSON string like this:
 {
 	"errorMessage" : "This is only here if there's an error",
 	"templatePath" : "path/to/template/that/was/used/for/processing"
 }
 
-You only need to specify the inputImage, outputDirectory and templatePath(s).
-The JSON above contains all the default values.
-
 The benefits are as follows:
-- Only a single call is required to use the whole processing pipeline.
+- Only a single call is required to use the whole processing pipeline
+  (all the pipeline logic remains in here).
 - Keyword arguments make it clearer what the args do,
   and allow for more flexible default behavior when they are not specified.
 - Extra properties can be passed in without both ends supporting them in advance.
 - The output JSON could be passed back this way without requiring use of the file system.
 */
-const char* Processor::processViaJSON(const char* jsonString) {
+const string Processor::processViaJSON(const char* jsonString) {
 	Json::Value result(Json::objectValue);
 	try {
 		Json::Value config;// will contain the root value after parsing.
@@ -929,6 +966,7 @@ const char* Processor::processViaJSON(const char* jsonString) {
 				result["errorMessage"] = "Could not set template.";
 				return stringify(result);
 			}
+			result["templatePath"] = config["templatePath"];
 		} else if(config.isMember("templatePaths")) {
 			Json::Value templatePaths = config["templatePaths"];
 			for ( size_t j = 0; j < templatePaths.size(); j++ ) {
@@ -991,3 +1029,10 @@ const char* Processor::processViaJSON(const char* jsonString) {
 bool Processor::writeFormImage(const char* outputPath) const{
 	return processorImpl->writeFormImage(outputPath);
 }
+
+const string Processor::jniEchoTest(const char* testStr) const{
+	Json::Value result(Json::objectValue);
+	result["stuff"] = testStr;
+	return stringify(result);
+}
+

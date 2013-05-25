@@ -86,7 +86,7 @@ int main(int argc, char *argv[]) {
 		Json::Reader reader;
 		Json::Value result;
 		reader.parse(myProcessor.processViaJSON(ss.str().c_str()), result);
-		
+		cout << result << endl;
 		if( result.isMember("errorMessage") ) {
 			cout << "\E[31m" <<  result["errorMessage"] << "\e[0m" << endl;
 			cout << "Configuration used:" <<  config << endl;
@@ -100,7 +100,7 @@ int main(int argc, char *argv[]) {
 		collectors[label].addTime( (double)final / ((double)CLOCKS_PER_SEC) );
 		
 		string jsonOutfile(outputPath + "output.json");
-		if(fileExists(jsonOutfile) && fileExists(expectedJsonFile)){
+		if(fileExists(jsonOutfile) && fileExists(expectedJsonFile)) {
 			collectors[label].compareFiles(jsonOutfile, expectedJsonFile, COMP_BUBBLE_VALS);
 			//collectors[label].compareFiles(jsonOutfile, templatePath + ".json", COMP_BUBBLE_OFFSETS);
 		}
